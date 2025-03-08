@@ -1,0 +1,74 @@
+
+import React from 'react';
+import { Clock, User, CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
+import { Badge } from '../ui/Badge';
+import { Avatar } from '../ui/Avatar';
+import { Link } from 'react-router-dom';
+import { CaseStatus, CaseType, CaseItem } from '../../types/case';
+
+const statusIcons = {
+  new: <AlertCircle className="w-4 h-4 text-blue-500" />,
+  in_progress: <Clock className="w-4 h-4 text-amber-500" />,
+  waiting: <Hourglass className="w-4 h-4 text-purple-500" />,
+  completed: <CheckCircle2 className="w-4 h-4 text-green-500" />
+};
+
+const statusColors = {
+  new: 'bg-blue-100 text-blue-700 border-blue-200',
+  in_progress: 'bg-amber-100 text-amber-700 border-amber-200',
+  waiting: 'bg-purple-100 text-purple-700 border-purple-200',
+  completed: 'bg-green-100 text-green-700 border-green-200'
+};
+
+interface CaseCardProps {
+  caseItem: CaseItem;
+}
+
+export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
+  const statusLabel = {
+    new: 'Neu',
+    in_progress: 'In Bearbeitung',
+    waiting: 'Wartet auf Rückmeldung',
+    completed: 'Erledigt'
+  };
+
+  const typeLabel = {
+    damage: 'Schadenmeldung',
+    evb: 'eVB-Anfrage',
+    contract_change: 'Vertragsänderung',
+    inquiry: 'Kundenanfrage',
+    other: 'Sonstiges'
+  };
+
+  return (
+    <Link to={`/cases/${caseItem.id}`}>
+      <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in">
+        <div className="flex justify-between items-start mb-3">
+          <span className="text-xs text-muted-foreground">#{caseItem.id.slice(0, 8)}</span>
+          <Badge variant="outline" className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${statusColors[caseItem.status]}`}>
+            {statusIcons[caseItem.status]}
+            {statusLabel[caseItem.status]}
+          </Badge>
+        </div>
+        
+        <h3 className="font-medium text-lg mb-1">{caseItem.title}</h3>
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{caseItem.description}</p>
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <Badge variant="outline" className="text-xs bg-secondary">
+              {typeLabel[caseItem.type]}
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-2">
+              Letzte Aktivität: {new Date(caseItem.lastUpdated).toLocaleDateString('de-DE')}
+            </p>
+          </div>
+          
+          <div className="flex -space-x-2">
+            <Avatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} />
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+};
