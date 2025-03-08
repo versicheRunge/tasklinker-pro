@@ -2,8 +2,8 @@
 import React from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { users } from '../data/mockData';
-import { Avatar } from '../components/ui/Avatar';
 import { Mail, Phone, Award, PlusCircle } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 
 const Team: React.FC = () => {
   // Extended user data with more details
@@ -54,6 +54,16 @@ const Team: React.FC = () => {
     }
   ];
 
+  // Helper function to get initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <AppLayout>
       <div className="flex justify-between items-center mb-6">
@@ -72,7 +82,13 @@ const Team: React.FC = () => {
           <div key={user.id} className="bg-card rounded-xl border border-border overflow-hidden animate-scale-in">
             <div className="h-24 bg-gradient-to-r from-primary/10 to-primary/5"></div>
             <div className="p-6 pt-0 -mt-12">
-              <Avatar name={user.name} imageSrc={user.avatar} size="lg" />
+              <Avatar className="h-20 w-20 border-4 border-background">
+                {user.avatar ? (
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                ) : (
+                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                )}
+              </Avatar>
               
               <h2 className="text-xl font-semibold mt-4 mb-1">{user.name}</h2>
               <p className="text-muted-foreground text-sm">{user.role}</p>
