@@ -3,7 +3,7 @@ import React from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { CaseItem } from '../../types/case';
-import { Avatar } from '../ui/avatar';
+import { CustomAvatar } from '../ui/CustomAvatar';
 import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
 import { CaseActivityTimeline } from './CaseActivityTimeline';
@@ -86,7 +86,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
               <p className="text-sm font-medium">Zugewiesen an</p>
               <p className="text-sm text-muted-foreground">{caseItem.assignee.name}</p>
             </div>
-            <Avatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="lg" />
+            <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="lg" />
           </div>
         </div>
         
@@ -107,7 +107,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
             <div className="mt-6 pt-6 border-t border-border">
               <h3 className="text-sm font-medium mb-3">Neuen Kommentar hinzufügen</h3>
               <div className="flex gap-3">
-                <Avatar name="Max Schmidt" size="sm" />
+                <CustomAvatar name="Max Schmidt" size="sm" />
                 <div className="flex-1">
                   <textarea 
                     className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"

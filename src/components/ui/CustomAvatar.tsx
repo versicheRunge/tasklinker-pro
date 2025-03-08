@@ -8,11 +8,8 @@ interface CustomAvatarProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const CustomAvatar: React.FC<CustomAvatarProps> = ({ 
-  name, 
-  imageSrc, 
-  size = 'md' 
-}) => {
+export const CustomAvatar: React.FC<CustomAvatarProps> = ({ name, imageSrc, size = 'md' }) => {
+  // Helper function to get initials from name
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -22,22 +19,15 @@ export const CustomAvatar: React.FC<CustomAvatarProps> = ({
       .slice(0, 2);
   };
 
-  const getSizeClass = (size: string) => {
-    switch (size) {
-      case 'sm':
-        return 'w-8 h-8 text-xs';
-      case 'lg':
-        return 'w-16 h-16 text-base';
-      case 'md':
-      default:
-        return 'w-10 h-10 text-sm';
-    }
+  // Map size to CSS classes
+  const sizeClasses = {
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-16 w-16 border-4 border-background',
   };
 
-  const sizeClass = getSizeClass(size);
-
   return (
-    <Avatar className={sizeClass}>
+    <Avatar className={sizeClasses[size]}>
       {imageSrc ? (
         <AvatarImage src={imageSrc} alt={name} />
       ) : (

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CaseActivity } from '../../types/case';
-import { Avatar } from '../ui/avatar';
+import { CustomAvatar } from '../ui/CustomAvatar';
 import { MessageSquare, FileText, CheckSquare, AlertCircle, Hourglass } from 'lucide-react';
 
 interface CaseActivityTimelineProps {
@@ -39,7 +39,7 @@ export const CaseActivityTimeline: React.FC<CaseActivityTimelineProps> = ({ acti
       {activities.map((activity, index) => (
         <div key={index} className="flex gap-4">
           <div className="relative">
-            <Avatar name={activity.user.name} imageSrc={activity.user.avatar} size="sm" />
+            <CustomAvatar name={activity.user.name} imageSrc={activity.user.avatar} size="sm" />
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-secondary flex items-center justify-center">
               {getActivityIcon(activity.type)}
             </div>

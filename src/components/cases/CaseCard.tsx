@@ -2,7 +2,7 @@
 import React from 'react';
 import { Clock, User, CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { Avatar } from '../ui/avatar';
+import { CustomAvatar } from '../ui/CustomAvatar';
 import { Link } from 'react-router-dom';
 import { CaseStatus, CaseType, CaseItem } from '../../types/case';
 
@@ -65,7 +65,7 @@ export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
           </div>
           
           <div className="flex -space-x-2">
-            <Avatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} />
+            <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} />
           </div>
         </div>
       </div>
