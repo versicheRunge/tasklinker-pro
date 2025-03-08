@@ -1,14 +1,17 @@
 
 import React from 'react';
-import { FileText, Users, CheckSquare, ClipboardCheck } from 'lucide-react';
+import { FileText, Users, CheckSquare, ClipboardCheck, Archive } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { StatCard } from '../components/dashboard/StatCard';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { CaseCard } from '../components/cases/CaseCard';
 import { dashboardStats, cases } from '../data/mockData';
+import { useUser } from '../contexts/UserContext';
 
 const Index: React.FC = () => {
   const newCases = cases.filter(c => c.status === 'new');
+  const completedCases = cases.filter(c => c.status === 'completed');
+  const { isAdmin } = useUser();
   
   return (
     <AppLayout>
@@ -21,29 +24,26 @@ const Index: React.FC = () => {
         <StatCard 
           title="Offene Vorgänge"
           value={dashboardStats.totalCases}
-          change={{ value: 12, positive: true }}
           icon={FileText}
           color="bg-blue-100 text-blue-600"
         />
         <StatCard 
           title="Neue Vorgänge"
           value={dashboardStats.newCases}
-          change={{ value: 5, positive: true }}
           icon={ClipboardCheck}
           color="bg-purple-100 text-purple-600"
         />
         <StatCard 
           title="In Bearbeitung"
           value={dashboardStats.inProgressCases}
-          change={{ value: 2, positive: false }}
           icon={CheckSquare}
           color="bg-amber-100 text-amber-600"
         />
         <StatCard 
-          title="Team"
-          value={4}
-          icon={Users}
-          color="bg-teal-100 text-teal-600"
+          title="Abgeschlossene Vorgänge"
+          value={completedCases.length}
+          icon={Archive}
+          color="bg-green-100 text-green-600"
         />
       </div>
       
@@ -75,6 +75,23 @@ const Index: React.FC = () => {
           <RecentActivity activities={dashboardStats.recentActivities} />
         </div>
       </div>
+      
+      {isAdmin && (
+        <div className="flex gap-4 mb-8">
+          <button 
+            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
+            onClick={() => {
+              toast({
+                title: "Export gestartet",
+                description: "Der Export der abgeschlossenen Vorgänge wurde gestartet.",
+              });
+            }}
+          >
+            <Archive className="w-4 h-4" />
+            <span>Abgeschlossene Vorgänge exportieren</span>
+          </button>
+        </div>
+      )}
       
       <div className="bg-muted/30 border border-border rounded-xl p-6 animate-scale-in">
         <div className="flex items-start gap-4">

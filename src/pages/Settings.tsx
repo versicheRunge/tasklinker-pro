@@ -1,21 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { User, Shield, Bell, Eye, Database, Lock, Upload, Sun, Moon, Download, Trash2 } from 'lucide-react';
 import { CustomAvatar } from '../components/ui/CustomAvatar';
 import { toast } from "../hooks/use-toast";
+import { useTheme } from '../contexts/ThemeContext';
+import { useUser } from '../contexts/UserContext';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const { currentUser, updateUser, isAdmin } = useUser();
+  const { theme, setTheme, fontSize, setFontSize } = useTheme();
+  
   const [userData, setUserData] = useState({
-    name: 'Max Schmidt',
-    email: 'max.schmidt@beispiel.de',
-    role: 'Administrator',
+    name: currentUser?.name || 'Max Schmidt',
+    email: currentUser?.email || 'max.schmidt@beispiel.de',
+    role: currentUser?.role || 'Administrator',
     department: 'Leitung',
   });
   
-  // New state for additional settings
+  useEffect(() => {
+    if (currentUser) {
+      setUserData({
+        name: currentUser.name,
+        email: currentUser.email,
+        role: currentUser.role,
+        department: 'Leitung',
+      });
+      if (currentUser.avatar) {
+        setProfileImage(currentUser.avatar);
+      }
+    }
+  }, [currentUser]);
+  
   const [notificationSettings, setNotificationSettings] = useState({
     email: true,
     push: false,
@@ -25,11 +42,19 @@ const Settings = () => {
   });
   
   const [appearanceSettings, setAppearanceSettings] = useState({
-    theme: 'light',
-    fontSize: 2,
+    theme: theme,
+    fontSize: fontSize,
     animations: true,
     highContrast: false,
   });
+  
+  useEffect(() => {
+    setAppearanceSettings(prev => ({
+      ...prev,
+      theme,
+      fontSize
+    }));
+  }, [theme, fontSize]);
   
   const [securitySettings, setSecuritySettings] = useState({
     twoFactor: false,
@@ -55,7 +80,11 @@ const Settings = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          setProfileImage(e.target.result as string);
+          const imageData = e.target.result as string;
+          setProfileImage(imageData);
+          if (currentUser) {
+            updateUser(currentUser.id, { avatar: imageData });
+          }
           toast({
             title: "Profilbild aktualisiert",
             description: "Ihr Profilbild wurde erfolgreich aktualisiert.",
@@ -67,6 +96,13 @@ const Settings = () => {
   };
 
   const handleSaveProfile = () => {
+    if (currentUser) {
+      updateUser(currentUser.id, { 
+        name: userData.name,
+        email: userData.email,
+        role: userData.role
+      });
+    }
     toast({
       title: "Profil gespeichert",
       description: "Ihre Profiländerungen wurden erfolgreich gespeichert.",
@@ -84,16 +120,18 @@ const Settings = () => {
     });
   };
   
-  const handleThemeChange = (theme: string) => {
-    setAppearanceSettings(prev => ({ ...prev, theme }));
+  const handleThemeChange = (newTheme: 'light' | 'dark') => {
+    setTheme(newTheme);
+    setAppearanceSettings(prev => ({ ...prev, theme: newTheme }));
     toast({
       title: "Design geändert",
-      description: `Design wurde auf ${theme === 'light' ? 'Hell' : 'Dunkel'} umgestellt.`,
+      description: `Design wurde auf ${newTheme === 'light' ? 'Hell' : 'Dunkel'} umgestellt.`,
     });
   };
   
   const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const size = parseInt(e.target.value);
+    const size = parseInt(e.target.value) as 1 | 2 | 3;
+    setFontSize(size);
     setAppearanceSettings(prev => ({ ...prev, fontSize: size }));
   };
 
@@ -717,6 +755,34 @@ const Settings = () => {
         return <div>Wählen Sie eine Option aus dem Menü.</div>;
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <AppLayout>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Einstellungen</h1>
+            <p className="text-muted-foreground">Verwalte deine persönlichen Einstellungen.</p>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h2 className="text-xl font-semibold mb-4">Eingeschränkter Zugriff</h2>
+          <p className="text-muted-foreground">
+            Sie haben keinen Administratorzugriff. Bitte kontaktieren Sie Ihren Administrator, um Änderungen an den Systemeinstellungen vorzunehmen.
+          </p>
+          <div className="mt-6">
+            <button 
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
+              onClick={() => window.history.back()}
+            >
+              Zurück
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

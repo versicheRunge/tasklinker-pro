@@ -31,15 +31,6 @@ export const StatCard: React.FC<StatCardProps> = ({
           <Icon className="w-5 h-5" />
         </div>
       </div>
-      
-      {change && (
-        <div className="flex items-center gap-1">
-          <span className={change.positive ? 'text-green-600' : 'text-red-600'}>
-            {change.positive ? '↑' : '↓'} {Math.abs(change.value)}%
-          </span>
-          <span className="text-xs text-muted-foreground">seit letztem Monat</span>
-        </div>
-      )}
     </div>
   );
 };
