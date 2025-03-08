@@ -3,8 +3,8 @@ import React from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { CaseItem } from '../../types/case';
-import { Avatar } from '../ui/Avatar';
-import { Badge } from '../ui/Badge';
+import { Avatar } from '../ui/avatar';
+import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
 import { CaseActivityTimeline } from './CaseActivityTimeline';
 

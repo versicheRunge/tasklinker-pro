@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CaseActivity } from '../../types/case';
-import { Avatar } from '../ui/Avatar';
+import { Avatar } from '../ui/avatar';
 import { MessageSquare, FileText, CheckSquare, AlertCircle, Hourglass } from 'lucide-react';
 
 interface CaseActivityTimelineProps {

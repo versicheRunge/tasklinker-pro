@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Clock, User, CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import { Avatar } from '../ui/Avatar';
+import { Badge } from '../ui/badge';
+import { Avatar } from '../ui/avatar';
 import { Link } from 'react-router-dom';
 import { CaseStatus, CaseType, CaseItem } from '../../types/case';
 
