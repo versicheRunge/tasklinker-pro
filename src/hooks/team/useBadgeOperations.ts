@@ -48,7 +48,7 @@ export const useBadgeOperations = () => {
     });
   };
 
-  const getAvailableBadges = () => {
+  const getAvailableBadges = (): UserBadge[] => {
     const storedBadges = localStorage.getItem('userBadges');
     if (storedBadges) {
       try {
@@ -57,7 +57,21 @@ export const useBadgeOperations = () => {
         console.error('Error parsing badges:', e);
       }
     }
-    return [];
+    
+    // Default badges if none are stored
+    const defaultBadges: UserBadge[] = [
+      { id: 'top-performer', name: 'Top Performer', icon: '🏆', category: 'achievement' },
+      { id: 'team-player', name: 'Team Player', icon: '👥', category: 'achievement' },
+      { id: 'expert', name: 'Experte', icon: '🧠', category: 'skill' },
+      { id: 'mentor', name: 'Mentor', icon: '👨‍🏫', category: 'skill' },
+      { id: 'veteran', name: '5 Jahre', icon: '⏱️', category: 'tenure' },
+      { id: 'certified', name: 'Zertifiziert', icon: '📜', category: 'certification' },
+      { id: 'innovator', name: 'Innovator', icon: '💡', category: 'special' }
+    ];
+    
+    // Store the default badges
+    localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
+    return defaultBadges;
   };
 
   const badgeCategories = [

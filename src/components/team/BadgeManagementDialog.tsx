@@ -3,6 +3,7 @@ import React from 'react';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { User } from '../../types/case';
 import { UserBadge } from '../../contexts/UserTypes';
+import { Button } from '../ui/button';
 
 interface BadgeManagementDialogProps {
   user: User | null;
@@ -58,18 +59,12 @@ export const BadgeManagementDialog: React.FC<BadgeManagementDialogProps> = ({
         ))}
       </div>
       <DialogFooter>
-        <button
-          className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors"
-          onClick={onCancel}
-        >
+        <Button variant="outline" onClick={onCancel}>
           Abbrechen
-        </button>
-        <button
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          onClick={onSave}
-        >
+        </Button>
+        <Button onClick={onSave}>
           Auszeichnungen speichern
-        </button>
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

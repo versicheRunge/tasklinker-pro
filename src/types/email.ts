@@ -14,7 +14,7 @@ export interface EmailTemplate {
 export interface EmailSignature {
   userId: string;
   content: string;
-  includeCompanyLogo: boolean;
+  includeCompanyLogo: boolean; // We keep this for data compatibility but don't use it in UI
   includeUserDetails: boolean;
   updatedAt: string;
 }

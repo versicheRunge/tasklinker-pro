@@ -8,13 +8,13 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Mail, Save } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { toast } from '../../hooks/use-toast';
 
 export const EmailSignature: React.FC = () => {
   const { currentUser } = useUser();
   const { saveSignature, getUserSignature } = useEmailTemplates();
   
   const [signature, setSignature] = useState('');
-  const [includeCompanyLogo, setIncludeCompanyLogo] = useState(false);
   const [includeUserDetails, setIncludeUserDetails] = useState(true);
   
   useEffect(() => {
@@ -22,21 +22,25 @@ export const EmailSignature: React.FC = () => {
       const userSignature = getUserSignature(currentUser.id);
       if (userSignature) {
         setSignature(userSignature.content);
-        setIncludeCompanyLogo(userSignature.includeCompanyLogo);
         setIncludeUserDetails(userSignature.includeUserDetails);
       } else {
         // Default signature
         setSignature(`Mit freundlichen Grüßen,\n\n${currentUser.name}`);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, getUserSignature]);
   
   const handleSaveSignature = () => {
     if (currentUser) {
       saveSignature(currentUser.id, {
         content: signature,
-        includeCompanyLogo,
+        includeCompanyLogo: false, // We keep this for compatibility but don't expose it in the UI
         includeUserDetails
+      });
+      
+      toast({
+        title: "Signatur gespeichert",
+        description: "Ihre E-Mail-Signatur wurde erfolgreich gespeichert."
       });
     }
   };
@@ -67,20 +71,6 @@ export const EmailSignature: React.FC = () => {
         </div>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="logo-switch">Firmenlogo einfügen</Label>
-              <p className="text-sm text-muted-foreground">
-                Fügt das Firmenlogo unter Ihrer Signatur ein
-              </p>
-            </div>
-            <Switch
-              id="logo-switch"
-              checked={includeCompanyLogo}
-              onCheckedChange={setIncludeCompanyLogo}
-            />
-          </div>
-          
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="details-switch">Kontaktdaten einfügen</Label>
