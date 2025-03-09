@@ -297,7 +297,7 @@ const EmailTemplates: React.FC = () => {
                     rows={10}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Verwenden Sie Platzhalter wie {{customerName}} oder {{caseId}}, um dynamische Inhalte einzufügen.
+                    Verwenden Sie Platzhalter wie {'{{'}}customerName{{'}}'} oder {'{{'}}caseId{{'}}'}, um dynamische Inhalte einzufügen.
                   </p>
                 </div>
                 
