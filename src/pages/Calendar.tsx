@@ -7,7 +7,6 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
 import { useCalendar } from '../hooks/useCalendar';
-import { getEventsForDate } from '../utils/calendarUtils';
 import { CalendarLegend } from '../components/calendar/CalendarLegend';
 import { EventItem } from '../components/calendar/EventItem';
 import { AdminFilteredEvents } from '../components/calendar/AdminFilteredEvents';
@@ -34,7 +33,8 @@ const CalendarPage: React.FC = () => {
     handleAddEvent,
     handleDeleteEvent,
     handleViewEvent,
-    handleDateChange
+    handleDateChange,
+    getEventsForDate
   } = useCalendar();
 
   return (
