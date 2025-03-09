@@ -10,8 +10,8 @@ export const useCasesManager = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isFilterPriorityOpen, setIsFilterPriorityOpen] = useState(false);
   const [isFilterUserOpen, setIsFilterUserOpen] = useState(false);
-  const [filterPriority, setFilterPriority] = useState<CasePriority | null>(null);
-  const [filterUserId, setFilterUserId] = useState<string | null>(null);
+  const [filterPriority, setFilterPriority] = useState<CasePriority | 'all'>('all');
+  const [filterUserId, setFilterUserId] = useState<string | 'all'>('all');
   const { currentUser } = useUser();
   const location = useLocation();
   
@@ -55,10 +55,10 @@ export const useCasesManager = () => {
     if (!archiveMatch) return false;
     
     // Then filter by priority if one is selected
-    if (filterPriority && c.priority !== filterPriority) return false;
+    if (filterPriority !== 'all' && c.priority !== filterPriority) return false;
     
     // Then filter by assigned user if one is selected
-    if (filterUserId && c.assignee.id !== filterUserId) return false;
+    if (filterUserId !== 'all' && c.assignee.id !== filterUserId) return false;
     
     return true;
   });
