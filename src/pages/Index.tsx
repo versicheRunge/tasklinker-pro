@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare, ListChecks } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -17,7 +16,6 @@ const Index: React.FC = () => {
   const { isAdmin, currentUser } = useUser();
   const [allCases, setAllCases] = useState<CaseItem[]>([]);
   
-  // Load cases from localStorage
   useEffect(() => {
     const storedCases = localStorage.getItem('cases');
     if (storedCases) {
@@ -25,32 +23,26 @@ const Index: React.FC = () => {
     }
   }, []);
   
-  // Filter cases for the current user
   const myCases = allCases.filter(c => 
     (currentUser && (c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id))) && 
     !c.archived
   );
   
-  // Meine offenen Vorgänge (nicht abgeschlossen)
   const myActiveCases = myCases.filter(c => c.status !== 'completed');
   
-  // Zugewiesene Aufgaben (Todo-Liste)
   const myAssignedCases = allCases.filter(c => 
     currentUser && c.assignee.id === currentUser.id && !c.archived
   );
   
-  // Alle Fälle, die nicht von diesem Benutzer sind
   const otherCases = allCases.filter(c => 
     currentUser && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
   );
   
-  // Status-spezifische Filter
   const myNewCases = myCases.filter(c => c.status === 'new');
   const myInProgressCases = myCases.filter(c => c.status === 'in_progress');
   const myWaitingCases = myCases.filter(c => c.status === 'waiting');
   const myCompletedCases = myCases.filter(c => c.status === 'completed');
   
-  // All cases (for all users)
   const newCases = allCases.filter(c => c.status === 'new' && !c.archived);
   const inProgressCases = allCases.filter(c => c.status === 'in_progress' && !c.archived);
   const waitingCases = allCases.filter(c => c.status === 'waiting' && !c.archived);
@@ -107,7 +99,6 @@ const Index: React.FC = () => {
         </div>
       </div>
       
-      {/* To-Do Liste (Zugewiesene Aufgaben) */}
       {currentUser && myAssignedCases.length > 0 && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -128,7 +119,6 @@ const Index: React.FC = () => {
         </div>
       )}
       
-      {/* Meine Vorgänge (Eigene + Zugewiesene) */}
       {currentUser && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -145,14 +135,13 @@ const Index: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-10 bg-muted/20 rounded-lg">
+            <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-lg">
               <p className="text-muted-foreground">Keine aktiven Vorgänge für Sie</p>
             </div>
           )}
         </div>
       )}
       
-      {/* Alle anderen Vorgänge (von anderen Mitarbeitern) */}
       {currentUser && otherCases.length > 0 && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -172,7 +161,7 @@ const Index: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2">
-          <div className="bg-card rounded-xl border border-border p-6 h-full animate-scale-in">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-border p-6 h-full animate-scale-in">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium">Neue Vorgänge</h2>
               <a href="/cases" className="text-sm text-primary hover:underline">
@@ -209,7 +198,6 @@ const Index: React.FC = () => {
                 description: "Der Export der abgeschlossenen Vorgänge wurde gestartet.",
               });
               
-              // In a real app, we would trigger an actual export here
               const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(completedCases));
               const downloadAnchorNode = document.createElement('a');
               downloadAnchorNode.setAttribute("href", dataStr);
@@ -225,7 +213,7 @@ const Index: React.FC = () => {
         </div>
       )}
       
-      <div className="bg-muted/30 border border-border rounded-xl p-6 animate-scale-in">
+      <div className="bg-white dark:bg-slate-800 border border-border rounded-xl p-6 animate-scale-in">
         <div className="flex items-start gap-4">
           <div className="bg-blue-100 p-3 rounded-lg text-blue-600">
             <ClipboardCheck className="w-6 h-6" />

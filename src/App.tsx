@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from './pages/Index';
 import Cases from './pages/Cases';
@@ -12,6 +11,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { UserProvider } from "./contexts/UserContext";
 import { Toaster } from "./components/ui/toaster";
 import Login from './pages/Login';
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -23,9 +23,10 @@ function App() {
             <Route path="/cases" element={<Cases />} />
             <Route path="/cases/:id" element={<CaseDetails />} />
             <Route path="/team" element={<Team />} />
-            <Route path="/checklists" element={<Checklists />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/checklists" element={<Checklists />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
