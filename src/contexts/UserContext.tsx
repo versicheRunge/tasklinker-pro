@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
 import { User, Notification } from '../types/case';
@@ -29,9 +30,24 @@ type UserContextType = {
 const getInitialUsers = () => {
   const storedUsers = localStorage.getItem('users');
   if (storedUsers) {
-    return JSON.parse(storedUsers);
+    try {
+      const parsedUsers = JSON.parse(storedUsers);
+      
+      // Ensure all users have a password field
+      const validatedUsers = parsedUsers.map((user: any) => {
+        if (!user.password) {
+          return { ...user, password: 'password123' };
+        }
+        return user;
+      });
+      
+      return validatedUsers;
+    } catch (e) {
+      console.error('Error parsing stored users:', e);
+    }
   }
   
+  console.log('Creating default users with passwords');
   return initialUsers.map((user, index) => ({
     ...user,
     // Only add email if it doesn't exist (now email is optional in the User type)
@@ -135,11 +151,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const validatePassword = (userId: string, password: string) => {
     console.log('Validating password for user ID:', userId);
     console.log('Provided password:', password);
+    
     const user = allUsers.find(u => u.id === userId);
     console.log('User found:', user ? 'yes' : 'no');
+    
     if (user) {
       console.log('Stored password:', user.password);
-      return user.password === password;
+      const isValid = user.password === password;
+      console.log('Password match:', isValid ? 'yes' : 'no');
+      return isValid;
     }
     return false;
   };

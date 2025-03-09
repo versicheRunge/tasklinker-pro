@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
@@ -13,12 +13,21 @@ export const LoginScreen: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   
   const handleUserSelect = (user: UserType) => {
     setSelectedUser(user);
     setError('');
     // Set default password when selecting a user
     setPassword('password123');
+    
+    // Focus on password field after a short delay (to allow render to complete)
+    setTimeout(() => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.focus();
+        passwordInputRef.current.select();
+      }
+    }, 50);
   };
   
   const handleLogin = (e: React.FormEvent) => {
@@ -33,7 +42,10 @@ export const LoginScreen: React.FC = () => {
     console.log('With password:', password);
     
     // Validate the password
-    if (!validatePassword(selectedUser.id, password)) {
+    const isValid = validatePassword(selectedUser.id, password);
+    console.log('Password validation result:', isValid ? 'success' : 'failed');
+    
+    if (!isValid) {
       console.log('Password validation failed');
       setError('Falsches Passwort');
       return;
@@ -108,6 +120,7 @@ export const LoginScreen: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Passwort eingeben"
                   autoFocus
+                  ref={passwordInputRef}
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
               </div>
