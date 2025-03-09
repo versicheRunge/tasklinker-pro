@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { CasesList } from '../components/cases/CasesList';
@@ -685,7 +684,7 @@ const Cases: React.FC = () => {
                     <span className="flex-1">{title.title}</span>
                   )}
                   <div className="flex items-center gap-1">
-                    <Badge variant="secondary" className="mr-2">
+                    <Badge variant="outline" className="mr-2 border-amber-500 text-amber-500">
                       {title.type === 'damage' ? 'Schadenmeldung' : 
                       title.type === 'evb' ? 'eVB-Anfrage' : 
                       title.type === 'contract_change' ? 'Vertragsänderung' :

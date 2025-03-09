@@ -24,9 +24,9 @@ export const Sidebar: React.FC = () => {
       <div className="px-6 py-8">
         <div className="flex items-center space-x-2 mb-8">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-lg">TS</span>
+            <span className="text-white font-bold text-lg">TR</span>
           </div>
-          <h1 className="text-xl font-semibold">TaskSync</h1>
+          <h1 className="text-xl font-semibold">TruTeam</h1>
         </div>
         
         <nav className="space-y-1">
