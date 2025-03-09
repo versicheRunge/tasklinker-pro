@@ -1,17 +1,31 @@
 
 import { useState, useEffect } from 'react';
-import { CaseItem, CaseType, CaseStatus, CasePriority, User } from '../types/case';
+import { CaseItem, CaseType, CaseStatus, CasePriority, CaseDefaultTitle } from '../types/case';
 import { useUser } from '../contexts/UserContext';
 import { useLocation } from 'react-router-dom';
 
 export const useCasesManager = () => {
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isFilterPriorityOpen, setIsFilterPriorityOpen] = useState(false);
+  const [isFilterUserOpen, setIsFilterUserOpen] = useState(false);
+  const [filterPriority, setFilterPriority] = useState<CasePriority | null>(null);
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const { currentUser } = useUser();
   const location = useLocation();
   
   // Check if we're on the archived cases route
   const isArchived = location.pathname === '/cases/archived';
+  
+  // Default titles for quick case creation
+  const defaultTitles: CaseDefaultTitle[] = [
+    { id: '1', title: 'Schadenmeldung', type: 'damage' },
+    { id: '2', title: 'Vertragsänderung', type: 'contract_change' },
+    { id: '3', title: 'Anfrage zu EVB', type: 'evb' },
+    { id: '4', title: 'Allgemeine Anfrage', type: 'inquiry' },
+    { id: '5', title: 'Sonstiges', type: 'other' }
+  ];
   
   useEffect(() => {
     const loadCases = () => {
@@ -34,8 +48,20 @@ export const useCasesManager = () => {
     loadCases();
   }, []);
   
-  // Filter based on archive status
-  const filteredCases = cases.filter(c => isArchived ? c.archived : !c.archived);
+  // Filter cases based on archive status, priority and user assignment
+  const filteredCases = cases.filter(c => {
+    // First filter by archive status
+    const archiveMatch = isArchived ? c.archived : !c.archived;
+    if (!archiveMatch) return false;
+    
+    // Then filter by priority if one is selected
+    if (filterPriority && c.priority !== filterPriority) return false;
+    
+    // Then filter by assigned user if one is selected
+    if (filterUserId && c.assignee.id !== filterUserId) return false;
+    
+    return true;
+  });
   
   const addCase = (newCase: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
     const caseId = `case-${Date.now()}`;
@@ -67,6 +93,10 @@ export const useCasesManager = () => {
     localStorage.setItem('cases', JSON.stringify(updatedCases));
     
     return caseId;
+  };
+  
+  const handleCreateCase = (caseData: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
+    return addCase(caseData);
   };
   
   const updateCase = (id: string, caseData: Partial<CaseItem>) => {
@@ -129,6 +159,7 @@ export const useCasesManager = () => {
   
   return {
     cases: filteredCases,
+    filteredCases,
     allCases: cases,
     isLoading,
     addCase,
@@ -137,6 +168,18 @@ export const useCasesManager = () => {
     getCaseById,
     archiveCase,
     restoreCase,
-    isArchived
+    isArchived,
+    defaultTitles,
+    isCreateDialogOpen,
+    setIsCreateDialogOpen,
+    isFilterPriorityOpen,
+    setIsFilterPriorityOpen,
+    isFilterUserOpen,
+    setIsFilterUserOpen,
+    filterPriority,
+    setFilterPriority,
+    filterUserId,
+    setFilterUserId,
+    handleCreateCase
   };
 };

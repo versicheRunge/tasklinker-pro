@@ -11,7 +11,7 @@ import { useCasesManager } from '../hooks/useCasesManager';
 const Cases: React.FC = () => {
   const { users } = useUser();
   const { 
-    filteredCases,
+    cases,
     defaultTitles,
     isCreateDialogOpen,
     setIsCreateDialogOpen,
@@ -57,7 +57,7 @@ const Cases: React.FC = () => {
         </div>
       </div>
       
-      <CasesList cases={filteredCases} updateCase={updateCase} />
+      <CasesList cases={cases} updateCase={updateCase} />
 
       <CreateCaseDialog 
         isOpen={isCreateDialogOpen}
