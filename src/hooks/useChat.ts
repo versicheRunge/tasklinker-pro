@@ -13,15 +13,37 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string>('');
+  const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
+  // Load messages
   useEffect(() => {
     const loadMessages = () => {
       try {
         const storageKey = `chatMessages_${groupId}`;
         const storedMessages = localStorage.getItem(storageKey);
         
+        // Get last seen timestamp
+        const lastSeenKey = `lastSeen_${groupId}_${currentUser?.id}`;
+        const storedLastSeen = localStorage.getItem(lastSeenKey);
+        
+        if (storedLastSeen) {
+          setLastSeenTimestamp(storedLastSeen);
+        }
+        
         if (storedMessages) {
-          setMessages(JSON.parse(storedMessages));
+          const parsedMessages = JSON.parse(storedMessages);
+          setMessages(parsedMessages);
+          
+          // Calculate unread messages
+          if (storedLastSeen && currentUser) {
+            const unread = parsedMessages.filter(
+              (msg: Message) => 
+                msg.timestamp > storedLastSeen && 
+                msg.userId !== currentUser.id
+            ).length;
+            setUnreadMessages(unread);
+          }
         }
         
         setTimeout(() => {
@@ -34,8 +56,21 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     };
     
     loadMessages();
-  }, [groupId]);
+  }, [groupId, currentUser]);
   
+  // Update last seen when viewing messages
+  useEffect(() => {
+    if (!isLoading && currentUser && messages.length > 0) {
+      const lastMessageTimestamp = messages[messages.length - 1].timestamp;
+      const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
+      
+      localStorage.setItem(lastSeenKey, lastMessageTimestamp);
+      setLastSeenTimestamp(lastMessageTimestamp);
+      setUnreadMessages(0);
+    }
+  }, [messages, isLoading, currentUser, groupId]);
+  
+  // Save messages
   useEffect(() => {
     if (messages.length > 0 && !isLoading) {
       const storageKey = `chatMessages_${groupId}`;
@@ -88,10 +123,22 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
     
+    // Update last seen for sender
+    const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
+    localStorage.setItem(lastSeenKey, newMessage.timestamp);
+    setLastSeenTimestamp(newMessage.timestamp);
+    
     mentions.forEach(mentionedName => {
       const mentionedUser = users.find(u => u.name === mentionedName);
       if (mentionedUser && mentionedUser.id !== currentUser.id) {
-        mentionUser(mentionedUser.id, "", `@${mentionedUser.name} wurde im Team-Chat erwähnt`);
+        mentionUser(mentionedUser.id, groupId, `@${mentionedUser.name} wurde im Chat erwähnt`, 'chat');
+      }
+    });
+    
+    // Create notifications for all users except sender
+    users.forEach(user => {
+      if (user.id !== currentUser.id) {
+        mentionUser(user.id, groupId, `Neue Nachricht von ${currentUser.name}`, 'chat');
       }
     });
   };
@@ -111,35 +158,16 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     return users.find(user => user.id === userId);
   };
 
-  const addFileMessage = (fileName: string, fileType: 'image' | 'file', fileUrl: string) => {
-    if (!currentUser) return;
-    
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      userId: currentUser.id,
-      text: `Hat eine Datei geteilt: ${fileName}`,
-      timestamp: new Date().toISOString(),
-      mentions: [],
-      attachments: [{
-        type: fileType,
-        url: fileUrl,
-        name: fileName
-      }]
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-  };
-
   return {
     messages,
     inputValue,
     setInputValue,
     isLoading,
     typingUsers,
+    unreadMessages,
     formatMessageWithMentions,
     sendMessage,
     handleKeyDown,
-    getUserById,
-    addFileMessage
+    getUserById
   };
 };

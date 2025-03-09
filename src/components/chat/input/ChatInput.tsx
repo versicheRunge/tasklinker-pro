@@ -1,10 +1,10 @@
 
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../../ui/button';
-import { Send, Smile, Paperclip, Image } from 'lucide-react';
+import { Send, Smile } from 'lucide-react';
 import { MentionInput } from '../../common/MentionInput';
-import { toast } from '../../../hooks/use-toast';
 import { User } from '../../../types/chat';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 
 interface ChatInputProps {
   inputValue: string;
@@ -14,6 +14,30 @@ interface ChatInputProps {
   sendMessage: () => void;
 }
 
+// A selection of common and fun emojis
+const emojiGroups = [
+  {
+    category: "Smileys",
+    emojis: ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "😍", "🥰", "😘"]
+  },
+  {
+    category: "Gestures",
+    emojis: ["👍", "👎", "👌", "✌️", "🤞", "🤝", "🙏", "🤲", "👐", "🙌", "👏", "👋", "🤚", "🖐️", "✋", "👆"]
+  },
+  {
+    category: "Work",
+    emojis: ["💼", "📁", "📂", "📊", "📈", "📉", "📝", "📑", "🗒️", "🗓️", "📆", "📅", "📇", "🗃️", "🗄️", "📌"]
+  },
+  {
+    category: "Objekte",
+    emojis: ["💡", "🔍", "📱", "💻", "⌨️", "🖥️", "🖨️", "🗂️", "📔", "📕", "📖", "📗", "📘", "📙", "📚", "📋"]
+  },
+  {
+    category: "Spaß",
+    emojis: ["🎉", "🎊", "🎈", "🎂", "🍕", "🍔", "🍟", "🍩", "🍦", "🍭", "🍫", "🍿", "🎮", "🎯", "🎲", "🎭"]
+  }
+];
+
 export const ChatInput: React.FC<ChatInputProps> = ({
   inputValue,
   setInputValue,
@@ -21,48 +45,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   handleKeyDown,
   sendMessage
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0 || !currentUser) return;
-    
-    toast({
-      title: "Datei ausgewählt",
-      description: `${files[0].name} wird hochgeladen...`
-    });
-    
-    // Simulate file upload
-    setTimeout(() => {
-      const fileType = files[0].type.startsWith('image/') ? 'image' : 'file';
-      const fakeUrl = `${fileType === 'image' ? '/placeholder.svg' : '#'}`;
-      
-      // This part will now be handled by the parent component through props
-      const newMessage = {
-        id: `msg-${Date.now()}`,
-        userId: currentUser.id,
-        text: `Hat eine Datei geteilt: ${files[0].name}`,
-        timestamp: new Date().toISOString(),
-        mentions: [],
-        attachments: [{
-          type: fileType,
-          url: fakeUrl,
-          name: files[0].name
-        }]
-      };
-      
-      // Parent will handle this via props
-      // setMessages(prev => [...prev, newMessage]);
-      
-      toast({
-        title: "Datei hochgeladen",
-        description: `${files[0].name} wurde erfolgreich hochgeladen.`
-      });
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }, 1500);
+  const addEmoji = (emoji: string) => {
+    setInputValue(inputValue + emoji);
   };
 
   return (
@@ -76,39 +62,48 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             placeholder="Schreiben Sie eine Nachricht... (@Benutzer für Erwähnung)"
             multiline={true}
             className="min-h-[80px] max-h-[120px] bg-background border-none focus:ring-0 py-3"
+            onKeyDown={handleKeyDown}
           />
           
           <div className="flex items-center justify-between px-3 py-2 bg-muted/20 border-t">
             <div className="flex items-center gap-1">
-              <input
-                type="file"
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-              />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 rounded-full p-0"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 rounded-full p-0"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Image className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 rounded-full p-0"
-              >
-                <Smile className="h-4 w-4" />
-              </Button>
+              <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 rounded-full p-0"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-2 border-b">
+                    <h3 className="font-medium text-sm">Emojis</h3>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto p-2">
+                    {emojiGroups.map((group) => (
+                      <div key={group.category} className="mb-3">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-1">{group.category}</h4>
+                        <div className="grid grid-cols-8 gap-1">
+                          {group.emojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              className="h-8 w-8 flex items-center justify-center rounded hover:bg-accent text-lg"
+                              onClick={() => {
+                                addEmoji(emoji);
+                                setIsEmojiPickerOpen(false);
+                              }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <Button 
               onClick={sendMessage} 

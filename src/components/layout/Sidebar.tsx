@@ -1,16 +1,25 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare } from 'lucide-react';
+import { useUser } from '../../contexts/UserContext';
+import { Badge } from '../ui/badge';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { notifications } = useUser();
+  
+  // Count chat notifications
+  const chatNotifications = notifications.filter(
+    notif => notif.type === 'chat' && !notif.read
+  ).length;
   
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
     { name: 'Checklisten', path: '/checklists', icon: CheckSquare },
     { name: 'Team', path: '/team', icon: Users },
-    { name: 'Chat', path: '/chat', icon: MessageSquare },
+    { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
     { name: 'Berichte', path: '/reports', icon: BarChart3 },
     { name: 'Einstellungen', path: '/settings', icon: Settings },
   ];
@@ -42,7 +51,12 @@ export const Sidebar: React.FC = () => {
             >
               <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-primary' : 'text-foreground/70'}`} />
               <span>{item.name}</span>
-              {isActive(item.path) && (
+              {item.badge > 0 && (
+                <Badge variant="destructive" className="ml-auto px-1.5 min-w-5 flex justify-center">
+                  {item.badge}
+                </Badge>
+              )}
+              {isActive(item.path) && !item.badge && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
               )}
             </Link>
