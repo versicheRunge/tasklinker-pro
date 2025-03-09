@@ -33,13 +33,6 @@ export const EventItem: React.FC<EventItemProps> = ({
     return USER_COLORS[userIndex % USER_COLORS.length].primary;
   };
 
-  // Determine if the current user can delete this event
-  const canDeleteEvent = isAdmin || 
-    (event.createdBy === currentUserId && 
-     event.type !== 'holiday' && 
-     event.type !== 'absence' && 
-     event.type !== 'sick');
-
   return (
     <div 
       className="flex justify-between items-start p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
@@ -91,7 +84,8 @@ export const EventItem: React.FC<EventItemProps> = ({
         </div>
       </div>
       
-      {canDeleteEvent && (
+      {((isAdmin && event.type !== 'holiday') || 
+        (event.createdBy === currentUserId && event.type !== 'holiday')) && (
         <div className="flex items-center gap-1">
           <button 
             className="p-1 text-muted-foreground hover:text-destructive"

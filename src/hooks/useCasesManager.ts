@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { CaseItem, CaseType, CaseStatus, CasePriority, CaseDefaultTitle } from '../types/case';
 import { useUser } from '../contexts/UserContext';
 import { useLocation } from 'react-router-dom';
-import { toast } from "./use-toast";
 
 export const useCasesManager = () => {
   const [cases, setCases] = useState<CaseItem[]>([]);
@@ -58,23 +57,13 @@ export const useCasesManager = () => {
     // Then filter by priority if one is selected
     if (filterPriority !== 'all' && c.priority !== filterPriority) return false;
     
-    // Then filter by assigned user if one is selected and assignee exists
-    if (filterUserId !== 'all' && c.assignee && c.assignee.id !== filterUserId) return false;
+    // Then filter by assigned user if one is selected
+    if (filterUserId !== 'all' && c.assignee.id !== filterUserId) return false;
     
     return true;
   });
   
   const addCase = (newCase: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
-    if (!newCase.assignee) {
-      console.error('Attempted to create a case without an assignee');
-      toast({
-        title: "Fehler",
-        description: "Der Vorgang konnte nicht erstellt werden: Kein Bearbeiter zugewiesen.",
-        variant: "destructive"
-      });
-      return '';
-    }
-    
     const caseId = `case-${Date.now()}`;
     const now = new Date().toISOString();
     
@@ -106,28 +95,8 @@ export const useCasesManager = () => {
     return caseId;
   };
   
-  const handleCreateCase = (caseData: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>, assigneeId: string) => {
-    try {
-      // Vergewissere dich, dass ein Assignee vorhanden ist
-      if (!caseData.assignee || !caseData.assignee.id) {
-        toast({
-          title: "Fehler",
-          description: "Bitte wählen Sie einen Bearbeiter aus.",
-          variant: "destructive"
-        });
-        return '';
-      }
-      
-      return addCase(caseData);
-    } catch (error) {
-      console.error("Fehler beim Erstellen des Vorgangs:", error);
-      toast({
-        title: "Fehler",
-        description: "Der Vorgang konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
-        variant: "destructive"
-      });
-      return '';
-    }
+  const handleCreateCase = (caseData: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
+    return addCase(caseData);
   };
   
   const updateCase = (id: string, caseData: Partial<CaseItem>) => {

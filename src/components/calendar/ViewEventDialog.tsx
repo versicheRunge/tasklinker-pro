@@ -33,13 +33,6 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
     return USER_COLORS[userIndex % USER_COLORS.length].primary;
   };
 
-  // Determine if the current user can delete this event
-  const canDeleteEvent = isAdmin || 
-    (event.createdBy === currentUserId && 
-     event.type !== 'holiday' && 
-     event.type !== 'absence' && 
-     event.type !== 'sick');
-
   return (
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
@@ -88,7 +81,8 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
         >
           Schließen
         </button>
-        {canDeleteEvent && (
+        {((isAdmin && event.type !== 'holiday') || 
+          (event.createdBy === currentUserId && event.type !== 'holiday')) && (
           <button
             className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
             onClick={() => onDelete(event.id)}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, CasePriority } from '../../types/case';
@@ -10,7 +11,6 @@ import { CaseDescription } from './detail/CaseDescription';
 import { ChecklistSection } from './detail/ChecklistSection';
 import { CommentSection } from './detail/CommentSection';
 import { CaseActions } from './detail/CaseActions';
-import { EmailTemplateSelector } from './detail/EmailTemplateSelector';
 import { generatePDF, sendNotification, checkAllCasesCompleted } from './detail/CaseHelpers';
 import { showConfetti } from './detail/ConfettiEffect';
 
@@ -69,6 +69,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     setCaseItem(updatedCase);
     
     if (updateCase) {
+      // Use a direct update to ensure the state is saved
       updateCase(caseItem.id, {
         status: newStatus,
         lastUpdated: updatedCase.lastUpdated,
@@ -76,6 +77,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
+    // Send notification to the case creator if it's not the current user
     if (caseItem.assignee.id !== currentUser?.id) {
       sendNotification(
         caseItem.assignee.id, 
@@ -87,6 +89,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       );
     }
     
+    // Check if all cases are now completed when this case is marked as completed
     if (newStatus === 'completed' && checkAllCasesCompleted()) {
       showConfetti();
     }
@@ -166,6 +169,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
+    // Send notification to the newly assigned user
     sendNotification(
       userToAssign.id, 
       `Neuer Vorgang zugewiesen: ${caseItem.title}`,
@@ -240,6 +244,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
 
     const updatedChecklist = [...caseItem.checklist, newItem];
     
+    // Create activity for the new checklist item
     const newActivity: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'checklist',
@@ -266,6 +271,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
 
+    // Add to template if requested
     if (addToTemplate) {
       const storedTemplates = localStorage.getItem('checklistTemplates');
       if (storedTemplates) {
@@ -291,17 +297,21 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       completed: false
     };
 
+    // Create updated checklist
     const updatedChecklist = [...caseItem.checklist];
     
+    // Ensure subItems array exists
     if (!updatedChecklist[parentIndex].subItems) {
       updatedChecklist[parentIndex].subItems = [];
     }
     
+    // Add the new sub-item
     updatedChecklist[parentIndex].subItems = [
       ...(updatedChecklist[parentIndex].subItems || []),
       newSubItem
     ];
 
+    // Create activity for the new checklist sub-item
     const newActivity: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'checklist',
@@ -328,6 +338,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
 
+    // Add to template if requested
     if (addToTemplate) {
       const storedTemplates = localStorage.getItem('checklistTemplates');
       if (storedTemplates) {
@@ -392,6 +403,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
+    // Notify mentioned users
     mentions.forEach(userId => {
       if (userId !== currentUser?.id) {
         const mentionedUser = users.find(u => u.id === userId);
@@ -400,7 +412,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             userId,
             caseItem.id,
             `${currentUser?.name} hat Sie in einem Kommentar erwähnt`,
-            "case"
+            "case" // Use the correct type string literal
           );
         }
       }
@@ -442,7 +454,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           />
         </div>
         
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1">
           <CaseActions 
             onGeneratePDF={() => {
               const fileName = generatePDF(caseItem);
@@ -452,11 +464,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               });
             }}
             onArchiveCase={handleArchiveCase}
-          />
-          
-          <EmailTemplateSelector
-            caseData={caseItem}
-            currentUser={currentUser}
           />
         </div>
       </div>

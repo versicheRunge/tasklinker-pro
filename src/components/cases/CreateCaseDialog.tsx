@@ -1,306 +1,302 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import { Button } from '../ui/button';
-import { FolderOpen, User, AlertTriangle } from 'lucide-react';
-import { CaseDefaultTitle, CasePriority, CaseStatus, CaseType, User as UserType } from '../../types/case';
+import { CaseType, CaseDefaultTitle, ChecklistTemplate, CasePriority } from '../../types/case';
+import { toast } from "../../hooks/use-toast";
+import { Button } from "../ui/button";
 import { useUser } from '../../contexts/UserContext';
-import { 
-  Select, 
-  SelectContent, 
-  SelectGroup, 
-  SelectItem, 
-  SelectLabel, 
-  SelectTrigger, 
-  SelectValue 
-} from '../ui/select';
-import { useEmailTemplates } from '../../hooks/useEmailTemplates';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+  DialogClose
+} from "../ui/dialog";
 
 interface CreateCaseDialogProps {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  onCreateCase: (caseData: any, assigneeId: string) => string;
+  onOpenChange: (open: boolean) => void;
+  onCreateCase: (caseData: any, assigneeId: string) => void;
   defaultTitles: CaseDefaultTitle[];
 }
 
-export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({ 
-  isOpen, 
+export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
+  isOpen,
   onOpenChange,
   onCreateCase,
   defaultTitles
 }) => {
-  const { users, currentUser } = useUser();
-  const { templates, fillTemplate, fillSubject } = useEmailTemplates();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [type, setType] = useState<CaseType>('other');
-  const [priority, setPriority] = useState<CasePriority>('medium');
-  const [assigneeId, setAssigneeId] = useState('');
-  const [error, setError] = useState('');
-  const [titleSelected, setTitleSelected] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [emailBody, setEmailBody] = useState<string>('');
+  const [newCaseData, setNewCaseData] = useState({
+    title: '',
+    description: '',
+    type: 'damage' as CaseType,
+    selectedTemplate: '',
+    customerName: '',
+    selectedDefaultTitle: '',
+    dueDate: '',
+    followUpDate: '',
+    priority: 'medium' as CasePriority
+  });
   
-  // Reset form when dialog opens
+  const { currentUser, users } = useUser();
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
+
   useEffect(() => {
-    if (isOpen) {
-      resetForm();
+    if (isOpen && currentUser) {
+      setSelectedAssignee(currentUser.id);
     }
-  }, [isOpen]);
-  
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setCustomerName('');
-    setType('other');
-    setPriority('medium');
-    setError('');
-    setTitleSelected(false);
-    // Set current user as default assignee if available
-    setAssigneeId(currentUser ? currentUser.id : '');
-    setSelectedTemplateId('');
-    setEmailBody('');
-  };
-  
-  // Handle default title selection
-  const handleDefaultTitleSelect = (defaultTitle: CaseDefaultTitle) => {
-    setTitle(defaultTitle.title);
-    setType(defaultTitle.type);
-    setTitleSelected(true);
-  };
-  
-  // Handle form submission
-  const handleSubmit = () => {
-    if (!title.trim()) {
-      setError('Bitte geben Sie einen Titel ein');
-      return;
-    }
-    
-    if (!assigneeId) {
-      setError('Bitte wählen Sie einen Bearbeiter aus');
-      return;
-    }
-    
-    const assignee = users.find(u => u.id === assigneeId);
-    if (!assignee) {
-      setError('Der ausgewählte Bearbeiter existiert nicht');
-      return;
-    }
-    
-    const caseData = {
-      title,
-      description,
-      customerName: customerName || 'Kunde',
-      type,
-      priority,
-      status: 'new' as CaseStatus,
-      assignee, // Include the full user object
-      creator: currentUser // Add the creator
-    };
-    
-    const caseId = onCreateCase(caseData, assigneeId);
-    
-    // Clear form and close dialog
-    resetForm();
-    onOpenChange(false);
-  };
-  
-  // Handle template selection
+  }, [isOpen, currentUser]);
+
   useEffect(() => {
-    if (selectedTemplateId && currentUser) {
-      const template = templates.find(t => t.id === selectedTemplateId);
-      if (template) {
-        // Create a dummy case object to fill template
-        const dummyCase = {
-          id: 'new-case',
-          title: title,
-          description: description,
-          customerName: customerName || 'Kunde',
-          type: type,
-          createdAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
-          assignee: users.find(u => u.id === assigneeId) || currentUser,
-          creator: currentUser,
-          activities: [],
-          checklist: [],
-          status: 'new' as CaseStatus
-        };
-        
-        setEmailBody(fillTemplate(template, dummyCase, currentUser));
+    if (newCaseData.selectedDefaultTitle) {
+      const selectedTitle = defaultTitles.find(t => t.id === newCaseData.selectedDefaultTitle);
+      if (selectedTitle) {
+        setNewCaseData(prev => ({
+          ...prev,
+          type: selectedTitle.type,
+          title: selectedTitle.title + (prev.customerName ? ` - ${prev.customerName}` : '')
+        }));
       }
     }
-  }, [selectedTemplateId, title, description, customerName, type, assigneeId]);
+  }, [newCaseData.selectedDefaultTitle, newCaseData.customerName, defaultTitles]);
+
+  useEffect(() => {
+    if (newCaseData.selectedDefaultTitle && newCaseData.customerName) {
+      const selectedTitle = defaultTitles.find(t => t.id === newCaseData.selectedDefaultTitle);
+      if (selectedTitle) {
+        setNewCaseData(prev => ({
+          ...prev,
+          title: `${selectedTitle.title} - ${prev.customerName}`
+        }));
+      }
+    }
+  }, [newCaseData.customerName, newCaseData.selectedDefaultTitle, defaultTitles]);
   
-  // Get email templates relevant to the case type
-  let emailCategory: 'general' | 'damage' | 'contract' | 'inquiry' | 'evb' | 'other' = 'general';
-  
-  if (type === 'damage') emailCategory = 'damage';
-  else if (type === 'contract_change') emailCategory = 'contract';
-  else if (type === 'inquiry') emailCategory = 'inquiry';
-  else if (type === 'evb') emailCategory = 'evb';
-  else if (type === 'other') emailCategory = 'other';
-  
-  const relevantTemplates = templates.filter(t => t.category === emailCategory || t.category === 'general');
-  
+  const getTemplates = () => {
+    const storedTemplates = localStorage.getItem('checklistTemplates');
+    if (storedTemplates) {
+      return JSON.parse(storedTemplates) as ChecklistTemplate[];
+    }
+    
+    return [
+      { id: 'template-1', title: 'Schadenmeldung', type: 'damage', items: [] },
+      { id: 'template-2', title: 'eVB-Anfrage', type: 'evb', items: [] },
+      { id: 'template-3', title: 'Vertragsänderung', type: 'contract_change', items: [] },
+      { id: 'template-4', title: 'Kundenanfrage', type: 'inquiry', items: [] }
+    ];
+  };
+
+  const templates = getTemplates();
+
+  const handleCreateCase = () => {
+    if (!currentUser) return;
+    
+    if (!newCaseData.title.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onCreateCase(newCaseData, selectedAssignee);
+    
+    // Reset form after submission
+    setNewCaseData({
+      title: '',
+      description: '',
+      type: 'damage',
+      selectedTemplate: '',
+      customerName: '',
+      selectedDefaultTitle: '',
+      dueDate: '',
+      followUpDate: '',
+      priority: 'medium'
+    });
+    setSelectedAssignee('');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5" />
-            Neuen Vorgang erstellen
-          </DialogTitle>
+          <DialogTitle>Neuen Vorgang erstellen</DialogTitle>
           <DialogDescription>
-            Erstellen Sie einen neuen Vorgang und weisen Sie ihn einem Mitarbeiter zu.
+            Erstellen Sie einen neuen Vorgang mit den folgenden Informationen.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-md">
-              <AlertTriangle className="w-5 h-5" />
-              <p>{error}</p>
-            </div>
-          )}
-          
-          {/* Default title selection */}
-          <div className="grid gap-1.5">
-            <Label>Vorgangstyp auswählen</Label>
-            <div className="flex flex-wrap gap-2">
-              {defaultTitles.map(defaultTitle => (
-                <button
-                  key={defaultTitle.id}
-                  type="button"
-                  className={`px-3 py-1.5 rounded-md text-sm ${
-                    title === defaultTitle.title 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                  onClick={() => handleDefaultTitleSelect(defaultTitle)}
-                >
-                  {defaultTitle.title}
-                </button>
+        <div className="space-y-4 py-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="defaultTitle">
+              Standardvorlage
+            </label>
+            <select
+              id="defaultTitle"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.selectedDefaultTitle}
+              onChange={(e) => setNewCaseData({...newCaseData, selectedDefaultTitle: e.target.value})}
+            >
+              <option value="">Keine Vorlage auswählen</option>
+              {defaultTitles.map(title => (
+                <option key={title.id} value={title.id}>
+                  {title.title}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
-          
-          {/* Title */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="title">Titel</Label>
-            <Input
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="customerName">
+              Kundenname
+            </label>
+            <input
+              id="customerName"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.customerName}
+              onChange={(e) => setNewCaseData({...newCaseData, customerName: e.target.value})}
+              placeholder="Name des Kunden"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="title">
+              Titel
+            </label>
+            <input
               id="title"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (titleSelected) setTitleSelected(false);
-              }}
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.title}
+              onChange={(e) => setNewCaseData({...newCaseData, title: e.target.value})}
               placeholder="Titel des Vorgangs"
             />
           </div>
-          
-          {/* Customer name */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="customer">Kundenname</Label>
-            <Input
-              id="customer"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Name des Kunden (optional)"
-            />
-          </div>
-          
-          {/* Description */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="description">Beschreibung</Label>
-            <Textarea
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="description">
+              Beschreibung
+            </label>
+            <textarea
               id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              className="w-full p-2 rounded-md border border-input"
+              rows={3}
+              value={newCaseData.description}
+              onChange={(e) => setNewCaseData({...newCaseData, description: e.target.value})}
               placeholder="Beschreibung des Vorgangs"
-              rows={5}
             />
           </div>
           
-          {/* Priority */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="priority">Priorität</Label>
-            <Select value={priority} onValueChange={(value) => setPriority(value as CasePriority)}>
-              <SelectTrigger id="priority">
-                <SelectValue placeholder="Priorität auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Niedrig</SelectItem>
-                <SelectItem value="medium">Mittel</SelectItem>
-                <SelectItem value="high">Hoch</SelectItem>
-                <SelectItem value="urgent">Dringend</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="dueDate">
+                Zu erledigen bis
+              </label>
+              <input
+                id="dueDate"
+                type="date"
+                className="w-full p-2 rounded-md border border-input"
+                value={newCaseData.dueDate}
+                onChange={(e) => setNewCaseData({...newCaseData, dueDate: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="followUpDate">
+                Wiedervorlage am
+              </label>
+              <input
+                id="followUpDate"
+                type="date"
+                className="w-full p-2 rounded-md border border-input"
+                value={newCaseData.followUpDate}
+                onChange={(e) => setNewCaseData({...newCaseData, followUpDate: e.target.value})}
+              />
+            </div>
           </div>
           
-          {/* Assignee */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="assignee" className="flex items-center gap-1">
-              <User className="w-4 h-4" />
-              Bearbeiter
-            </Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId}>
-              <SelectTrigger id="assignee">
-                <SelectValue placeholder="Bearbeiter auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Mitarbeiter</SelectLabel>
-                  {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="priority">
+              Priorität
+            </label>
+            <select
+              id="priority"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.priority}
+              onChange={(e) => setNewCaseData({...newCaseData, priority: e.target.value as CasePriority})}
+            >
+              <option value="low">Niedrig</option>
+              <option value="medium">Mittel</option>
+              <option value="high">Hoch</option>
+              <option value="urgent">Dringend</option>
+            </select>
           </div>
           
-          {/* Email template selection */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="email-template">E-Mail-Vorlage</Label>
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-              <SelectTrigger id="email-template">
-                <SelectValue placeholder="E-Mail-Vorlage auswählen (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Keine Vorlage</SelectItem>
-                {relevantTemplates.length > 0 && (
-                  <>
-                    {relevantTemplates.map(template => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.title}
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-            
-            {selectedTemplateId && (
-              <div className="mt-2">
-                <Label htmlFor="email-preview">E-Mail-Vorschau</Label>
-                <div className="mt-1 p-3 bg-muted rounded-md text-sm max-h-36 overflow-y-auto whitespace-pre-wrap">
-                  {emailBody}
-                </div>
-              </div>
-            )}
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="assignee">
+              Zuweisen an
+            </label>
+            <select
+              id="assignee"
+              className="w-full p-2 rounded-md border border-input"
+              value={selectedAssignee}
+              onChange={(e) => setSelectedAssignee(e.target.value)}
+            >
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name} ({user.role})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="type">
+              Vorgangstyp
+            </label>
+            <select
+              id="type"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.type}
+              onChange={(e) => setNewCaseData({...newCaseData, type: e.target.value as CaseType})}
+            >
+              <option value="damage">Schadenmeldung</option>
+              <option value="evb">eVB-Anfrage</option>
+              <option value="contract_change">Vertragsänderung</option>
+              <option value="inquiry">Kundenanfrage</option>
+              <option value="other">Sonstiges</option>
+              {templates
+                .filter(template => !['damage', 'evb', 'contract_change', 'inquiry', 'other'].includes(template.type))
+                .map(template => (
+                  <option key={template.id} value={template.type}>
+                    {template.title}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="template">
+              Checkliste hinzufügen
+            </label>
+            <select
+              id="template"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.selectedTemplate}
+              onChange={(e) => setNewCaseData({...newCaseData, selectedTemplate: e.target.value})}
+            >
+              <option value="">Keine Checkliste</option>
+              {templates
+                .filter(template => template.type === newCaseData.type)
+                .map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.title}
+                  </option>
+                ))}
+            </select>
           </div>
         </div>
-        
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit}>Vorgang erstellen</Button>
+          <Button onClick={handleCreateCase}>
+            Vorgang erstellen
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
