@@ -13,19 +13,20 @@ import {
   DialogFooter 
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
+import { User } from '../types/case';
 
 const Team: React.FC = () => {
   const { users, currentUser, addUser, updateUser, deleteUser, isAdmin } = useUser();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
-  const [newUserData, setNewUserData] = useState({
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [newUserData, setNewUserData] = useState<Omit<User, 'id'>>({
     name: '',
     email: '',
     role: 'Mitarbeiter',
     department: 'Kundenservice',
     phone: '',
-    userRole: 'staff' as 'admin' | 'staff'
+    userRole: 'staff'
   });
 
   // Helper function to get initials from name
@@ -39,7 +40,7 @@ const Team: React.FC = () => {
   };
 
   const handleCreateUser = () => {
-    if (!newUserData.name.trim() || !newUserData.email.trim()) {
+    if (!newUserData.name.trim() || !newUserData.email?.trim()) {
       toast({
         title: "Fehler",
         description: "Bitte füllen Sie alle Pflichtfelder aus.",
@@ -50,7 +51,6 @@ const Team: React.FC = () => {
 
     addUser({
       ...newUserData,
-      id: `user-${Date.now()}`,
       stats: {
         casesHandled: 0,
         completing: 0,
@@ -74,13 +74,13 @@ const Team: React.FC = () => {
     });
   };
 
-  const handleEditUser = (user: any) => {
+  const handleEditUser = (user: User) => {
     setEditingUser(user);
     setIsEditDialogOpen(true);
   };
 
   const handleSaveUser = () => {
-    if (!editingUser.name.trim() || !editingUser.email.trim()) {
+    if (!editingUser || !editingUser.name.trim() || !editingUser.email?.trim()) {
       toast({
         title: "Fehler",
         description: "Bitte füllen Sie alle Pflichtfelder aus.",

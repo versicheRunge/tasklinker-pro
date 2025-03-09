@@ -1,17 +1,9 @@
 
 import React, { createContext, useContext, useState } from 'react';
 import { users } from '../data/mockData';
+import { User } from '../types/case';
 
 export type UserRole = 'admin' | 'staff';
-
-export interface User {
-  id: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-  role: string;
-  userRole: UserRole;
-}
 
 type UserContextType = {
   currentUser: User | null;
@@ -54,7 +46,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...userData,
       id: `user-${Date.now()}`
     };
-    setAllUsers(prev => [...prev, newUser]);
+    setAllUsers(prev => [...prev, newUser as User]);
   };
   
   const updateUser = (id: string, userData: Partial<User>) => {
