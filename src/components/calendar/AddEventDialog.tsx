@@ -10,7 +10,7 @@ interface AddEventDialogProps {
   newEvent: Omit<CalendarEvent, 'id'>;
   setNewEvent: React.Dispatch<React.SetStateAction<Omit<CalendarEvent, 'id'>>>;
   onCancel: () => void;
-  onSave: () => void;
+  onSave: (newEventData: Omit<CalendarEvent, 'id'>) => boolean;
   users: User[];
   currentUserId?: string;
   isAdmin: boolean;
@@ -160,7 +160,7 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
         </button>
         <button
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          onClick={onSave}
+          onClick={() => onSave(newEvent)}
         >
           Termin speichern
         </button>
