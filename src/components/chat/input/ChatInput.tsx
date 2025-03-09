@@ -14,18 +14,18 @@ interface ChatInputProps {
   sendMessage: () => void;
 }
 
-// A selection of common and fun emojis
+// Eine Auswahl häufiger und lustiger Emojis mit deutschen Kategorienamen
 const emojiGroups = [
   {
-    category: "Smileys",
+    category: "Gesichter",
     emojis: ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "😍", "🥰", "😘"]
   },
   {
-    category: "Gestures",
+    category: "Gesten",
     emojis: ["👍", "👎", "👌", "✌️", "🤞", "🤝", "🙏", "🤲", "👐", "🙌", "👏", "👋", "🤚", "🖐️", "✋", "👆"]
   },
   {
-    category: "Work",
+    category: "Arbeit",
     emojis: ["💼", "📁", "📂", "📊", "📈", "📉", "📝", "📑", "🗒️", "🗓️", "📆", "📅", "📇", "🗃️", "🗄️", "📌"]
   },
   {

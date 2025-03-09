@@ -1,22 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { cases } from '../data/mockData';
-import { CheckSquare, PlusCircle, Edit2, Trash, Save, ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { CheckSquare, PlusCircle, Edit2, Trash, Save, ChevronDown, ChevronRight, Plus, Settings, AlertTriangle } from 'lucide-react';
 import { toast } from "../hooks/use-toast";
 import { useUser } from '../contexts/UserContext';
 import { ChecklistItemType, CaseType, SubChecklistItem } from '../types/case';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "../components/ui/dialog";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Button } from "../components/ui/button";
 
 const Checklists: React.FC = () => {
   const { isAdmin } = useUser();
   
-  // Load templates from localStorage or use initial data
   const getStoredTemplates = () => {
     const storedTemplates = localStorage.getItem('checklistTemplates');
     if (storedTemplates) {
       return JSON.parse(storedTemplates);
     }
     
-    // Group all checklists by type
     return [
       {
         id: 'template-1',
@@ -65,8 +84,15 @@ const Checklists: React.FC = () => {
   const [newSubItemText, setNewSubItemText] = useState('');
   const [isCustomType, setIsCustomType] = useState(false);
   const [customType, setCustomType] = useState('');
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<{
+    id: string;
+    title: string;
+    type: CaseType | string;
+  }>({ id: '', title: '', type: '' });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
-  // Save templates to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
   }, [checklistTemplates]);
@@ -335,6 +361,77 @@ const Checklists: React.FC = () => {
     toast({
       title: "Unterpunkt hinzugefügt",
       description: "Der neue Unterpunkt wurde erfolgreich hinzugefügt."
+    });
+  };
+
+  const handleOpenEditDialog = () => {
+    if (!selectedTemplate) return;
+    
+    setEditingTemplate({
+      id: selectedTemplate.id,
+      title: selectedTemplate.title,
+      type: selectedTemplate.type
+    });
+    setIsEditingTemplate(true);
+  };
+
+  const handleSaveTemplateEdit = () => {
+    if (!editingTemplate.title.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Titel für die Checkliste ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const updatedTemplates = checklistTemplates.map(template => {
+      if (template.id === editingTemplate.id) {
+        return {
+          ...template,
+          title: editingTemplate.title,
+          type: editingTemplate.type as CaseType
+        };
+      }
+      return template;
+    });
+    
+    setChecklistTemplates(updatedTemplates);
+    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === editingTemplate.id);
+    if (updatedSelectedTemplate) {
+      setSelectedTemplate(updatedSelectedTemplate);
+    }
+    
+    setIsEditingTemplate(false);
+    
+    toast({
+      title: "Checkliste aktualisiert",
+      description: "Die Checkliste wurde erfolgreich aktualisiert."
+    });
+  };
+
+  const handleOpenDeleteDialog = () => {
+    if (!selectedTemplate) return;
+    setTemplateToDelete(selectedTemplate.id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteTemplate = () => {
+    if (!templateToDelete) return;
+    
+    const updatedTemplates = checklistTemplates.filter(template => template.id !== templateToDelete);
+    setChecklistTemplates(updatedTemplates);
+    
+    if (updatedTemplates.length > 0) {
+      setSelectedTemplate(updatedTemplates[0]);
+    }
+    
+    setTemplateToDelete(null);
+    setIsDeleteDialogOpen(false);
+    
+    toast({
+      title: "Checkliste gelöscht",
+      description: "Die Checkliste wurde erfolgreich gelöscht."
     });
   };
 
@@ -681,8 +778,77 @@ const Checklists: React.FC = () => {
           )}
         </div>
       </div>
+      
+      <Dialog open={isEditingTemplate} onOpenChange={setIsEditingTemplate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Checkliste bearbeiten</DialogTitle>
+            <DialogDescription>
+              Ändern Sie den Titel oder Typ dieser Checkliste.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-template-title">Titel</Label>
+              <Input
+                id="edit-template-title"
+                value={editingTemplate.title}
+                onChange={(e) => setEditingTemplate({
+                  ...editingTemplate,
+                  title: e.target.value
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-template-type">Vorgangstyp</Label>
+              <Input
+                id="edit-template-type"
+                value={editingTemplate.type}
+                onChange={(e) => setEditingTemplate({
+                  ...editingTemplate,
+                  type: e.target.value
+                })}
+                disabled
+              />
+              <p className="text-xs text-muted-foreground">Der Vorgangstyp kann nicht geändert werden.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingTemplate(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleSaveTemplateEdit}>
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Checkliste löschen
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Sind Sie sicher, dass Sie diese Checkliste löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleDeleteTemplate}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
 
 export default Checklists;
+
