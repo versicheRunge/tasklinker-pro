@@ -21,14 +21,14 @@ import Chat from './pages/Chat';
 import Goals from './pages/Goals';
 
 // Initialize AppUtils
-import { initialize } from './utils/AppInit';
+import { initializeApp } from './utils/AppInit';
 
 const queryClient = new QueryClient();
 
 function App() {
   // Initialize app data
   useEffect(() => {
-    initialize();
+    initializeApp();
   }, []);
 
   return (
