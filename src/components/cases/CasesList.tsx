@@ -30,7 +30,7 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
   
   // Filter cases belonging to current user
   const myCases = currentUser ? 
-    filteredCases.filter(c => c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id)) : 
+    filteredCases.filter(c => c.assignee?.id === currentUser.id || (c.creator && c.creator.id === currentUser.id)) : 
     [];
   
   const casesToUse = activeTab === 'mine' ? myCases : filteredCases;
