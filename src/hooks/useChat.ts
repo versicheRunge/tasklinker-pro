@@ -161,6 +161,35 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     }
   };
   
+  const editMessage = (messageId: string, newText: string) => {
+    const updatedMessages = messages.map(msg => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          text: newText,
+          isEdited: true
+        };
+      }
+      return msg;
+    });
+    
+    setMessages(updatedMessages);
+    toast({
+      title: "Nachricht bearbeitet",
+      description: "Ihre Nachricht wurde erfolgreich bearbeitet."
+    });
+  };
+  
+  const deleteMessage = (messageId: string) => {
+    const updatedMessages = messages.filter(msg => msg.id !== messageId);
+    setMessages(updatedMessages);
+    
+    toast({
+      title: "Nachricht gelöscht",
+      description: "Ihre Nachricht wurde erfolgreich gelöscht."
+    });
+  };
+  
   const getUserById = (userId: string) => {
     return users.find(user => user.id === userId);
   };
@@ -175,6 +204,8 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     formatMessageWithMentions,
     sendMessage,
     handleKeyDown,
+    editMessage,
+    deleteMessage,
     getUserById
   };
 };

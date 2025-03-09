@@ -23,7 +23,9 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     sendMessage,
     handleKeyDown,
     getUserById,
-    unreadMessages
+    unreadMessages,
+    editMessage,
+    deleteMessage
   } = useChat({ groupId });
   
   // Mark chat notifications as read when viewing the chat
@@ -70,6 +72,8 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
           formatMessageWithMentions={formatMessageWithMentions}
           typingUsers={typingUsers}
           getUserById={getUserById}
+          onEditMessage={editMessage}
+          onDeleteMessage={deleteMessage}
         />
       </div>
       

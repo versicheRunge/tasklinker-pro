@@ -6,6 +6,7 @@ export interface Message {
   timestamp: string;
   mentions: string[];
   attachments?: { type: 'image' | 'file', url: string, name: string }[];
+  isEdited?: boolean;
 }
 
 export interface User {
@@ -33,4 +34,17 @@ export interface Notification {
   caseId?: string;
   targetUserId?: string;
   type: 'chat' | 'case' | 'system';
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  type: 'count' | 'sum';
+  target: number;
+  current: number;
+  createdAt: string;
+  userContributions: {
+    userId: string;
+    contribution: number;
+  }[];
 }
