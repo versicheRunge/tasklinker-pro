@@ -8,7 +8,7 @@ import { ChatInput } from './input/ChatInput';
 import { toast } from '../../hooks/use-toast';
 
 interface TeamChatProps {
-  groupId?: string; // Für Kanäle und Direktnachrichten
+  groupId?: string; // Für Kanäle
 }
 
 export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
@@ -29,7 +29,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
   // Mark chat notifications as read when viewing the chat
   useEffect(() => {
     if (!isLoading && currentUser && unreadMessages > 0) {
-      // Find notifications related to this chat channel/DM
+      // Find notifications related to this chat channel
       const chatNotifications = notifications.filter(
         n => n.type === 'chat' && n.caseId === groupId && !n.read
       );
@@ -48,15 +48,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     }
   }, [isLoading, unreadMessages, currentUser, groupId, notifications, markNotificationsAsRead]);
   
-  // Determine if this is a direct message
-  const isDirect = groupId.startsWith('dm-');
-  
-  // Extract the recipient ID if it's a direct message
-  const recipientId = isDirect ? groupId.replace('dm-', '') : undefined;
-  
-  // Get the recipient user if it's a direct message
-  const recipientUser = recipientId ? getUserById(recipientId) : undefined;
-  
   // Custom onMention handler for chat
   const handleMention = (userId: string, text: string) => {
     console.log('Benutzer erwähnt:', userId);
@@ -66,10 +57,8 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     <div className="flex flex-col h-full">
       <ChatHeader 
         isLoading={isLoading} 
-        userCount={isDirect ? 2 : users.length} 
+        userCount={users.length} 
         unreadMessages={unreadMessages}
-        recipientName={recipientUser?.name}
-        isDirect={isDirect}
       />
       
       <div className="flex-1 overflow-y-auto p-4">

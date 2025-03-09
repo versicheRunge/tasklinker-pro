@@ -17,11 +17,6 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
   const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string>('');
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
-  // Check if this is a direct message by checking the groupId format
-  const isDirect = groupId.startsWith('dm-');
-  // Extract the recipient ID if it's a direct message
-  const recipientId = isDirect ? groupId.replace('dm-', '') : undefined;
-
   useEffect(() => {
     const loadMessages = () => {
       try {
@@ -37,19 +32,10 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
         
         if (storedMessages) {
           const parsedMessages = JSON.parse(storedMessages);
-          
-          // Filter messages for direct messages - only show messages between the current user and recipient
-          let filteredMessages = parsedMessages;
-          if (isDirect && currentUser) {
-            filteredMessages = parsedMessages.filter((msg: Message) => 
-              msg.userId === currentUser.id || msg.userId === recipientId
-            );
-          }
-          
-          setMessages(filteredMessages);
+          setMessages(parsedMessages);
           
           if (storedLastSeen && currentUser) {
-            const unread = filteredMessages.filter(
+            const unread = parsedMessages.filter(
               (msg: Message) => 
                 msg.timestamp > storedLastSeen && 
                 msg.userId !== currentUser.id
@@ -68,7 +54,7 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     };
     
     loadMessages();
-  }, [groupId, currentUser, isDirect, recipientId]);
+  }, [groupId, currentUser]);
   
   useEffect(() => {
     if (!isLoading && currentUser && messages.length > 0) {
@@ -150,40 +136,18 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
       }
     });
     
-    // For direct messages, only notify the recipient
-    if (isDirect && recipientId) {
-      const recipientUser = users.find(u => u.id === recipientId);
-      if (recipientUser && recipientUser.id !== currentUser.id) {
-        // Create a notification for the direct message
+    // Notify all users except the sender
+    users.forEach(user => {
+      if (user.id !== currentUser.id) {
         addNotification({
-          title: `Neue Nachricht von ${currentUser.name}`,
-          message: inputValue.substring(0, 50) + (inputValue.length > 50 ? "..." : ""),
-          targetUserId: recipientUser.id,
+          title: `Neue Nachricht im Kanal`,
+          message: `${currentUser.name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? "..." : ""}`,
+          targetUserId: user.id,
           type: "chat",
           caseId: groupId
         });
-        
-        // Show a toast to confirm the message was sent
-        toast({
-          title: "Nachricht gesendet",
-          description: `Direktnachricht an ${recipientUser.name} gesendet`
-        });
       }
-    } 
-    // For channel messages, notify all users except the sender
-    else {
-      users.forEach(user => {
-        if (user.id !== currentUser.id) {
-          addNotification({
-            title: `Neue Nachricht im Kanal`,
-            message: `${currentUser.name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? "..." : ""}`,
-            targetUserId: user.id,
-            type: "chat",
-            caseId: groupId
-          });
-        }
-      });
-    }
+    });
   };
   
   const handleKeyDown = (e: React.KeyboardEvent) => {

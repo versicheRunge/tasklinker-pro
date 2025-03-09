@@ -36,7 +36,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     while ((match = regex.exec(commentText)) !== null) {
       const mentionedUsername = match[1];
       const mentionedUser = users.find(u => 
-        u.name.replace(/\s+/g, '').toLowerCase() === mentionedUsername.toLowerCase()
+        u.name.toLowerCase().includes(mentionedUsername.toLowerCase())
       );
       
       if (mentionedUser) {

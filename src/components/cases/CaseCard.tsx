@@ -64,7 +64,7 @@ export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
     <Link to={`/vorgaenge/${caseItem.id}`}>
       <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in">
         <div className="flex justify-between items-start mb-3">
-          <span className="text-xs text-muted-foreground">#{caseItem.id.slice(0, 8)}</span>
+          <span className="text-xs text-muted-foreground">Vorgang-{caseItem.id.slice(0, 8)}</span>
           <div className="flex gap-2">
             <Badge className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${priorityVariants[priority]}`}>
               <Flag className="w-3 h-3" />
