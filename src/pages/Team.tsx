@@ -1,10 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { Mail, Phone, Award, PlusCircle, Edit2, Trash2, Save, Image as ImageIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import { Mail, Phone, Award, PlusCircle, Edit2, Trash2, Save, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../components/ui/dialog";
 import { toast } from "../hooks/use-toast";
 import { useUser } from '../contexts/UserContext';
 import { User } from '../types/case';
+import { Badge } from '../components/ui/badge';
+import { CustomBadge } from '../components/ui/CustomBadge';
 
 const Team: React.FC = () => {
   const { users, addUser, updateUser, deleteUser, currentUser, isAdmin } = useUser();
@@ -22,7 +25,8 @@ const Team: React.FC = () => {
       casesHandled: 0,
       completed: 0,
       inProgress: 0
-    }
+    },
+    badges: []
   });
 
   const [editingUser, setEditingUser] = useState<User>({
@@ -38,12 +42,27 @@ const Team: React.FC = () => {
       casesHandled: 0,
       completed: 0,
       inProgress: 0
-    }
+    },
+    badges: []
   });
 
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const [userToChangeAvatar, setUserToChangeAvatar] = useState<User | null>(null);
+  const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false);
+  const [userForBadges, setUserForBadges] = useState<User | null>(null);
+
+  // Handle opening email client
+  const handleEmailClick = (email: string) => {
+    window.location.href = `mailto:${email}`;
+  };
+
+  // Handle opening WhatsApp
+  const handleWhatsAppClick = (phone: string) => {
+    // Clean phone number - remove spaces, dashes, etc.
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/-/g, '').replace(/\(/g, '').replace(/\)/g, '');
+    window.open(`https://wa.me/${cleanPhone}`, '_blank');
+  };
 
   const handleAddUser = () => {
     if (!newUser.name.trim() || !newUser.email.trim() || !newUser.role.trim()) {
@@ -67,7 +86,8 @@ const Team: React.FC = () => {
         casesHandled: 0,
         completed: 0,
         inProgress: 0
-      }
+      },
+      badges: []
     });
 
     setIsDialogOpen(false);
@@ -83,7 +103,8 @@ const Team: React.FC = () => {
         casesHandled: 0,
         completed: 0,
         inProgress: 0
-      }
+      },
+      badges: []
     });
 
     toast({
@@ -153,6 +174,46 @@ const Team: React.FC = () => {
     });
   };
 
+  const handleOpenBadgeDialog = (user: User) => {
+    setUserForBadges(user);
+    setIsBadgeDialogOpen(true);
+  };
+
+  const handleToggleBadge = (badgeId: string) => {
+    if (!userForBadges) return;
+    
+    const updatedBadges = userForBadges.badges || [];
+    const badgeIndex = updatedBadges.findIndex(badge => badge.id === badgeId);
+    
+    if (badgeIndex >= 0) {
+      // Remove badge
+      updatedBadges.splice(badgeIndex, 1);
+    } else {
+      // Add badge
+      const selectedBadge = availableBadges.find(badge => badge.id === badgeId);
+      if (selectedBadge) {
+        updatedBadges.push(selectedBadge);
+      }
+    }
+    
+    setUserForBadges({
+      ...userForBadges,
+      badges: updatedBadges
+    });
+  };
+
+  const handleSaveBadges = () => {
+    if (!userForBadges) return;
+    
+    updateUser(userForBadges.id, { badges: userForBadges.badges });
+    setIsBadgeDialogOpen(false);
+    
+    toast({
+      title: "Auszeichnungen aktualisiert",
+      description: "Die Auszeichnungen wurden erfolgreich aktualisiert."
+    });
+  };
+
   const generateRandomAvatar = () => {
     const gender = Math.random() > 0.5 ? 'men' : 'women';
     const number = Math.floor(Math.random() * 100);
@@ -164,12 +225,88 @@ const Team: React.FC = () => {
     localStorage.setItem('teamUsers', JSON.stringify(users));
   }, [users]);
 
+  // Categories of badges
+  const badgeCategories = [
+    { id: 'achievement', name: 'Leistung' },
+    { id: 'skill', name: 'Kompetenz' },
+    { id: 'tenure', name: 'Zugehörigkeit' },
+    { id: 'certification', name: 'Zertifizierung' },
+    { id: 'special', name: 'Besondere Auszeichnung' }
+  ];
+
+  // List of 50 available badges
+  const availableBadges = [
+    // Achievement badges
+    { id: 'badge-1', name: 'Top Performer', category: 'achievement', icon: '🏆' },
+    { id: 'badge-2', name: 'Kundenmagnet', category: 'achievement', icon: '🧲' },
+    { id: 'badge-3', name: 'Problemlöser', category: 'achievement', icon: '🔧' },
+    { id: 'badge-4', name: 'Überflieger', category: 'achievement', icon: '🚀' },
+    { id: 'badge-5', name: 'Vertriebsstar', category: 'achievement', icon: '⭐' },
+    { id: 'badge-6', name: 'Ideengeber', category: 'achievement', icon: '💡' },
+    { id: 'badge-7', name: 'Servicekönig', category: 'achievement', icon: '👑' },
+    { id: 'badge-8', name: 'Verkaufstalent', category: 'achievement', icon: '💰' },
+    { id: 'badge-9', name: 'Teamplayer', category: 'achievement', icon: '🤝' },
+    { id: 'badge-10', name: 'Innovator', category: 'achievement', icon: '🔄' },
+    
+    // Skill badges
+    { id: 'badge-11', name: 'Excel-Experte', category: 'skill', icon: '📊' },
+    { id: 'badge-12', name: 'Verhandlungskünstler', category: 'skill', icon: '🗣️' },
+    { id: 'badge-13', name: 'Social Media Profi', category: 'skill', icon: '📱' },
+    { id: 'badge-14', name: 'Projektmanager', category: 'skill', icon: '📋' },
+    { id: 'badge-15', name: 'Kommunikationstalent', category: 'skill', icon: '💬' },
+    { id: 'badge-16', name: 'IT-Kenner', category: 'skill', icon: '💻' },
+    { id: 'badge-17', name: 'Designheld', category: 'skill', icon: '🎨' },
+    { id: 'badge-18', name: 'Analytiker', category: 'skill', icon: '📈' },
+    { id: 'badge-19', name: 'Sprachtalent', category: 'skill', icon: '🌐' },
+    { id: 'badge-20', name: 'Präsentationsmeister', category: 'skill', icon: '🎭' },
+    
+    // Tenure badges
+    { id: 'badge-21', name: '1 Jahr Zugehörigkeit', category: 'tenure', icon: '🕐' },
+    { id: 'badge-22', name: '5 Jahre Zugehörigkeit', category: 'tenure', icon: '🕔' },
+    { id: 'badge-23', name: '10 Jahre Zugehörigkeit', category: 'tenure', icon: '🕙' },
+    { id: 'badge-24', name: '15 Jahre Zugehörigkeit', category: 'tenure', icon: '🕞' },
+    { id: 'badge-25', name: '20 Jahre Zugehörigkeit', category: 'tenure', icon: '🕣' },
+    { id: 'badge-26', name: '25 Jahre Zugehörigkeit', category: 'tenure', icon: '⏰' },
+    { id: 'badge-27', name: 'Urgestein', category: 'tenure', icon: '🗿' },
+    { id: 'badge-28', name: 'Firmenpionier', category: 'tenure', icon: '🧭' },
+    { id: 'badge-29', name: 'Loyalitätsorden', category: 'tenure', icon: '🎖️' },
+    { id: 'badge-30', name: 'Jubiläumsauszeichnung', category: 'tenure', icon: '📅' },
+    
+    // Certification badges
+    { id: 'badge-31', name: 'Versicherungsfachmann/-frau (IHK)', category: 'certification', icon: '📜' },
+    { id: 'badge-32', name: 'Fachwirt/in Versicherungen', category: 'certification', icon: '📝' },
+    { id: 'badge-33', name: 'Fachberater/in', category: 'certification', icon: '📚' },
+    { id: 'badge-34', name: 'Versicherungsbetriebswirt/in', category: 'certification', icon: '🎓' },
+    { id: 'badge-35', name: 'Sachkundenachweis §34d', category: 'certification', icon: '⚖️' },
+    { id: 'badge-36', name: 'Ausbilder/in', category: 'certification', icon: '👨‍🏫' },
+    { id: 'badge-37', name: 'Gutachter/in', category: 'certification', icon: '🔍' },
+    { id: 'badge-38', name: 'Spezialist/in KFZ', category: 'certification', icon: '🚗' },
+    { id: 'badge-39', name: 'Spezialist/in Gewerbe', category: 'certification', icon: '🏭' },
+    { id: 'badge-40', name: 'Spezialist/in Leben', category: 'certification', icon: '❤️' },
+    
+    // Special badges
+    { id: 'badge-41', name: 'Mitarbeiter des Monats', category: 'special', icon: '🌟' },
+    { id: 'badge-42', name: 'Mitarbeiter des Jahres', category: 'special', icon: '🌠' },
+    { id: 'badge-43', name: 'Kundenliebling', category: 'special', icon: '😍' },
+    { id: 'badge-44', name: 'Einserkandidat', category: 'special', icon: '🥇' },
+    { id: 'badge-45', name: 'Firmengesicht', category: 'special', icon: '👤' },
+    { id: 'badge-46', name: 'Sonderauszeichnung', category: 'special', icon: '✨' },
+    { id: 'badge-47', name: 'Innovationspreis', category: 'special', icon: '🧪' },
+    { id: 'badge-48', name: 'Ehrenmitglied', category: 'special', icon: '🎭' },
+    { id: 'badge-49', name: 'Vorbild', category: 'special', icon: '👑' },
+    { id: 'badge-50', name: 'Lebenswerk', category: 'special', icon: '🏛️' }
+  ];
+
   return (
     <AppLayout>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">Team</h1>
-          <p className="text-muted-foreground">Verwalten Sie Ihr Team und deren Berechtigungen.</p>
+          <p className="text-muted-foreground">
+            {isAdmin 
+              ? "Verwalten Sie Ihr Team und deren Berechtigungen." 
+              : "Das ist unser großartiges Team!"}
+          </p>
         </div>
         {isAdmin && (
           <button 
@@ -228,12 +365,24 @@ const Team: React.FC = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <span>{user.email}</span>
+                <button 
+                  className="flex items-center gap-1 text-blue-500 hover:text-blue-700 hover:underline"
+                  onClick={() => handleEmailClick(user.email || '')}
+                >
+                  <span>{user.email}</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
               </div>
               {user.phone && (
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span>{user.phone}</span>
+                  <button 
+                    className="flex items-center gap-1 text-green-500 hover:text-green-700 hover:underline"
+                    onClick={() => handleWhatsAppClick(user.phone || '')}
+                  >
+                    <span>{user.phone}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
                 </div>
               )}
               {user.department && (
@@ -244,6 +393,34 @@ const Team: React.FC = () => {
               )}
             </div>
             
+            {/* Badges section */}
+            {user.badges && user.badges.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">Auszeichnungen</h4>
+                  {isAdmin && (
+                    <button 
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                      onClick={() => handleOpenBadgeDialog(user)}
+                    >
+                      Bearbeiten
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {user.badges.map((badge) => (
+                    <CustomBadge 
+                      key={badge.id}
+                      icon={badge.icon}
+                      label={badge.name}
+                      size="sm"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Stats section */}
             <div className="mt-4 pt-4 border-t border-border">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
@@ -260,6 +437,17 @@ const Team: React.FC = () => {
                 </div>
               </div>
             </div>
+            
+            {isAdmin && !user.badges?.length && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <button 
+                  className="w-full text-sm text-center text-blue-500 hover:text-blue-700"
+                  onClick={() => handleOpenBadgeDialog(user)}
+                >
+                  Auszeichnungen hinzufügen
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -329,6 +517,7 @@ const Team: React.FC = () => {
                   className="w-full p-2 rounded-md border border-input"
                   value={newUser.phone}
                   onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                  placeholder="+49123456789"
                 />
               </div>
             </div>
@@ -430,6 +619,7 @@ const Team: React.FC = () => {
                   className="w-full p-2 rounded-md border border-input"
                   value={editingUser.phone}
                   onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
+                  placeholder="+49123456789"
                 />
               </div>
             </div>
@@ -516,6 +706,60 @@ const Team: React.FC = () => {
               onClick={handleSaveAvatar}
             >
               Speichern
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Badge management dialog */}
+      <Dialog open={isBadgeDialogOpen} onOpenChange={setIsBadgeDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Auszeichnungen verwalten</DialogTitle>
+            <DialogDescription>
+              {userForBadges?.name ? `Auszeichnungen für ${userForBadges.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {badgeCategories.map(category => (
+              <div key={category.id} className="mb-6">
+                <h3 className="text-lg font-medium mb-3">{category.name}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {availableBadges
+                    .filter(badge => badge.category === category.id)
+                    .map(badge => {
+                      const isActive = userForBadges?.badges?.some(b => b.id === badge.id);
+                      return (
+                        <button
+                          key={badge.id}
+                          className={`flex items-center gap-2 p-2 rounded-md border ${
+                            isActive 
+                              ? 'border-primary bg-primary/10 text-primary' 
+                              : 'border-border hover:bg-muted'
+                          }`}
+                          onClick={() => handleToggleBadge(badge.id)}
+                        >
+                          <span className="text-xl">{badge.icon}</span>
+                          <span className="text-sm">{badge.name}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <button
+              className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors"
+              onClick={() => setIsBadgeDialogOpen(false)}
+            >
+              Abbrechen
+            </button>
+            <button
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              onClick={handleSaveBadges}
+            >
+              Auszeichnungen speichern
             </button>
           </DialogFooter>
         </DialogContent>

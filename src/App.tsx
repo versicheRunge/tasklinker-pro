@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import Chat from './pages/Chat';
 import Goals from './pages/Goals';
+import Calendar from './pages/Calendar';
 
 // Initialize AppUtils
 import { initializeApp } from './utils/AppInit';
@@ -45,6 +46,7 @@ function App() {
               <Route path="/chat" element={<Chat />} />
               <Route path="/goals" element={<Goals />} />
               <Route path="/checklists" element={<Checklists />} />
+              <Route path="/calendar" element={<Calendar />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/404" element={<NotFound />} />

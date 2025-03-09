@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target } from 'lucide-react';
+import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target, Calendar } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
 
@@ -19,6 +19,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
     { name: 'Team', path: '/team', icon: Users },
+    { name: 'Kalender', path: '/calendar', icon: Calendar },
     { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
     { name: 'Ziele', path: '/goals', icon: Target },
     { name: 'Berichte', path: '/reports', icon: BarChart3 },
@@ -27,7 +28,7 @@ export const Sidebar: React.FC = () => {
   
   // Add Checklists only for admin users
   if (isAdmin) {
-    navItems.splice(2, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
+    navItems.splice(3, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
   }
 
   const isActive = (path: string) => {

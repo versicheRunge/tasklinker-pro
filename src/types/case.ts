@@ -1,7 +1,8 @@
-
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
 export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
 export type CasePriority = 'low' | 'medium' | 'high' | 'urgent';
+
+import { UserBadge } from '../contexts/UserTypes';
 
 export interface User {
   id: string;
@@ -17,6 +18,7 @@ export interface User {
     inProgress: number;
     completed: number;
   };
+  badges?: UserBadge[];
 }
 
 export interface SubChecklistItem {

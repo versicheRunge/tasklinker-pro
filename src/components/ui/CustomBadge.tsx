@@ -1,28 +1,49 @@
 
 import React from 'react';
+import { cn } from "@/lib/utils";
+import { Badge } from './badge';
 
-interface BadgeProps {
-  children: React.ReactNode;
-  variant?: 'default' | 'outline' | 'secondary';
-  className?: string;
+interface CustomBadgeProps {
+  icon: string;
+  label: string;
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive';
+  onClick?: () => void;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ 
-  children, 
-  variant = 'default', 
-  className = '' 
+export const CustomBadge: React.FC<CustomBadgeProps> = ({
+  icon,
+  label,
+  size = 'md',
+  variant = 'default',
+  onClick
 }) => {
-  const baseStyle = 'inline-flex items-center rounded-full';
-  
-  const variantStyles = {
-    default: 'bg-primary text-primary-foreground px-2.5 py-0.5 text-xs font-semibold',
-    outline: 'border bg-transparent px-2.5 py-0.5 text-xs font-semibold',
-    secondary: 'bg-secondary text-secondary-foreground px-2.5 py-0.5 text-xs font-semibold'
+  // Size classes
+  const sizeClasses = {
+    sm: 'text-xs py-0.5 pl-1 pr-1.5',
+    md: 'text-sm py-1 pl-1.5 pr-2',
+    lg: 'text-base py-1.5 pl-2 pr-2.5'
   };
-  
+
+  // Icon size classes
+  const iconSizeClasses = {
+    sm: 'mr-0.5',
+    md: 'mr-1',
+    lg: 'mr-1.5'
+  };
+
   return (
-    <span className={`${baseStyle} ${variantStyles[variant]} ${className}`}>
-      {children}
-    </span>
+    <Badge 
+      variant={variant}
+      className={cn(
+        "flex items-center cursor-default font-normal", 
+        sizeClasses[size],
+        onClick && "cursor-pointer hover:opacity-80"
+      )}
+      onClick={onClick}
+    >
+      <span className={cn("inline-block", iconSizeClasses[size])}>{icon}</span>
+      <span>{label}</span>
+    </Badge>
   );
 };
