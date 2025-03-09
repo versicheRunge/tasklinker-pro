@@ -1,3 +1,4 @@
+
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
 export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
 
@@ -12,7 +13,7 @@ export interface User {
   userRole?: 'admin' | 'staff';
   stats?: {
     casesHandled: number;
-    completing: number;
+    inProgress: number;
     completed: number;
   };
 }
@@ -64,6 +65,7 @@ export interface CaseItem {
   checklist: ChecklistItemType[];
   documents?: Document[];
   archived?: boolean; // Add archived flag
+  customerName?: string; // Added for PDF export filename
 }
 
 // Templates for checklists
@@ -72,4 +74,11 @@ export interface ChecklistTemplate {
   title: string;
   type: CaseType;
   items: ChecklistItemType[];
+}
+
+// Default case titles that can be selected
+export interface CaseDefaultTitle {
+  id: string;
+  title: string;
+  type: CaseType;
 }

@@ -1,14 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, Save, RefreshCw, Archive, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, 
+  Save, RefreshCw, Archive, Trash2, Download, FilePdf, Plus } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CaseItem, CaseStatus, CaseActivity } from '../../types/case';
+import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
 import { CaseActivityTimeline } from './CaseActivityTimeline';
 import { toast } from "../../hooks/use-toast";
 import { useUser } from '../../contexts/UserContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../ui/dialog";
+import { Button } from "../ui/button";
+import { jsPDF } from "jspdf";
+import 'jspdf-autotable';
 
 interface CaseDetailProps {
   cases: CaseItem[];
@@ -18,11 +23,15 @@ interface CaseDetailProps {
 export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin } = useUser();
+  const { isAdmin, currentUser } = useUser();
   const initialCase = cases.find(c => c.id === id);
   
   const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [isAddingChecklistItem, setIsAddingChecklistItem] = useState(false);
+  const [newChecklistItemText, setNewChecklistItemText] = useState('');
+  const [newChecklistItemDesc, setNewChecklistItemDesc] = useState('');
+  const [addToTemplate, setAddToTemplate] = useState(false);
   
   useEffect(() => {
     const updatedCase = cases.find(c => c.id === id);
@@ -81,7 +90,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       type: 'status',
       content: `Status geändert auf: ${statusLabel[newStatus]}`,
       timestamp: new Date().toISOString(),
-      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
       caseId: caseItem.id
     };
     
@@ -126,8 +135,99 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           title: "Vorgang abgeschlossen",
           description: "Der Vorgang wurde als erledigt markiert und zu den abgeschlossenen Vorgängen verschoben."
         });
+
+        // Check if all cases are now completed
+        const storedCases = localStorage.getItem('cases');
+        if (storedCases) {
+          const allCases = JSON.parse(storedCases) as CaseItem[];
+          const anyOpenCases = allCases.some(c => 
+            c.status !== 'completed' && !c.archived
+          );
+          
+          if (!anyOpenCases) {
+            showConfetti();
+          }
+        }
       }
     }, 500);
+  };
+
+  const showConfetti = () => {
+    // Create confetti element
+    const confettiContainer = document.createElement('div');
+    confettiContainer.style.position = 'fixed';
+    confettiContainer.style.top = '0';
+    confettiContainer.style.left = '0';
+    confettiContainer.style.width = '100%';
+    confettiContainer.style.height = '100%';
+    confettiContainer.style.zIndex = '9999';
+    confettiContainer.style.pointerEvents = 'none';
+    document.body.appendChild(confettiContainer);
+
+    // Create confetti pieces
+    for (let i = 0; i < 100; i++) {
+      const confetti = document.createElement('div');
+      confetti.style.position = 'absolute';
+      confetti.style.width = `${Math.random() * 10 + 5}px`;
+      confetti.style.height = `${Math.random() * 10 + 5}px`;
+      confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+      confetti.style.borderRadius = '50%';
+      confetti.style.top = '0';
+      confetti.style.left = `${Math.random() * 100}%`;
+      confetti.style.transform = 'translateY(-100%)';
+      confetti.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
+      confettiContainer.appendChild(confetti);
+    }
+
+    // Create congrats message
+    const congratsMsg = document.createElement('div');
+    congratsMsg.style.position = 'fixed';
+    congratsMsg.style.top = '50%';
+    congratsMsg.style.left = '50%';
+    congratsMsg.style.transform = 'translate(-50%, -50%)';
+    congratsMsg.style.background = 'white';
+    congratsMsg.style.padding = '2rem';
+    congratsMsg.style.borderRadius = '0.5rem';
+    congratsMsg.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    congratsMsg.style.zIndex = '10000';
+    congratsMsg.style.textAlign = 'center';
+    congratsMsg.innerHTML = `
+      <h3 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Glückwunsch!</h3>
+      <p style="margin-bottom: 1.5rem;">Alle Vorgänge wurden erfolgreich abgeschlossen.</p>
+      <button id="confetti-close" style="background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">Schließen</button>
+    `;
+    document.body.appendChild(congratsMsg);
+
+    // Add animation styles
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes fall {
+        to {
+          transform: translateY(100vh) rotate(360deg);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Add event listener to close button
+    document.getElementById('confetti-close')?.addEventListener('click', () => {
+      document.body.removeChild(confettiContainer);
+      document.body.removeChild(congratsMsg);
+      document.head.removeChild(style);
+    });
+
+    // Auto-remove after 7 seconds
+    setTimeout(() => {
+      if (document.body.contains(confettiContainer)) {
+        document.body.removeChild(confettiContainer);
+      }
+      if (document.body.contains(congratsMsg)) {
+        document.body.removeChild(congratsMsg);
+      }
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    }, 7000);
   };
 
   const handleChecklistItemComplete = (index: number, completed: boolean) => {
@@ -143,7 +243,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       type: 'checklist',
       content: `Checklist-Aufgabe "${updatedChecklist[index].text}" ${completed ? 'abgeschlossen' : 'wieder geöffnet'}`,
       timestamp: new Date().toISOString(),
-      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
     };
     
     const updatedCase = {
@@ -180,6 +280,154 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     }
   };
 
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItemText.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Text für den neuen Eintrag ein",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newItem: ChecklistItemType = {
+      text: newChecklistItemText,
+      description: newChecklistItemDesc || undefined,
+      completed: false,
+      subItems: []
+    };
+
+    const updatedChecklist = [...caseItem.checklist, newItem];
+    
+    // Create activity for the new checklist item
+    const newActivity: CaseActivity = {
+      id: `act-${Date.now()}`,
+      type: 'checklist',
+      content: `Neuer Checklist-Eintrag hinzugefügt: "${newChecklistItemText}"`,
+      timestamp: new Date().toISOString(),
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+    };
+    
+    const updatedCase = {
+      ...caseItem,
+      checklist: updatedChecklist,
+      lastUpdated: new Date().toISOString(),
+      activities: [newActivity, ...caseItem.activities]
+    };
+    
+    setCaseItem(updatedCase);
+    
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        checklist: updatedChecklist,
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+    }
+
+    // Add to template if requested
+    if (addToTemplate) {
+      const storedTemplates = localStorage.getItem('checklistTemplates');
+      if (storedTemplates) {
+        const templates = JSON.parse(storedTemplates);
+        const templateToUpdate = templates.find((t: any) => t.type === caseItem.type);
+        
+        if (templateToUpdate) {
+          templateToUpdate.items = [...templateToUpdate.items, newItem];
+          localStorage.setItem('checklistTemplates', JSON.stringify(templates));
+          
+          toast({
+            title: "Vorlage aktualisiert",
+            description: "Der neue Eintrag wurde auch zur Standardvorlage hinzugefügt"
+          });
+        }
+      }
+    }
+
+    setNewChecklistItemText('');
+    setNewChecklistItemDesc('');
+    setAddToTemplate(false);
+    setIsAddingChecklistItem(false);
+  };
+
+  const handleAddSubItem = (parentItem: ChecklistItemType, subItemText: string, addToTemplate: boolean) => {
+    const newSubItem: SubChecklistItem = {
+      text: subItemText,
+      completed: false
+    };
+
+    // Find index of parent item
+    const parentIndex = caseItem.checklist.findIndex(item => item.text === parentItem.text);
+    if (parentIndex === -1) return;
+
+    // Create updated checklist
+    const updatedChecklist = [...caseItem.checklist];
+    
+    // Ensure subItems array exists
+    if (!updatedChecklist[parentIndex].subItems) {
+      updatedChecklist[parentIndex].subItems = [];
+    }
+    
+    // Add the new sub-item
+    updatedChecklist[parentIndex].subItems = [
+      ...(updatedChecklist[parentIndex].subItems || []),
+      newSubItem
+    ];
+
+    // Create activity for the new checklist sub-item
+    const newActivity: CaseActivity = {
+      id: `act-${Date.now()}`,
+      type: 'checklist',
+      content: `Neuer Unterpunkt hinzugefügt zu "${parentItem.text}": "${subItemText}"`,
+      timestamp: new Date().toISOString(),
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+    };
+    
+    const updatedCase = {
+      ...caseItem,
+      checklist: updatedChecklist,
+      lastUpdated: new Date().toISOString(),
+      activities: [newActivity, ...caseItem.activities]
+    };
+    
+    setCaseItem(updatedCase);
+    
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        checklist: updatedChecklist,
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+    }
+
+    // Add to template if requested
+    if (addToTemplate) {
+      const storedTemplates = localStorage.getItem('checklistTemplates');
+      if (storedTemplates) {
+        const templates = JSON.parse(storedTemplates);
+        const templateToUpdate = templates.find((t: any) => t.type === caseItem.type);
+        
+        if (templateToUpdate) {
+          const templateParentIndex = templateToUpdate.items.findIndex((item: any) => item.text === parentItem.text);
+          
+          if (templateParentIndex !== -1) {
+            if (!templateToUpdate.items[templateParentIndex].subItems) {
+              templateToUpdate.items[templateParentIndex].subItems = [];
+            }
+            
+            templateToUpdate.items[templateParentIndex].subItems.push(newSubItem);
+            localStorage.setItem('checklistTemplates', JSON.stringify(templates));
+            
+            toast({
+              title: "Vorlage aktualisiert",
+              description: "Der neue Unterpunkt wurde auch zur Standardvorlage hinzugefügt"
+            });
+          }
+        }
+      }
+    }
+  };
+
   const handleArchiveCase = () => {
     toast({
       title: "Vorgang archiviert",
@@ -188,10 +436,107 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     navigate('/cases');
   };
 
-  const handleExportCase = () => {
+  const generatePDF = () => {
+    const customerName = caseItem.customerName || 'Kunde';
+    const fileName = `${customerName}_${caseItem.title}_${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Vorgangsdetails', 14, 20);
+    
+    // Add case info
+    doc.setFontSize(12);
+    doc.text(`Vorgangsnummer: ${caseItem.id}`, 14, 30);
+    doc.text(`Titel: ${caseItem.title}`, 14, 37);
+    doc.text(`Kunde: ${customerName}`, 14, 44);
+    doc.text(`Status: ${statusLabel[caseItem.status]}`, 14, 51);
+    doc.text(`Typ: ${typeLabel[caseItem.type as keyof typeof typeLabel] || caseItem.type}`, 14, 58);
+    doc.text(`Erstellt am: ${new Date(caseItem.createdAt).toLocaleDateString('de-DE')}`, 14, 65);
+    doc.text(`Zugewiesen an: ${caseItem.assignee.name}`, 14, 72);
+    
+    // Add description
+    doc.setFontSize(14);
+    doc.text('Beschreibung', 14, 85);
+    doc.setFontSize(12);
+    
+    const descriptionLines = doc.splitTextToSize(caseItem.description, 180);
+    doc.text(descriptionLines, 14, 92);
+    
+    let yPos = 95 + descriptionLines.length * 7;
+    
+    // Add checklist
+    if (caseItem.checklist && caseItem.checklist.length > 0) {
+      doc.setFontSize(14);
+      doc.text('Checkliste', 14, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(12);
+      caseItem.checklist.forEach((item, index) => {
+        const status = item.completed ? '✓' : '□';
+        doc.text(`${status} ${item.text}`, 14, yPos);
+        yPos += 7;
+        
+        if (item.description) {
+          doc.setFontSize(10);
+          const descLines = doc.splitTextToSize(item.description, 170);
+          doc.text(descLines, 20, yPos);
+          yPos += descLines.length * 6;
+          doc.setFontSize(12);
+        }
+        
+        // Add sub-items
+        if (item.subItems && item.subItems.length > 0) {
+          item.subItems.forEach(subItem => {
+            const subStatus = subItem.completed ? '✓' : '□';
+            doc.text(`   ${subStatus} ${subItem.text}`, 20, yPos);
+            yPos += 7;
+          });
+        }
+      });
+    }
+    
+    // Add activities
+    if (caseItem.activities && caseItem.activities.length > 0) {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.text('Aktivitäten', 14, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(10);
+      
+      // Only include the last 10 activities to save space
+      const recentActivities = caseItem.activities.slice(0, 10);
+      
+      recentActivities.forEach(activity => {
+        const date = new Date(activity.timestamp).toLocaleString('de-DE');
+        const user = activity.user.name;
+        
+        doc.text(`${date} - ${user}:`, 14, yPos);
+        yPos += 6;
+        
+        const contentLines = doc.splitTextToSize(activity.content, 180);
+        doc.text(contentLines, 20, yPos);
+        yPos += contentLines.length * 6 + 4;
+        
+        if (yPos > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+      });
+    }
+    
+    // Save the PDF
+    doc.save(fileName);
+    
     toast({
-      title: "Vorgang exportiert",
-      description: "Der Vorgang wurde erfolgreich exportiert."
+      title: "PDF generiert",
+      description: `Die Datei "${fileName}" wurde erfolgreich erstellt und heruntergeladen.`
     });
   };
 
@@ -207,7 +552,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       type: 'comment',
       content: commentText,
       timestamp: new Date().toISOString(),
-      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
     };
     
     const updatedCase = {
@@ -259,6 +604,13 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           </div>
           
           <div className="flex items-center gap-3">
+            <button
+              onClick={generatePDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-primary text-white hover:bg-primary/90"
+            >
+              <FilePdf className="w-4 h-4" />
+              PDF exportieren
+            </button>
             <div className="text-right">
               <p className="text-sm font-medium">Zugewiesen an</p>
               <p className="text-sm text-muted-foreground">{caseItem.assignee.name}</p>
@@ -303,9 +655,9 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             <div className="flex flex-wrap gap-2">
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-blue-100 text-blue-700 hover:bg-blue-200"
-                onClick={() => handleExportCase()}
+                onClick={generatePDF}
               >
-                <Archive className="w-4 h-4" />
+                <Download className="w-4 h-4" />
                 Exportieren
               </button>
               
@@ -332,7 +684,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             <div className="mt-6 pt-6 border-t border-border">
               <h3 className="text-sm font-medium mb-3">Neuen Kommentar hinzufügen</h3>
               <form onSubmit={handleCommentSubmit} className="flex gap-3">
-                <CustomAvatar name="Max Schmidt" size="sm" />
+                <CustomAvatar name={currentUser?.name || "Max Schmidt"} size="sm" />
                 <div className="flex-1">
                   <textarea 
                     name="comment"
@@ -364,7 +716,67 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
         
         <div>
           <div className="bg-card rounded-xl border border-border p-6 mb-6">
-            <h2 className="text-lg font-medium mb-4">Checkliste</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Checkliste</h2>
+              {!isAddingChecklistItem && caseItem.status !== 'completed' && (
+                <button 
+                  className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+                  onClick={() => setIsAddingChecklistItem(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Hinzufügen</span>
+                </button>
+              )}
+            </div>
+            
+            {isAddingChecklistItem && (
+              <div className="mb-4 p-4 border border-dashed border-primary/50 rounded-lg">
+                <h3 className="text-sm font-medium mb-2">Neuen Eintrag hinzufügen</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    className="w-full p-2 rounded-md border border-input text-sm"
+                    value={newChecklistItemText}
+                    onChange={(e) => setNewChecklistItemText(e.target.value)}
+                    placeholder="Eintrag"
+                  />
+                  <textarea
+                    className="w-full p-2 rounded-md border border-input text-sm resize-none"
+                    value={newChecklistItemDesc}
+                    onChange={(e) => setNewChecklistItemDesc(e.target.value)}
+                    placeholder="Beschreibung (optional)"
+                    rows={2}
+                  ></textarea>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="addToTemplate"
+                      checked={addToTemplate}
+                      onChange={(e) => setAddToTemplate(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <label htmlFor="addToTemplate" className="text-xs">
+                      Zur Standardvorlage hinzufügen
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-3 py-1.5 text-sm rounded-md border border-input hover:bg-muted/30"
+                      onClick={() => setIsAddingChecklistItem(false)}
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      className="px-3 py-1.5 text-sm rounded-md bg-primary text-white hover:bg-primary/90"
+                      onClick={handleAddChecklistItem}
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-2">
               {caseItem.checklist && caseItem.checklist.length > 0 ? (
                 caseItem.checklist.map((item, index) => (
@@ -373,6 +785,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
                     item={item}
                     onComplete={(completed) => handleChecklistItemComplete(index, completed)}
                     readOnly={caseItem.status === 'completed'}
+                    onAddSubItem={handleAddSubItem}
+                    allowEditing={caseItem.status !== 'completed'}
                   />
                 ))
               ) : (
