@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, X, FileText, Image, File as FileIcon } from 'lucide-react';
 import { toast } from '../../hooks/use-toast';
@@ -37,21 +36,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     const invalidFiles: string[] = [];
     
     Array.from(files).forEach(file => {
-      // Check file size
       if (file.size > maxSize * 1024 * 1024) {
         invalidFiles.push(`${file.name} (Datei zu groß)`);
         return;
       }
       
-      // Check file type if accept is not '*'
       if (accept !== '*') {
         const acceptTypes = accept.split(',').map(type => type.trim());
         const fileType = file.type;
         
-        // Check if file type matches any accepted type
         const isAccepted = acceptTypes.some(type => {
           if (type.endsWith('/*')) {
-            // Handle wildcards like 'image/*'
             const generalType = type.split('/')[0];
             return fileType.startsWith(generalType);
           }
@@ -88,7 +83,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     processFiles(e.target.files);
-    // Reset input value to allow uploading the same file again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -100,7 +94,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
   
-  // Define getFileIcon function at the component level
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) {
       return <Image className="w-5 h-5" />;
@@ -174,7 +167,6 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
     }
   };
   
-  // Define getFileIcon function for FilePreview component
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) {
       return <Image className="w-5 h-5" />;
@@ -202,9 +194,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
       </div>
       <button
         onClick={(e) => {
-          e.stopP
-
-ropagation();
+          e.stopPropagation();
           onRemove();
         }}
         className="p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
