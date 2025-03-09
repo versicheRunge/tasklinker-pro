@@ -1,6 +1,7 @@
 
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
 export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
+export type CasePriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface User {
   id: string;
@@ -71,6 +72,12 @@ export interface CaseItem {
   documents?: Document[];
   archived?: boolean; // Add archived flag
   customerName?: string; // Added for PDF export filename
+  
+  // Neue Felder für erweiterte Funktionalität
+  dueDate?: string; // Zu erledigen bis (optional)
+  followUpDate?: string; // Wiedervorlage am (optional)
+  priority?: CasePriority; // Priorität der Aufgabe (optional)
+  reminderSent?: boolean; // Flag ob bereits eine Erinnerung gesendet wurde
 }
 
 // Templates for checklists

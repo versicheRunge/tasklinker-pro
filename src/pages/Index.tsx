@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare, ListChecks } from 'lucide-react';
+import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare, ListChecks, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { StatCard } from '../components/dashboard/StatCard';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
@@ -10,6 +11,9 @@ import { toast } from "../hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { CaseStatus, CaseItem } from '../types/case';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { format, isToday, isPast, addDays, isAfter } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +37,20 @@ const Index: React.FC = () => {
   const myAssignedCases = allCases.filter(c => 
     currentUser && c.assignee.id === currentUser.id && !c.archived
   );
+
+  // Dringende und fällige Aufgaben für den aktuellen Benutzer
+  const myUrgentCases = myAssignedCases.filter(c => 
+    c.priority === 'urgent' || c.priority === 'high' || 
+    (c.dueDate && (isToday(new Date(c.dueDate)) || isPast(new Date(c.dueDate))))
+  );
+  
+  // Aufgaben, die bald fällig sind (innerhalb der nächsten 3 Tage)
+  const mySoonDueCases = myAssignedCases.filter(c => {
+    if (!c.dueDate || c.status === 'completed') return false;
+    const dueDate = new Date(c.dueDate);
+    const threeDaysFromNow = addDays(new Date(), 3);
+    return isAfter(dueDate, new Date()) && !isAfter(dueDate, threeDaysFromNow);
+  });
   
   const otherCases = allCases.filter(c => 
     currentUser && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
@@ -51,6 +69,31 @@ const Index: React.FC = () => {
   
   const handleStatCardClick = (status?: CaseStatus) => {
     navigate('/cases');
+  };
+
+  // Hilfsfunktion für Prioritätsbadge
+  const renderPriorityBadge = (priority?: string) => {
+    if (!priority) return null;
+    
+    const colors: Record<string, string> = {
+      'low': 'bg-green-100 text-green-800',
+      'medium': 'bg-blue-100 text-blue-800',
+      'high': 'bg-amber-100 text-amber-800',
+      'urgent': 'bg-red-100 text-red-800',
+    };
+    
+    const labels: Record<string, string> = {
+      'low': 'Niedrig',
+      'medium': 'Mittel',
+      'high': 'Hoch',
+      'urgent': 'Dringend',
+    };
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[priority]}`}>
+        {labels[priority]}
+      </span>
+    );
   };
   
   return (
@@ -99,6 +142,68 @@ const Index: React.FC = () => {
         </div>
       </div>
       
+      {currentUser && myUrgentCases.length > 0 && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <h2 className="text-xl font-medium">Dringende Aufgaben</h2>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/cases')}>
+              Alle anzeigen
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myUrgentCases.slice(0, 3).map(caseItem => (
+              <div key={caseItem.id} className="relative">
+                <CaseCard key={caseItem.id} caseItem={caseItem} />
+                <div className="absolute top-2 right-2 flex gap-1">
+                  {caseItem.priority === 'urgent' && (
+                    <Badge className="bg-red-500">Dringend</Badge>
+                  )}
+                  {caseItem.dueDate && isPast(new Date(caseItem.dueDate)) && (
+                    <Badge variant="destructive">Überfällig</Badge>
+                  )}
+                  {caseItem.dueDate && isToday(new Date(caseItem.dueDate)) && (
+                    <Badge variant="outline" className="border-amber-500 text-amber-500">Heute fällig</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {currentUser && mySoonDueCases.length > 0 && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-500" />
+              <h2 className="text-xl font-medium">Bald fällige Aufgaben</h2>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/cases')}>
+              Alle anzeigen
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mySoonDueCases.slice(0, 3).map(caseItem => (
+              <div key={caseItem.id} className="relative">
+                <CaseCard key={caseItem.id} caseItem={caseItem} />
+                <div className="absolute top-2 right-2">
+                  {caseItem.dueDate && (
+                    <Badge variant="outline" className="border-amber-500 text-amber-500">
+                      Fällig am {format(new Date(caseItem.dueDate), 'dd.MM.yyyy', {locale: de})}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       {currentUser && myAssignedCases.length > 0 && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -113,7 +218,18 @@ const Index: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myAssignedCases.slice(0, 3).map(caseItem => (
-              <CaseCard key={caseItem.id} caseItem={caseItem} />
+              <div key={caseItem.id} className="relative">
+                <CaseCard key={caseItem.id} caseItem={caseItem} />
+                <div className="absolute top-2 right-2 flex gap-1 flex-wrap">
+                  {renderPriorityBadge(caseItem.priority)}
+                  {caseItem.dueDate && (
+                    <Badge variant="outline" className="text-xs">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {format(new Date(caseItem.dueDate), 'dd.MM.yyyy', {locale: de})}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -131,7 +247,18 @@ const Index: React.FC = () => {
           {myActiveCases.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myActiveCases.slice(0, 6).map(caseItem => (
-                <CaseCard key={caseItem.id} caseItem={caseItem} />
+                <div key={caseItem.id} className="relative">
+                  <CaseCard key={caseItem.id} caseItem={caseItem} />
+                  <div className="absolute top-2 right-2 flex gap-1 flex-wrap">
+                    {renderPriorityBadge(caseItem.priority)}
+                    {caseItem.dueDate && (
+                      <Badge variant="outline" className="text-xs">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {format(new Date(caseItem.dueDate), 'dd.MM.yyyy', {locale: de})}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -172,7 +299,12 @@ const Index: React.FC = () => {
             {newCases.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {newCases.slice(0, 4).map(caseItem => (
-                  <CaseCard key={caseItem.id} caseItem={caseItem} />
+                  <div key={caseItem.id} className="relative">
+                    <CaseCard key={caseItem.id} caseItem={caseItem} />
+                    <div className="absolute top-2 right-2 flex gap-1 flex-wrap">
+                      {renderPriorityBadge(caseItem.priority)}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
