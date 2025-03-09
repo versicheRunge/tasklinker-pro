@@ -1,4 +1,3 @@
-
 import { CaseItem, User } from '../types/case';
 
 // Mock Users
@@ -46,7 +45,8 @@ export const cases: CaseItem[] = [
         type: 'comment',
         content: 'Habe mit dem Kunden telefoniert. Er hat bereits einen Klempner kontaktiert, der den Schaden heute noch beheben wird.',
         timestamp: '2023-06-15T11:20:00Z',
-        user: users[1]
+        user: users[1],
+        caseId: 'case-001-2023'
       },
       {
         id: 'act-002',
@@ -54,6 +54,7 @@ export const cases: CaseItem[] = [
         content: 'Hat Fotos vom Wasserschaden hochgeladen',
         timestamp: '2023-06-15T14:30:00Z',
         user: users[0],
+        caseId: 'case-001-2023',
         attachment: {
           name: 'Wasserschaden-Fotos.zip',
           size: '4.2 MB'
@@ -64,33 +65,52 @@ export const cases: CaseItem[] = [
         type: 'status',
         content: 'Status auf "In Bearbeitung" geändert',
         timestamp: '2023-06-16T09:15:00Z',
-        user: users[1]
+        user: users[1],
+        caseId: 'case-001-2023'
       },
       {
         id: 'act-004',
         type: 'checklist',
         content: 'Schadenmeldung an Versicherung gesendet',
         timestamp: '2023-06-16T14:45:00Z',
-        user: users[1]
+        user: users[1],
+        caseId: 'case-001-2023'
       }
     ],
     checklist: [
       {
         text: 'Erste Kontaktaufnahme mit Kunde',
-        completed: true
+        completed: true,
+        subItems: [
+          { text: 'Telefonat führen', completed: true },
+          { text: 'Notizen erstellen', completed: true }
+        ]
       },
       {
         text: 'Schadenfotos anfordern',
         description: 'Fotos vom Schaden und Rechnungen anfordern',
-        completed: true
+        completed: true,
+        subItems: [
+          { text: 'E-Mail mit Anweisungen senden', completed: true },
+          { text: 'Eingang der Fotos bestätigen', completed: true }
+        ]
       },
       {
         text: 'Schadenmeldung an Versicherung senden',
-        completed: true
+        completed: true,
+        subItems: [
+          { text: 'Formular ausfüllen', completed: true },
+          { text: 'Unterlagen anhängen', completed: true },
+          { text: 'Versicherung kontaktieren', completed: true }
+        ]
       },
       {
         text: 'Kostenvoranschlag prüfen',
-        completed: false
+        completed: false,
+        subItems: [
+          { text: 'Kostenvoranschlag anfordern', completed: true },
+          { text: 'Plausibilität prüfen', completed: false }
+        ]
       },
       {
         text: 'Schadenregulierung freigeben',
@@ -426,6 +446,15 @@ export const cases: CaseItem[] = [
     ]
   }
 ];
+
+// Add caseId to all case activities
+cases.forEach(caseItem => {
+  caseItem.activities.forEach(activity => {
+    if (!activity.caseId) {
+      activity.caseId = caseItem.id;
+    }
+  });
+});
 
 // Dashboard stats
 export const dashboardStats = {

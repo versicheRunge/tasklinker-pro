@@ -8,6 +8,14 @@ export interface User {
   avatar?: string;
   role: string;
   email?: string;
+  phone?: string;
+  department?: string;
+  userRole?: 'admin' | 'staff';
+  stats?: {
+    casesHandled: number;
+    completing: number;
+    completed: number;
+  };
 }
 
 export interface SubChecklistItem {
@@ -37,6 +45,7 @@ export interface CaseActivity {
   content: string;
   timestamp: string;
   user: User;
+  caseId?: string; // Add caseId to track which case this activity belongs to
   attachment?: {
     name: string;
     size: string;
@@ -55,4 +64,13 @@ export interface CaseItem {
   activities: CaseActivity[];
   checklist: ChecklistItemType[];
   documents?: Document[];
+  archived?: boolean; // Add archived flag
+}
+
+// Templates for checklists
+export interface ChecklistTemplate {
+  id: string;
+  title: string;
+  type: CaseType;
+  items: ChecklistItemType[];
 }

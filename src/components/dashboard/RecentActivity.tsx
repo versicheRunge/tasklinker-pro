@@ -2,12 +2,15 @@
 import React from 'react';
 import { CaseActivity } from '../../types/case';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { useNavigate } from 'react-router-dom';
 
 interface RecentActivityProps {
   activities: CaseActivity[];
 }
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) => {
+  const navigate = useNavigate();
+  
   const formatTimeAgo = (date: string) => {
     const now = new Date();
     const activityDate = new Date(date);
@@ -36,12 +39,20 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) =>
       .slice(0, 2);
   };
 
+  const handleActivityClick = (caseId: string) => {
+    navigate(`/cases/${caseId}`);
+  };
+
   return (
     <div className="p-6 rounded-xl border border-border bg-card h-full animate-scale-in">
       <h2 className="text-lg font-medium mb-4">Neueste Aktivitäten</h2>
       <div className="space-y-4">
         {activities.slice(0, 5).map((activity, index) => (
-          <div key={index} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+          <div 
+            key={index} 
+            className="flex items-start gap-3 py-2 border-b border-border last:border-0 cursor-pointer hover:bg-muted/30 rounded-md p-2 transition-colors"
+            onClick={() => handleActivityClick(activity.caseId)}
+          >
             <Avatar className="h-8 w-8">
               {activity.user.avatar ? (
                 <AvatarImage src={activity.user.avatar} alt={activity.user.name} />

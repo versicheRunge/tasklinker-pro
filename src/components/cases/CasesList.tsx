@@ -8,17 +8,21 @@ import { useUser } from '../../contexts/UserContext';
 
 interface CasesListProps {
   cases: CaseItem[];
+  updateCase: (id: string, caseData: Partial<CaseItem>) => void;
   showCompletedSection?: boolean;
 }
 
-export const CasesList: React.FC<CasesListProps> = ({ cases, showCompletedSection = true }) => {
+export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCompletedSection = true }) => {
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CaseType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const { isAdmin } = useUser();
 
-  const activeCases = cases.filter(c => c.status !== 'completed');
-  const completedCases = cases.filter(c => c.status === 'completed');
+  // Filter out archived cases
+  const filteredCases = cases.filter(c => !c.archived);
+  
+  const activeCases = filteredCases.filter(c => c.status !== 'completed');
+  const completedCases = filteredCases.filter(c => c.status === 'completed');
 
   const filteredActiveCases = activeCases.filter(caseItem => {
     const matchesStatus = statusFilter === 'all' || caseItem.status === statusFilter;
@@ -56,16 +60,29 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, showCompletedSectio
   ];
 
   const handleExportCompleted = () => {
+    // In a real app, this would generate a CSV or PDF
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(completedCases));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "abgeschlossene_vorgaenge.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    
     toast({
-      title: "Export gestartet",
-      description: "Der Export der abgeschlossenen Vorgänge wurde gestartet.",
+      title: "Export erfolgreich",
+      description: "Die abgeschlossenen Vorgänge wurden erfolgreich exportiert.",
     });
   };
 
   const handleArchiveAll = () => {
+    completedCases.forEach(caseItem => {
+      updateCase(caseItem.id, { archived: true });
+    });
+    
     toast({
-      title: "Archivierung gestartet",
-      description: "Die abgeschlossenen Vorgänge werden archiviert.",
+      title: "Archivierung abgeschlossen",
+      description: `${completedCases.length} abgeschlossene Vorgänge wurden archiviert.`,
     });
   };
 
@@ -143,7 +160,7 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, showCompletedSectio
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
                   onClick={handleArchiveAll}
                 >
-                  <Trash className="w-4 h-4" />
+                  <Archive className="w-4 h-4" />
                   Alle archivieren
                 </button>
               )}
