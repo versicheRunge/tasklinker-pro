@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Mail, Phone, Award, PlusCircle, Edit2, Trash2, Save } from 'lucide-react';
@@ -399,7 +398,10 @@ const Team: React.FC = () => {
                   id="edit-user-role"
                   className="w-full p-2 rounded-md border border-input"
                   value={editingUser.userRole}
-                  onChange={(e) => setEditingUser({...editingUser, userRole: e.target.value})}
+                  onChange={(e) => setEditingUser({
+                    ...editingUser, 
+                    userRole: e.target.value as 'admin' | 'staff'
+                  })}
                   disabled={editingUser.id === currentUser?.id}
                 >
                   <option value="staff">Mitarbeiter (eingeschränkter Zugriff)</option>
