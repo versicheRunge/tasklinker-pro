@@ -82,3 +82,13 @@ export interface CaseDefaultTitle {
   title: string;
   type: CaseType;
 }
+
+// Notification system
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  caseId?: string;
+}

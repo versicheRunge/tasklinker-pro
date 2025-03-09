@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
-import { User } from '../types/case';
+import { User, Notification } from '../types/case';
 
 export type UserRole = 'admin' | 'staff';
 
@@ -13,6 +13,9 @@ type UserContextType = {
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, userData: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  notifications: Notification[];
+  markNotificationAsRead: (id: string) => void;
+  clearNotifications: () => void;
 };
 
 // Convert mockData users to our User type with added userRole
@@ -30,7 +33,7 @@ const getInitialUsers = () => {
     department: user.department || 'Allgemein',
     phone: user.phone || '',
     stats: user.stats || {
-      cases: 0,
+      casesHandled: 0,
       completed: 0,
       inProgress: 0
     }
@@ -45,6 +48,9 @@ const UserContext = createContext<UserContextType>({
   addUser: () => {},
   updateUser: () => {},
   deleteUser: () => {},
+  notifications: [],
+  markNotificationAsRead: () => {},
+  clearNotifications: () => {},
 });
 
 export const useUser = () => useContext(UserContext);
@@ -52,11 +58,24 @@ export const useUser = () => useContext(UserContext);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<User[]>(getInitialUsers());
   const [currentUser, setCurrentUser] = useState<User | null>(getInitialUsers()[0]); // Default to first user (admin)
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   
   // Save users to localStorage when they change
   useEffect(() => {
     localStorage.setItem('users', JSON.stringify(allUsers));
   }, [allUsers]);
+  
+  // Check for notifications on mount and when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      const storedNotifications = localStorage.getItem('notifications');
+      if (storedNotifications) {
+        const allNotifications = JSON.parse(storedNotifications);
+        const userNotifications = allNotifications[currentUser.id] || [];
+        setNotifications(userNotifications);
+      }
+    }
+  }, [currentUser]);
   
   const isAdmin = currentUser?.userRole === 'admin';
   
@@ -83,6 +102,38 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAllUsers(prev => prev.filter(user => user.id !== id));
   };
   
+  const markNotificationAsRead = (notificationId: string) => {
+    if (!currentUser) return;
+    
+    const storedNotifications = localStorage.getItem('notifications');
+    if (storedNotifications) {
+      const allNotifications = JSON.parse(storedNotifications);
+      const userNotifications = allNotifications[currentUser.id] || [];
+      
+      const updatedUserNotifications = userNotifications.map((notification: Notification) => 
+        notification.id === notificationId ? { ...notification, read: true } : notification
+      );
+      
+      allNotifications[currentUser.id] = updatedUserNotifications;
+      localStorage.setItem('notifications', JSON.stringify(allNotifications));
+      
+      setNotifications(updatedUserNotifications);
+    }
+  };
+  
+  const clearNotifications = () => {
+    if (!currentUser) return;
+    
+    const storedNotifications = localStorage.getItem('notifications');
+    if (storedNotifications) {
+      const allNotifications = JSON.parse(storedNotifications);
+      allNotifications[currentUser.id] = [];
+      localStorage.setItem('notifications', JSON.stringify(allNotifications));
+      
+      setNotifications([]);
+    }
+  };
+  
   return (
     <UserContext.Provider 
       value={{ 
@@ -92,7 +143,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users: allUsers, 
         addUser, 
         updateUser, 
-        deleteUser 
+        deleteUser,
+        notifications,
+        markNotificationAsRead,
+        clearNotifications
       }}
     >
       {children}

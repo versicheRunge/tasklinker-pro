@@ -16,6 +16,7 @@ import {
   DialogClose
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
+import { Badge } from '../components/ui/badge';
 import { useUser } from '../contexts/UserContext';
 
 const Cases: React.FC = () => {

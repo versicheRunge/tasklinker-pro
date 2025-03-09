@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, 
-  Save, RefreshCw, Archive, Trash2, Download, FilePdf, Plus } from 'lucide-react';
+  Save, RefreshCw, Archive, Trash2, Download, FileText, Plus } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem } from '../../types/case';
+import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, Document } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
@@ -23,7 +23,7 @@ interface CaseDetailProps {
 export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, currentUser } = useUser();
+  const { isAdmin, currentUser, users } = useUser();
   const initialCase = cases.find(c => c.id === id);
   
   const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
@@ -32,6 +32,9 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
   const [newChecklistItemDesc, setNewChecklistItemDesc] = useState('');
   const [addToTemplate, setAddToTemplate] = useState(false);
+  const [isAssigningUser, setIsAssigningUser] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   useEffect(() => {
     const updatedCase = cases.find(c => c.id === id);
@@ -122,6 +125,15 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       }
     }
     
+    // Send notification to the case creator if it's not the current user
+    if (caseItem.assignee.id !== currentUser?.id) {
+      sendNotification(
+        caseItem.assignee.id, 
+        `Status geändert: ${caseItem.title}`,
+        `${currentUser?.name} hat den Status auf "${statusLabel[newStatus]}" geändert.`
+      );
+    }
+    
     setTimeout(() => {
       setSavingStatus(false);
       
@@ -150,6 +162,85 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
         }
       }
     }, 500);
+  };
+
+  const handleAssignUser = (userId: string) => {
+    const userToAssign = users.find(u => u.id === userId);
+    if (!userToAssign || caseItem.assignee.id === userId) {
+      setIsAssigningUser(false);
+      return;
+    }
+    
+    const newActivity: CaseActivity = {
+      id: `act-${Date.now()}`,
+      type: 'other',
+      content: `Vorgang zugewiesen an: ${userToAssign.name}`,
+      timestamp: new Date().toISOString(),
+      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
+      caseId: caseItem.id
+    };
+    
+    const updatedCase = {
+      ...caseItem,
+      assignee: userToAssign,
+      lastUpdated: new Date().toISOString(),
+      activities: [newActivity, ...caseItem.activities]
+    };
+    
+    setCaseItem(updatedCase);
+    
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        assignee: userToAssign,
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+      
+      // Store in localStorage as a backup
+      const storedCases = localStorage.getItem('cases');
+      if (storedCases) {
+        const allCases = JSON.parse(storedCases) as CaseItem[];
+        const updatedCases = allCases.map(c => 
+          c.id === caseItem.id ? updatedCase : c
+        );
+        localStorage.setItem('cases', JSON.stringify(updatedCases));
+      }
+    }
+    
+    // Send notification to the newly assigned user
+    sendNotification(
+      userToAssign.id, 
+      `Neuer Vorgang zugewiesen: ${caseItem.title}`,
+      `${currentUser?.name} hat Ihnen den Vorgang "${caseItem.title}" zugewiesen.`
+    );
+    
+    setIsAssigningUser(false);
+    
+    toast({
+      title: "Vorgang zugewiesen",
+      description: `Der Vorgang wurde ${userToAssign.name} zugewiesen.`
+    });
+  };
+
+  const sendNotification = (userId: string, title: string, message: string) => {
+    // In a real app, this would send to a backend service
+    // For now, we'll just store in localStorage
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '{}');
+    
+    if (!notifications[userId]) {
+      notifications[userId] = [];
+    }
+    
+    notifications[userId].push({
+      id: `notif-${Date.now()}`,
+      title,
+      message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      caseId: caseItem.id
+    });
+    
+    localStorage.setItem('notifications', JSON.stringify(notifications));
   };
 
   const showConfetti = () => {
@@ -540,6 +631,109 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleFileUpload = () => {
+    if (!selectedFile) return;
+    
+    setIsUploading(true);
+    
+    // Simulating file upload
+    setTimeout(() => {
+      const newDocument: Document = {
+        id: `doc-${Date.now()}`,
+        name: selectedFile.name,
+        size: formatFileSize(selectedFile.size),
+        type: selectedFile.type,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+      };
+      
+      const newDocuments = [...(caseItem.documents || []), newDocument];
+      
+      // Create activity for the document upload
+      const newActivity: CaseActivity = {
+        id: `act-${Date.now()}`,
+        type: 'document',
+        content: `Dokument hochgeladen: "${selectedFile.name}"`,
+        timestamp: new Date().toISOString(),
+        user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
+        attachment: {
+          name: selectedFile.name,
+          size: formatFileSize(selectedFile.size)
+        }
+      };
+      
+      const updatedCase = {
+        ...caseItem,
+        documents: newDocuments,
+        lastUpdated: new Date().toISOString(),
+        activities: [newActivity, ...caseItem.activities]
+      };
+      
+      setCaseItem(updatedCase);
+      
+      if (updateCase) {
+        updateCase(caseItem.id, {
+          documents: newDocuments,
+          lastUpdated: updatedCase.lastUpdated,
+          activities: updatedCase.activities
+        });
+      }
+      
+      setSelectedFile(null);
+      setIsUploading(false);
+      
+      toast({
+        title: "Dokument hochgeladen",
+        description: `Die Datei "${selectedFile.name}" wurde erfolgreich hochgeladen.`
+      });
+    }, 1000);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  // Parse comment text for @mentions and notify mentioned users
+  const processCommentForMentions = (text: string): string => {
+    const mentionRegex = /@(\w+)/g;
+    const mentionedUsernames: Set<string> = new Set();
+    let match;
+    
+    while ((match = mentionRegex.exec(text)) !== null) {
+      const username = match[1];
+      mentionedUsernames.add(username);
+    }
+    
+    if (mentionedUsernames.size > 0) {
+      // Find user IDs that match the usernames
+      users.forEach(user => {
+        const usernameFromEmail = user.email?.split('@')[0] || '';
+        const usernameFromName = user.name.toLowerCase().replace(/\s+/g, '');
+        
+        if (mentionedUsernames.has(usernameFromEmail) || 
+            mentionedUsernames.has(usernameFromName)) {
+          // Send notification to this user
+          sendNotification(
+            user.id,
+            `Erwähnung in Kommentar: ${caseItem.title}`,
+            `${currentUser?.name} hat Sie in einem Kommentar in "${caseItem.title}" erwähnt.`
+          );
+        }
+      });
+    }
+    
+    // Return text with highlighted mentions
+    return text.replace(mentionRegex, '<span class="text-primary font-medium">@$1</span>');
+  };
+
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const commentForm = e.target as HTMLFormElement;
@@ -547,10 +741,13 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     
     if (!commentText.trim()) return;
     
+    // Process text for @mentions
+    const processedText = processCommentForMentions(commentText);
+    
     const newComment: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'comment',
-      content: commentText,
+      content: commentText, // Store original text
       timestamp: new Date().toISOString(),
       user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
     };
@@ -576,6 +773,18 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       title: "Kommentar hinzugefügt",
       description: "Ihr Kommentar wurde erfolgreich hinzugefügt."
     });
+    
+    // Notify original creator if this is a different user
+    if (caseItem.activities[caseItem.activities.length - 1]?.user.id !== currentUser?.id) {
+      const originalCreator = caseItem.activities[caseItem.activities.length - 1]?.user;
+      if (originalCreator && originalCreator.id) {
+        sendNotification(
+          originalCreator.id,
+          `Neuer Kommentar: ${caseItem.title}`,
+          `${currentUser?.name} hat einen Kommentar zu "${caseItem.title}" hinzugefügt.`
+        );
+      }
+    }
   };
 
   return (
@@ -608,14 +817,26 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               onClick={generatePDF}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-primary text-white hover:bg-primary/90"
             >
-              <FilePdf className="w-4 h-4" />
+              <FileText className="w-4 h-4" />
               PDF exportieren
             </button>
-            <div className="text-right">
-              <p className="text-sm font-medium">Zugewiesen an</p>
-              <p className="text-sm text-muted-foreground">{caseItem.assignee.name}</p>
+            
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-sm font-medium">Zugewiesen an</p>
+                  <p className="text-sm text-muted-foreground">{caseItem.assignee.name}</p>
+                </div>
+                <button 
+                  onClick={() => setIsAssigningUser(true)}
+                  className="hover:bg-muted rounded-full p-1"
+                  title="Benutzer zuweisen"
+                >
+                  <User className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="lg" />
             </div>
-            <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="lg" />
           </div>
         </div>
         
@@ -689,18 +910,24 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
                   <textarea 
                     name="comment"
                     className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
-                    placeholder="Schreibe einen Kommentar..."
+                    placeholder="Schreibe einen Kommentar... @benutzername für Erwähnungen"
                     rows={3}
                     required
                   ></textarea>
                   <div className="flex justify-between mt-3">
-                    <button 
-                      type="button" 
-                      className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+                    <label 
+                      htmlFor="file-upload" 
+                      className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <Paperclip className="w-4 h-4 mr-1" />
                       <span>Anhängen</span>
-                    </button>
+                      <input 
+                        id="file-upload" 
+                        type="file" 
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                    </label>
                     <button 
                       type="submit"
                       className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
@@ -708,6 +935,32 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
                       Kommentar senden
                     </button>
                   </div>
+                  {selectedFile && (
+                    <div className="mt-2 p-2 bg-muted rounded-md flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="w-4 h-4" />
+                        <span className="text-sm truncate max-w-[200px]">{selectedFile.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button"
+                          className="text-sm text-primary hover:text-primary/80"
+                          onClick={handleFileUpload}
+                          disabled={isUploading}
+                        >
+                          {isUploading ? 'Wird hochgeladen...' : 'Hochladen'}
+                        </button>
+                        <button 
+                          type="button"
+                          className="text-sm text-muted-foreground hover:text-foreground"
+                          onClick={() => setSelectedFile(null)}
+                          disabled={isUploading}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </form>
             </div>
@@ -820,12 +1073,86 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               <p className="text-sm text-muted-foreground">Keine Dokumente vorhanden</p>
             )}
             
-            <button className="w-full mt-4 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5">
+            <label htmlFor="doc-upload" className="block w-full mt-4 px-4 py-2 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5 text-center cursor-pointer">
               Dokument hochladen
-            </button>
+              <input 
+                id="doc-upload" 
+                type="file" 
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+            
+            {selectedFile && (
+              <div className="mt-3 p-3 border border-border rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    <span className="text-sm font-medium truncate max-w-[150px]">{selectedFile.name}</span>
+                    <span className="text-xs text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      className="text-sm text-primary hover:text-primary/80"
+                      onClick={handleFileUpload}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? 
+                        <RefreshCw className="w-4 h-4 animate-spin" /> : 
+                        'Hochladen'
+                      }
+                    </button>
+                    <button 
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                      onClick={() => setSelectedFile(null)}
+                      disabled={isUploading}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* User Assignment Dialog */}
+      <Dialog open={isAssigningUser} onOpenChange={setIsAssigningUser}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Vorgang zuweisen</DialogTitle>
+            <DialogDescription>
+              Wählen Sie einen Benutzer aus, dem dieser Vorgang zugewiesen werden soll.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3 max-h-[300px] overflow-y-auto">
+            {users.map((user) => (
+              <button
+                key={user.id}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left ${
+                  caseItem.assignee.id === user.id ? 'bg-muted border border-primary/30' : ''
+                }`}
+                onClick={() => handleAssignUser(user.id)}
+              >
+                <CustomAvatar name={user.name} imageSrc={user.avatar} size="md" />
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
+                </div>
+                {caseItem.assignee.id === user.id && (
+                  <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />
+                )}
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssigningUser(false)}>
+              Abbrechen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
