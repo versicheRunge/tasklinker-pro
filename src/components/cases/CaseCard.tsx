@@ -64,7 +64,7 @@ export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
   const vorgangsId = caseItem.id.replace('case', '');
 
   return (
-    <Link to={`/vorgaenge/${caseItem.id}`}>
+    <Link to={`/cases/${caseItem.id}`}>
       <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in">
         <div className="flex justify-between items-start mb-3">
           <span className="text-xs text-muted-foreground">Vorgang-{vorgangsId.slice(0, 8)}</span>

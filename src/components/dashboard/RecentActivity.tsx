@@ -41,6 +41,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) =>
 
   const handleActivityClick = (caseId?: string) => {
     if (caseId) {
+      // Korrigierte Navigation - verwenden von /cases/:id anstatt /vorgaenge/:id
       navigate(`/cases/${caseId}`);
     } else {
       navigate('/cases');

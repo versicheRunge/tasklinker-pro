@@ -41,8 +41,9 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Index />} />
               <Route path="/cases" element={<Cases />} />
+              <Route path="/cases/:id" element={<CaseDetails />} />
               <Route path="/cases/archived" element={<Cases />} />
-              <Route path="/vorgaenge/:id" element={<CaseDetails />} />
+              <Route path="/vorgaenge/:id" element={<Navigate to="/cases/:id" replace />} />
               <Route path="/team" element={<Team />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/goals" element={<Goals />} />

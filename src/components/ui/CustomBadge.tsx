@@ -7,7 +7,8 @@ interface CustomBadgeProps {
   icon: string;
   label: string;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'secondary' | 'outline' | 'destructive';
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'warning' | 'success' | 
+            'priority-high' | 'priority-medium' | 'priority-low' | 'priority-none';
   onClick?: () => void;
 }
 
