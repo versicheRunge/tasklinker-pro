@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { cases } from '../data/mockData';
 import { BarChart3, FileBarChart, ArrowUpDown, TrendingUp, Users, Download, FileText } from 'lucide-react';
@@ -7,24 +7,59 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/
 import { toast } from "../hooks/use-toast";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useUser } from '../contexts/UserContext';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 const Reports = () => {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const { users } = useUser();
+  const [lastUpdated, setLastUpdated] = useState<string>(format(new Date(), 'dd.MM.yyyy', { locale: de }));
+  
+  // Auto-update lastUpdated date
+  useEffect(() => {
+    setLastUpdated(format(new Date(), 'dd.MM.yyyy', { locale: de }));
+  }, []);
 
-  // Vorgänge nach Typ zählen
+  // Count cases by type
   const casesByType = cases.reduce((acc, curr) => {
     acc[curr.type] = (acc[curr.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Vorgänge nach Status zählen
+  // Count cases by status
   const casesByStatus = cases.reduce((acc, curr) => {
     acc[curr.status] = (acc[curr.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+  
+  // Count cases by assignee
+  const casesByAssignee = cases.reduce((acc, curr) => {
+    const assigneeId = curr.assignee.id;
+    acc[assigneeId] = (acc[assigneeId] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Count completed cases by assignee
+  const completedCasesByAssignee = cases
+    .filter(c => c.status === 'completed')
+    .reduce((acc, curr) => {
+      const assigneeId = curr.assignee.id;
+      acc[assigneeId] = (acc[assigneeId] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  
+  // Calculate average resolution time by case type (mock data for demonstration)
+  const avgResolutionByType = {
+    'damage': '3.2 Tage',
+    'evb': '1.5 Tage',
+    'contract_change': '2.8 Tage',
+    'inquiry': '1.2 Tage',
+    'other': '2.0 Tage'
+  };
 
-  // Funktion zum Übersetzen der Vorgangstypen
+  // Function to translate case types
   const translateCaseType = (type: string): string => {
     switch (type) {
       case 'damage': return 'Schadenmeldung';
@@ -35,7 +70,7 @@ const Reports = () => {
     }
   };
 
-  // Funktion zum Übersetzen der Status
+  // Function to translate case status
   const translateCaseStatus = (status: string): string => {
     switch (status) {
       case 'new': return 'Neu';
@@ -148,7 +183,7 @@ const Reports = () => {
     const pdf = new jsPDF();
     let currentY = 20;
     
-    // Berichtstitel basierend auf ID
+    // Report title based on ID
     let title = "Bericht";
     let reportData: any[] = [];
     
@@ -172,38 +207,60 @@ const Reports = () => {
         ];
         break;
       case 'comparison':
-        title = "Vergleichsanalyse";
-        reportData = [
-          ["Schadenmeldungen", (casesByType['damage'] || 0).toString()],
-          ["eVB-Anfragen", (casesByType['evb'] || 0).toString()],
-          ["Vertragsänderungen", (casesByType['contract_change'] || 0).toString()],
-          ["Kundenanfragen", (casesByType['inquiry'] || 0).toString()]
-        ];
+        title = "Vergleichsanalyse - Bearbeitungszeiten";
+        reportData = Object.entries(avgResolutionByType).map(([type, time]) => 
+          [translateCaseType(type), time]);
         break;
       case 'team':
         title = "Team-Performance";
-        // Beispielhafte Teamdaten
-        reportData = [
-          ["Bearbeiter 1", "8 Vorgänge"],
-          ["Bearbeiter 2", "12 Vorgänge"],
-          ["Bearbeiter 3", "5 Vorgänge"]
-        ];
+        reportData = Object.entries(casesByAssignee)
+          .map(([userId, count]) => {
+            const user = users.find(u => u.id === userId);
+            const completedCount = completedCasesByAssignee[userId] || 0;
+            const completionRate = count > 0 ? Math.round((completedCount / count) * 100) : 0;
+            
+            return [
+              user?.name || 'Unbekannt',
+              `${count} Vorgänge`,
+              `${completedCount} abgeschlossen`,
+              `${completionRate}% Abschlussrate`
+            ];
+          });
         break;
     }
     
-    // Titel
+    // Title
     pdf.setFontSize(22);
     pdf.text(title, 14, currentY);
     currentY += 10;
     
-    // Datum
+    // Date
     pdf.setFontSize(12);
-    pdf.text(`Bericht erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 14, currentY);
+    pdf.text(`Bericht erstellt am: ${format(new Date(), 'dd.MM.yyyy', { locale: de })}`, 14, currentY);
     currentY += 15;
     
-    // Tabellendaten
+    // Table headers
+    let headers: string[] = [];
+    
+    switch(reportId) {
+      case 'categories':
+      case 'performance':
+        headers = ['Kategorie', 'Anzahl'];
+        break;
+      case 'monthly':
+        headers = ['Metrik', 'Wert'];
+        break;
+      case 'comparison':
+        headers = ['Vorgangstyp', 'Durchschnittliche Bearbeitungszeit'];
+        break;
+      case 'team':
+        headers = ['Mitarbeiter', 'Anzahl Vorgänge', 'Abgeschlossen', 'Abschlussrate'];
+        break;
+    }
+    
+    // Table data
     autoTable(pdf, {
-      head: [[reportId === 'categories' ? 'Kategorie' : reportId === 'performance' ? 'Status' : 'Metrik', 'Wert']],
+      head: [headers],
       body: reportData,
       startY: currentY,
       styles: { fontSize: 10, cellPadding: 5 },
@@ -214,7 +271,7 @@ const Reports = () => {
       }
     });
     
-    // PDF speichern
+    // Save PDF
     pdf.save(`${title.toLowerCase().replace(/\s+/g, '_')}_export.pdf`);
     
     toast({
@@ -226,8 +283,21 @@ const Reports = () => {
   const openReport = (reportId: string) => {
     setSelectedReport(reportId);
     
-    // PDF-Export für den ausgewählten Bericht
+    // PDF-Export for the selected report
     exportReportToPdf(reportId);
+  };
+
+  // Get top 3 team members by case count
+  const getTopTeamMembers = () => {
+    return Object.entries(casesByAssignee)
+      .map(([userId, count]) => ({
+        userId,
+        name: users.find(u => u.id === userId)?.name || 'Unbekannt',
+        count,
+        completed: completedCasesByAssignee[userId] || 0
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
   };
 
   return (
@@ -266,7 +336,7 @@ const Reports = () => {
             ))}
           </div>
           <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: Heute</span>
+            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
           </div>
         </div>
 
@@ -289,7 +359,7 @@ const Reports = () => {
             ))}
           </div>
           <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: Gestern</span>
+            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
           </div>
         </div>
 
@@ -319,7 +389,7 @@ const Reports = () => {
             </div>
           </div>
           <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: 01.03.2025</span>
+            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
           </div>
         </div>
 
@@ -334,8 +404,16 @@ const Reports = () => {
             <h3 className="font-semibold text-lg">Vergleichsanalyse</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-4">Vergleich von Bearbeitungszeiten nach Vorgangstypen.</p>
+          <div className="space-y-3 mb-4">
+            {Object.entries(avgResolutionByType).map(([type, time]) => (
+              <div key={type} className="flex justify-between items-center">
+                <span className="text-sm">{translateCaseType(type)}</span>
+                <span className="font-medium">{time}</span>
+              </div>
+            ))}
+          </div>
           <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: 28.02.2025</span>
+            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
           </div>
         </div>
 
@@ -349,9 +427,33 @@ const Reports = () => {
             </div>
             <h3 className="font-semibold text-lg">Team-Performance</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Performance-Analyse nach Team-Mitgliedern und Abteilungen.</p>
+          <p className="text-sm text-muted-foreground mb-4">Performance-Analyse nach Team-Mitgliedern.</p>
+          <div className="space-y-3 mb-4">
+            {getTopTeamMembers().map(member => (
+              <div key={member.userId} className="border-b pb-2">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">{member.name}</span>
+                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                    {member.count} Vorgänge
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div 
+                    className="bg-purple-600 h-1.5 rounded-full" 
+                    style={{ width: `${member.count > 0 ? (member.completed / member.count) * 100 : 0}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">{member.completed} abgeschlossen</span>
+                  <span className="text-xs text-muted-foreground">
+                    {member.count > 0 ? Math.round((member.completed / member.count) * 100) : 0}% Abschlussrate
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: 25.02.2025</span>
+            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
           </div>
         </div>
       </div>
