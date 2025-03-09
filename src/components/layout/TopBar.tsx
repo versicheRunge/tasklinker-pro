@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Bell, User, X, Sun, Moon, Menu as MenuIcon } from 'lucide-react';
 import { CustomAvatar } from '../ui/CustomAvatar';
@@ -150,7 +149,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
               {users.map(user => (
                 <DropdownMenuItem key={user.id} onClick={() => switchUser(user)}>
                   <div className="flex items-center gap-2">
-                    <CustomAvatar name={user.name} imageSrc={user.avatar} size="xs" />
+                    <CustomAvatar name={user.name} imageSrc={user.avatar} size="sm" />
                     <div>
                       <p className="text-sm">{user.name}</p>
                       <p className="text-xs text-muted-foreground">

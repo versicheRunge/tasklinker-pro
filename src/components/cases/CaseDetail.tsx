@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, 
-  Save, RefreshCw, Archive, Trash2, Download, FileText, Plus } from 'lucide-react';
+  Save, RefreshCw, Archive, Trash2, Download, FileText, Plus, X } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, Document } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';

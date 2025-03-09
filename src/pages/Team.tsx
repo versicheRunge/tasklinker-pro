@@ -19,7 +19,7 @@ const Team: React.FC = () => {
     avatar: '',
     userRole: 'staff' as 'admin' | 'staff',
     stats: {
-      cases: 0,
+      casesHandled: 0,
       completed: 0,
       inProgress: 0
     }
@@ -35,7 +35,7 @@ const Team: React.FC = () => {
     avatar: '',
     userRole: 'staff',
     stats: {
-      cases: 0,
+      casesHandled: 0,
       completed: 0,
       inProgress: 0
     }
@@ -64,7 +64,7 @@ const Team: React.FC = () => {
       avatar: newUser.avatar || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`,
       userRole: newUser.userRole,
       stats: {
-        cases: 0,
+        casesHandled: 0,
         completed: 0,
         inProgress: 0
       }
@@ -80,7 +80,7 @@ const Team: React.FC = () => {
       avatar: '',
       userRole: 'staff',
       stats: {
-        cases: 0,
+        casesHandled: 0,
         completed: 0,
         inProgress: 0
       }
@@ -247,7 +247,7 @@ const Team: React.FC = () => {
             <div className="mt-4 pt-4 border-t border-border">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-xl font-bold">{user.stats?.cases || 0}</p>
+                  <p className="text-xl font-bold">{user.stats?.casesHandled || 0}</p>
                   <p className="text-xs text-muted-foreground">Vorgänge</p>
                 </div>
                 <div>
