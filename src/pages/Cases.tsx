@@ -19,20 +19,17 @@ import { useUser } from '../contexts/UserContext';
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 
 const Cases: React.FC = () => {
-  // Use localStorage to persist cases between sessions
   const getStoredCases = () => {
     const storedCases = localStorage.getItem('cases');
     return storedCases ? JSON.parse(storedCases) : initialCasesData;
   };
 
-  // Get default titles from localStorage or initialize
   const getDefaultTitles = (): CaseDefaultTitle[] => {
     const storedTitles = localStorage.getItem('defaultTitles');
     if (storedTitles) {
       return JSON.parse(storedTitles);
     }
     
-    // Initial default titles
     return [
       { id: 'title-1', title: 'Schadenmeldung', type: 'damage' },
       { id: 'title-2', title: 'eVB-Anforderung', type: 'evb' },
@@ -61,24 +58,20 @@ const Cases: React.FC = () => {
   const { currentUser, isAdmin, users } = useUser();
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
 
-  // Initialize assignee when dialog opens with current user
   useEffect(() => {
     if (isCreateDialogOpen && currentUser) {
       setSelectedAssignee(currentUser.id);
     }
   }, [isCreateDialogOpen, currentUser]);
 
-  // Save cases to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('cases', JSON.stringify(cases));
   }, [cases]);
 
-  // Save default titles to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('defaultTitles', JSON.stringify(defaultTitles));
   }, [defaultTitles]);
 
-  // When a default title is selected, update the title and type
   useEffect(() => {
     if (newCaseData.selectedDefaultTitle) {
       const selectedTitle = defaultTitles.find(t => t.id === newCaseData.selectedDefaultTitle);
@@ -92,7 +85,6 @@ const Cases: React.FC = () => {
     }
   }, [newCaseData.selectedDefaultTitle, newCaseData.customerName, defaultTitles]);
 
-  // Update case title when customer name changes
   useEffect(() => {
     if (newCaseData.selectedDefaultTitle && newCaseData.customerName) {
       const selectedTitle = defaultTitles.find(t => t.id === newCaseData.selectedDefaultTitle);
@@ -105,7 +97,6 @@ const Cases: React.FC = () => {
     }
   }, [newCaseData.customerName, newCaseData.selectedDefaultTitle, defaultTitles]);
 
-  // Erinnerungsfunktion für fällige Aufgaben
   useEffect(() => {
     const checkDueDates = () => {
       const today = new Date();
@@ -117,31 +108,27 @@ const Cases: React.FC = () => {
         const dueDate = new Date(caseItem.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         
-        // Überprüfe, ob das Fälligkeitsdatum heute oder in der Vergangenheit liegt
         return dueDate <= today;
       });
       
-      // Sende Erinnerungen für fällige Aufgaben
       dueCases.forEach(caseItem => {
         if (!currentUser) return;
         
-        // Aktualisiere den reminderSent-Status
         setCases(prev => prev.map(c => 
           c.id === caseItem.id ? { ...c, reminderSent: true } : c
         ));
         
-        // Sende eine Benachrichtigung an den zugewiesenen Benutzer
         if (caseItem.assignee && caseItem.assignee.id) {
           const { addNotification } = useUser();
           addNotification({
             title: "Fällige Aufgabe",
             message: `Der Vorgang "${caseItem.title}" ist fällig.`,
             caseId: caseItem.id,
-            targetUserId: caseItem.assignee.id
+            targetUserId: caseItem.assignee.id,
+            type: 'case'
           });
         }
         
-        // Zeige eine Toast-Benachrichtigung für den aktuellen Benutzer an
         if (caseItem.assignee.id === currentUser.id) {
           toast({
             title: "Fällige Aufgabe",
@@ -151,7 +138,6 @@ const Cases: React.FC = () => {
         }
       });
       
-      // Überprüfe Wiedervorlagen
       const followUpCases = cases.filter(caseItem => {
         if (!caseItem.followUpDate || caseItem.status === 'completed' || caseItem.reminderSent) return false;
         
@@ -164,23 +150,21 @@ const Cases: React.FC = () => {
       followUpCases.forEach(caseItem => {
         if (!currentUser) return;
         
-        // Aktualisiere den reminderSent-Status
         setCases(prev => prev.map(c => 
           c.id === caseItem.id ? { ...c, reminderSent: true } : c
         ));
         
-        // Sende eine Benachrichtigung an den zugewiesenen Benutzer
         if (caseItem.assignee && caseItem.assignee.id) {
           const { addNotification } = useUser();
           addNotification({
             title: "Wiedervorlage",
             message: `Der Vorgang "${caseItem.title}" ist zur Wiedervorlage fällig.`,
             caseId: caseItem.id,
-            targetUserId: caseItem.assignee.id
+            targetUserId: caseItem.assignee.id,
+            type: 'case'
           });
         }
         
-        // Zeige eine Toast-Benachrichtigung für den aktuellen Benutzer an
         if (caseItem.assignee.id === currentUser.id) {
           toast({
             title: "Wiedervorlage",
@@ -191,16 +175,13 @@ const Cases: React.FC = () => {
       });
     };
     
-    // Führe die Überprüfung beim Laden der Seite durch
     checkDueDates();
     
-    // Setze einen täglichen Timer für die Überprüfung (für längere Sitzungen)
     const interval = setInterval(checkDueDates, 24 * 60 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, [cases, currentUser]);
 
-  // Mock templates - in a real app, these would be fetched from the server
   const getTemplates = () => {
     const storedTemplates = localStorage.getItem('checklistTemplates');
     if (storedTemplates) {
@@ -218,11 +199,9 @@ const Cases: React.FC = () => {
   const templates = getTemplates();
 
   const getTemplateItems = (templateId: string) => {
-    // Find the template by ID
     const template = templates.find(t => t.id === templateId);
     if (!template) return [];
     
-    // Return the template items
     return template.items;
   };
 
@@ -258,7 +237,7 @@ const Cases: React.FC = () => {
       lastUpdated: new Date().toISOString(),
       customerName: newCaseData.customerName,
       assignee: assignee,
-      creator: currentUser, // Store the creator
+      creator: currentUser,
       dueDate: newCaseData.dueDate || undefined,
       followUpDate: newCaseData.followUpDate || undefined,
       priority: newCaseData.priority,
@@ -297,19 +276,18 @@ const Cases: React.FC = () => {
       description: "Der neue Vorgang wurde erfolgreich angelegt."
     });
 
-    // Notify the assignee if it's not the creator
     if (assignee.id !== currentUser.id) {
       const { addNotification } = useUser();
       addNotification({
         title: "Neuer Vorgang zugewiesen",
         message: `${currentUser.name} hat Ihnen den Vorgang "${newCaseData.title}" zugewiesen.`,
         caseId: newCase.id,
-        targetUserId: assignee.id
+        targetUserId: assignee.id,
+        type: 'case'
       });
     }
   };
 
-  // Filter cases by priority
   const filteredCases = filterPriority === 'all' 
     ? cases 
     : cases.filter(caseItem => caseItem.priority === filterPriority);
@@ -322,9 +300,6 @@ const Cases: React.FC = () => {
           <p className="text-muted-foreground">Alle Vorgänge im Überblick.</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Removed the Standardtitel button */}
-          
-          {/* Prioritäts-Filter */}
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
               <button 
@@ -397,7 +372,6 @@ const Cases: React.FC = () => {
       
       <CasesList cases={filteredCases} updateCase={updateCase} />
 
-      {/* Create Case Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -463,7 +437,6 @@ const Cases: React.FC = () => {
               />
             </div>
             
-            {/* Neue Felder für Fälligkeitsdatum und Wiedervorlage */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="dueDate">
@@ -491,7 +464,6 @@ const Cases: React.FC = () => {
               </div>
             </div>
             
-            {/* Prioritätsfeld */}
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="priority">
                 Priorität
@@ -541,7 +513,6 @@ const Cases: React.FC = () => {
                 <option value="contract_change">Vertragsänderung</option>
                 <option value="inquiry">Kundenanfrage</option>
                 <option value="other">Sonstiges</option>
-                {/* Custom types from templates */}
                 {templates
                   .filter(template => !['damage', 'evb', 'contract_change', 'inquiry', 'other'].includes(template.type))
                   .map(template => (

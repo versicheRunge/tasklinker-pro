@@ -58,7 +58,8 @@ const CaseDetails: React.FC = () => {
             title: "Vorgang neu zugewiesen",
             message: `${currentUser.name} hat den Vorgang "${originalCase.title}" an ${caseData.assignee.name} zugewiesen.`,
             caseId: id,
-            targetUserId: originalCase.creator.id
+            targetUserId: originalCase.creator.id,
+            type: 'case'
           });
         }
       }
@@ -75,7 +76,8 @@ const CaseDetails: React.FC = () => {
           title: "Vorgang abgeschlossen",
           message: `${currentUser.name} hat den Vorgang "${originalCase.title}" abgeschlossen.`,
           caseId: id,
-          targetUserId: originalCase.creator.id
+          targetUserId: originalCase.creator.id,
+          type: 'case'
         });
       }
     }
