@@ -9,7 +9,7 @@ import { toast } from '../../hooks/use-toast';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { users, setCurrentUser } = useUser();
+  const { users, setCurrentUser, validatePassword } = useUser();
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,10 +27,9 @@ export const LoginScreen: React.FC = () => {
       return;
     }
     
-    // In einer echten Anwendung würden wir hier eine sichere Passwortvalidierung durchführen
-    // Für diese Demo akzeptieren wir jedes Passwort mit mindestens 4 Zeichen
-    if (password.length < 4) {
-      setError('Das Passwort muss mindestens 4 Zeichen lang sein');
+    // Validate the password
+    if (!validatePassword(selectedUser.id, password)) {
+      setError('Falsches Passwort');
       return;
     }
     
@@ -98,6 +97,9 @@ export const LoginScreen: React.FC = () => {
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Standard-Passwort: password123
+              </p>
             </div>
             
             {error && (

@@ -26,7 +26,11 @@ interface SettingOption {
 }
 
 const Settings: React.FC = () => {
-  const { currentUser, updateUser } = useUser();
+  const { currentUser, updateUser, changePassword } = useUser();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   
   const [themeSettings, setThemeSettings] = useState<ThemeSetting>({
     mode: 'light',
@@ -137,6 +141,48 @@ const Settings: React.FC = () => {
       title: `${settingNames[key]} geändert`,
       description: `Die Einstellung wurde erfolgreich aktualisiert.`
     });
+  };
+
+  const handlePasswordChange = () => {
+    setPasswordError('');
+    
+    if (!currentPassword) {
+      setPasswordError('Bitte geben Sie Ihr aktuelles Passwort ein');
+      return;
+    }
+    
+    if (!newPassword) {
+      setPasswordError('Bitte geben Sie ein neues Passwort ein');
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setPasswordError('Das neue Passwort muss mindestens 8 Zeichen lang sein');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Die Passwörter stimmen nicht überein');
+      return;
+    }
+    
+    if (currentUser) {
+      const success = changePassword(currentUser.id, currentPassword, newPassword);
+      
+      if (success) {
+        toast({
+          title: "Passwort aktualisiert",
+          description: "Ihr Passwort wurde erfolgreich geändert."
+        });
+        
+        // Clear the password fields
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordError('Das aktuelle Passwort ist falsch');
+      }
+    }
   };
 
   return (
@@ -321,8 +367,13 @@ const Settings: React.FC = () => {
                 <input
                   id="currentPassword"
                   type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                   className="w-full p-2 rounded-md border border-input"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Standard-Passwort: password123
+                </p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,6 +384,8 @@ const Settings: React.FC = () => {
                   <input
                     id="newPassword"
                     type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     className="w-full p-2 rounded-md border border-input"
                   />
                 </div>
@@ -343,24 +396,23 @@ const Settings: React.FC = () => {
                   <input
                     id="confirmPassword"
                     type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full p-2 rounded-md border border-input"
                   />
                 </div>
               </div>
               
+              {passwordError && (
+                <div className="text-destructive text-sm p-2 bg-destructive/10 rounded-md">
+                  {passwordError}
+                </div>
+              )}
+              
               <div className="flex justify-end">
                 <button 
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                  onClick={() => {
-                    toast({
-                      title: "Passwort aktualisiert",
-                      description: "Ihr Passwort wurde erfolgreich geändert."
-                    });
-                    
-                    // Clear the password fields
-                    const passwordFields = document.querySelectorAll('input[type="password"]');
-                    passwordFields.forEach(field => (field as HTMLInputElement).value = '');
-                  }}
+                  onClick={handlePasswordChange}
                 >
                   Passwort ändern
                 </button>

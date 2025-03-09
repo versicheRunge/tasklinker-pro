@@ -5,6 +5,10 @@ import { User, Notification } from '../types/case';
 
 export type UserRole = 'admin' | 'staff';
 
+interface UserWithPassword extends User {
+  password: string;
+}
+
 type UserContextType = {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
@@ -18,9 +22,11 @@ type UserContextType = {
   markNotificationAsRead: (id: string) => void;
   clearNotifications: () => void;
   mentionUser: (userId: string, caseId: string, message: string) => void;
+  validatePassword: (userId: string, password: string) => boolean;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => boolean;
 };
 
-// Convert mockData users to our User type with added userRole
+// Convert mockData users to our User type with added userRole and default password
 const getInitialUsers = () => {
   const storedUsers = localStorage.getItem('users');
   if (storedUsers) {
@@ -34,6 +40,7 @@ const getInitialUsers = () => {
     userRole: index === 0 ? 'admin' : 'staff',
     department: user.department || 'Allgemein',
     phone: user.phone || '',
+    password: 'password123', // Default password for all users
     stats: user.stats || {
       casesHandled: 0,
       completed: 0,
@@ -55,12 +62,14 @@ const UserContext = createContext<UserContextType>({
   markNotificationAsRead: () => {},
   clearNotifications: () => {},
   mentionUser: () => {},
+  validatePassword: () => false,
+  changePassword: () => false,
 });
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<User[]>(getInitialUsers());
+  const [allUsers, setAllUsers] = useState<UserWithPassword[]>(getInitialUsers());
   const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no logged in user
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
@@ -69,7 +78,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUserId = localStorage.getItem('currentUserId');
     if (savedUserId) {
       const user = allUsers.find(u => u.id === savedUserId);
-      if (user) setCurrentUser(user);
+      if (user) {
+        // Create a copy without the password field for the currentUser
+        const { password, ...userWithoutPassword } = user;
+        setCurrentUser(userWithoutPassword);
+      }
     }
   }, [allUsers]);
   
@@ -104,9 +117,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addUser = (userData: Omit<User, 'id'>) => {
     const newUser = {
       ...userData,
-      id: `user-${Date.now()}`
+      id: `user-${Date.now()}`,
+      password: 'password123' // Default password for new users
     };
-    setAllUsers(prev => [...prev, newUser as User]);
+    setAllUsers(prev => [...prev, newUser as UserWithPassword]);
   };
   
   const updateUser = (id: string, userData: Partial<User>) => {
@@ -116,12 +130,33 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Update current user if it's the one being updated
     if (currentUser?.id === id) {
-      setCurrentUser(prev => prev ? { ...prev, ...userData } : prev);
+      // Don't expose password in currentUser
+      const { password, ...updatedUserData } = userData as any;
+      setCurrentUser(prev => prev ? { ...prev, ...updatedUserData } : prev);
     }
   };
   
   const deleteUser = (id: string) => {
     setAllUsers(prev => prev.filter(user => user.id !== id));
+  };
+  
+  const validatePassword = (userId: string, password: string) => {
+    const user = allUsers.find(u => u.id === userId);
+    return user ? user.password === password : false;
+  };
+  
+  const changePassword = (userId: string, currentPassword: string, newPassword: string) => {
+    const userIndex = allUsers.findIndex(u => u.id === userId);
+    if (userIndex === -1) return false;
+    
+    const user = allUsers[userIndex];
+    if (user.password !== currentPassword) return false;
+    
+    const updatedUsers = [...allUsers];
+    updatedUsers[userIndex] = { ...user, password: newPassword };
+    setAllUsers(updatedUsers);
+    
+    return true;
   };
   
   const addNotification = (notificationData: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
@@ -196,13 +231,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addNotification(notification);
   };
   
+  // Create a version of users without passwords for use in the app
+  const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
+  
   return (
     <UserContext.Provider 
       value={{ 
         currentUser, 
         setCurrentUser, 
         isAdmin, 
-        users: allUsers, 
+        users: usersWithoutPasswords, 
         addUser, 
         updateUser, 
         deleteUser,
@@ -210,7 +248,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addNotification,
         markNotificationAsRead,
         clearNotifications,
-        mentionUser
+        mentionUser,
+        validatePassword,
+        changePassword
       }}
     >
       {children}
