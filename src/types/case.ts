@@ -102,6 +102,8 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  type: string; // Typ der Benachrichtigung (z.B. 'case', 'chat', 'system')
   caseId?: string;
   targetUserId?: string; // Added to target specific users
 }
+

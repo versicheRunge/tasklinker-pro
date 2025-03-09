@@ -26,6 +26,7 @@
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
     --font-size-base: 1rem;
+    --mobile-menu-bg: 0 0% 100% / 0.95; /* Weniger transparent für mobile Menüs */
   }
 
   .dark {
@@ -48,6 +49,7 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+    --mobile-menu-bg: 240 10% 3.9% / 0.95; /* Weniger transparent für mobile Menüs */
   }
 
   /* High contrast mode */
@@ -121,6 +123,14 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Mobile menu style */
+@layer components {
+  .mobile-menu-backdrop {
+    @apply bg-background/95;
+    background-color: hsl(var(--mobile-menu-bg));
   }
 }
 

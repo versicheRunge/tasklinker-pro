@@ -1,52 +1,81 @@
 
 import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { BarChart3, FileBarChart, ArrowUpDown, TrendingUp, Users, Download } from 'lucide-react';
 import { cases } from '../data/mockData';
+import { BarChart3, FileBarChart, ArrowUpDown, TrendingUp, Users, Download, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { toast } from "../hooks/use-toast";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Reports = () => {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
-  // Count cases by type
+  // Vorgänge nach Typ zählen
   const casesByType = cases.reduce((acc, curr) => {
     acc[curr.type] = (acc[curr.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Count cases by status
+  // Vorgänge nach Status zählen
   const casesByStatus = cases.reduce((acc, curr) => {
     acc[curr.status] = (acc[curr.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const handleExportData = (format: 'json' | 'csv') => {
-    let dataStr;
-    let filename;
+  // Funktion zum Übersetzen der Vorgangstypen
+  const translateCaseType = (type: string): string => {
+    switch (type) {
+      case 'damage': return 'Schadenmeldung';
+      case 'evb': return 'eVB-Anfrage';
+      case 'contract_change': return 'Vertragsänderung';
+      case 'inquiry': return 'Kundenanfrage';
+      default: return 'Sonstiges';
+    }
+  };
 
+  // Funktion zum Übersetzen der Status
+  const translateCaseStatus = (status: string): string => {
+    switch (status) {
+      case 'new': return 'Neu';
+      case 'in_progress': return 'In Bearbeitung';
+      case 'waiting': return 'Wartet auf Rückmeldung';
+      case 'completed': return 'Abgeschlossen';
+      default: return status;
+    }
+  };
+
+  const handleExportData = (format: 'json' | 'csv' | 'pdf') => {
     if (format === 'json') {
       const dataToExport = cases.map(c => ({
         id: c.id,
-        title: c.title,
-        status: c.status,
-        type: c.type,
-        createdAt: c.createdAt,
-        lastUpdated: c.lastUpdated,
-        assignee: c.assignee.name
+        titel: c.title,
+        status: translateCaseStatus(c.status),
+        typ: translateCaseType(c.type),
+        erstelltAm: c.createdAt,
+        letzteAktualisierung: c.lastUpdated,
+        zugewiesenAn: c.assignee.name
       }));
       
-      dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
-      filename = "vorgaenge_export.json";
-    } else {
-      // Create CSV
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+      const filename = "vorgaenge_export.json";
+      
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    } 
+    else if (format === 'csv') {
+      // CSV erstellen
       const headers = ['ID', 'Titel', 'Status', 'Typ', 'Erstellt am', 'Letzte Aktualisierung', 'Zugewiesen an'];
       const rows = cases.map(c => [
         c.id,
         c.title,
-        c.status,
-        c.type,
+        translateCaseStatus(c.status),
+        translateCaseType(c.type),
         new Date(c.createdAt).toLocaleDateString('de-DE'),
         new Date(c.lastUpdated).toLocaleDateString('de-DE'),
         c.assignee.name
@@ -57,16 +86,56 @@ const Reports = () => {
         ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
       
-      dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-      filename = "vorgaenge_export.csv";
+      const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+      const filename = "vorgaenge_export.csv";
+      
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
     }
-
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", filename);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    else if (format === 'pdf') {
+      // PDF erstellen mit jsPDF
+      const pdf = new jsPDF();
+      
+      // Titel
+      pdf.setFontSize(20);
+      pdf.text('Vorgänge - Exportbericht', 14, 22);
+      pdf.setFontSize(12);
+      pdf.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 14, 32);
+      
+      // Tabellendaten vorbereiten
+      const tableColumn = ['ID', 'Titel', 'Status', 'Typ', 'Erstellt am', 'Zugewiesen an'];
+      const tableRows = cases.map(c => [
+        c.id,
+        c.title,
+        translateCaseStatus(c.status),
+        translateCaseType(c.type),
+        new Date(c.createdAt).toLocaleDateString('de-DE'),
+        c.assignee.name
+      ]);
+      
+      // Tabelle erstellen
+      autoTable(pdf, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 40,
+        styles: { 
+          fontSize: 9,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [60, 60, 60],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      // PDF speichern
+      pdf.save('vorgaenge_export.pdf');
+    }
     
     setIsExportDialogOpen(false);
     toast({
@@ -75,12 +144,90 @@ const Reports = () => {
     });
   };
 
+  const exportReportToPdf = (reportId: string) => {
+    const pdf = new jsPDF();
+    let currentY = 20;
+    
+    // Berichtstitel basierend auf ID
+    let title = "Bericht";
+    let reportData: any[] = [];
+    
+    switch(reportId) {
+      case 'categories':
+        title = "Vorgänge nach Kategorien";
+        reportData = Object.entries(casesByType).map(([type, count]) => 
+          [translateCaseType(type), count.toString()]);
+        break;
+      case 'performance':
+        title = "Performance-Analyse";
+        reportData = Object.entries(casesByStatus).map(([status, count]) =>
+          [translateCaseStatus(status), count.toString()]);
+        break;
+      case 'monthly':
+        title = "Monatliche Zusammenfassung";
+        reportData = [
+          ["Neu erstellte Vorgänge", cases.length.toString()],
+          ["Abgeschlossene Vorgänge", (casesByStatus['completed'] || 0).toString()],
+          ["Ausstehende Vorgänge", (cases.length - (casesByStatus['completed'] || 0)).toString()]
+        ];
+        break;
+      case 'comparison':
+        title = "Vergleichsanalyse";
+        reportData = [
+          ["Schadenmeldungen", (casesByType['damage'] || 0).toString()],
+          ["eVB-Anfragen", (casesByType['evb'] || 0).toString()],
+          ["Vertragsänderungen", (casesByType['contract_change'] || 0).toString()],
+          ["Kundenanfragen", (casesByType['inquiry'] || 0).toString()]
+        ];
+        break;
+      case 'team':
+        title = "Team-Performance";
+        // Beispielhafte Teamdaten
+        reportData = [
+          ["Bearbeiter 1", "8 Vorgänge"],
+          ["Bearbeiter 2", "12 Vorgänge"],
+          ["Bearbeiter 3", "5 Vorgänge"]
+        ];
+        break;
+    }
+    
+    // Titel
+    pdf.setFontSize(22);
+    pdf.text(title, 14, currentY);
+    currentY += 10;
+    
+    // Datum
+    pdf.setFontSize(12);
+    pdf.text(`Bericht erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 14, currentY);
+    currentY += 15;
+    
+    // Tabellendaten
+    autoTable(pdf, {
+      head: [[reportId === 'categories' ? 'Kategorie' : reportId === 'performance' ? 'Status' : 'Metrik', 'Wert']],
+      body: reportData,
+      startY: currentY,
+      styles: { fontSize: 10, cellPadding: 5 },
+      headStyles: {
+        fillColor: [60, 60, 60],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      }
+    });
+    
+    // PDF speichern
+    pdf.save(`${title.toLowerCase().replace(/\s+/g, '_')}_export.pdf`);
+    
+    toast({
+      title: "PDF Export erfolgreich",
+      description: `Der Bericht "${title}" wurde als PDF exportiert.`
+    });
+  };
+
   const openReport = (reportId: string) => {
     setSelectedReport(reportId);
     
-    // In a real app, this would load the actual report
-    // For now, we'll show an export dialog
-    setIsExportDialogOpen(true);
+    // PDF-Export für den ausgewählten Bericht
+    exportReportToPdf(reportId);
   };
 
   return (
@@ -113,12 +260,7 @@ const Reports = () => {
           <div className="space-y-3 mb-4">
             {Object.entries(casesByType).map(([type, count]) => (
               <div key={type} className="flex justify-between items-center">
-                <span className="text-sm">
-                  {type === 'damage' ? 'Schadenmeldung' : 
-                   type === 'evb' ? 'eVB-Anfrage' :
-                   type === 'contract_change' ? 'Vertragsänderung' :
-                   type === 'inquiry' ? 'Kundenanfrage' : 'Sonstiges'}
-                </span>
+                <span className="text-sm">{translateCaseType(type)}</span>
                 <span className="font-medium">{count}</span>
               </div>
             ))}
@@ -141,11 +283,7 @@ const Reports = () => {
           <div className="space-y-3 mb-4">
             {Object.entries(casesByStatus).map(([status, count]) => (
               <div key={status} className="flex justify-between items-center">
-                <span className="text-sm">
-                  {status === 'new' ? 'Neu' : 
-                   status === 'in_progress' ? 'In Bearbeitung' :
-                   status === 'waiting' ? 'Wartet auf Rückmeldung' : 'Abgeschlossen'}
-                </span>
+                <span className="text-sm">{translateCaseStatus(status)}</span>
                 <span className="font-medium">{count}</span>
               </div>
             ))}
@@ -225,7 +363,7 @@ const Reports = () => {
           </DialogHeader>
           <div className="py-4">
             <p className="text-muted-foreground mb-4">Wählen Sie das Format für den Export der Daten:</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <button
                 className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
                 onClick={() => handleExportData('json')}
@@ -245,7 +383,18 @@ const Reports = () => {
                   <Download className="w-6 h-6 text-green-600" />
                 </div>
                 <span className="font-medium">CSV Format</span>
-                <span className="text-xs text-muted-foreground">Für Excel/Tabellen</span>
+                <span className="text-xs text-muted-foreground">Für Tabellen</span>
+              </button>
+              
+              <button
+                className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                onClick={() => handleExportData('pdf')}
+              >
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="font-medium">PDF Format</span>
+                <span className="text-xs text-muted-foreground">Zum Ausdrucken</span>
               </button>
             </div>
           </div>

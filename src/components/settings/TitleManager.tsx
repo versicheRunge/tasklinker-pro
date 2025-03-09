@@ -99,6 +99,17 @@ export const TitleManager: React.FC = () => {
     });
   };
 
+  // Funktion zum Übersetzen der Vorgangstypen
+  const translateCaseType = (type: string): string => {
+    switch (type) {
+      case 'damage': return 'Schadenmeldung';
+      case 'evb': return 'eVB-Anfrage';
+      case 'contract_change': return 'Vertragsänderung';
+      case 'inquiry': return 'Kundenanfrage';
+      default: return type;
+    }
+  };
+
   return (
     <div className="bg-card rounded-lg border border-border p-6">
       <h2 className="text-xl font-bold mb-4">Standardtitel verwalten</h2>
@@ -126,10 +137,7 @@ export const TitleManager: React.FC = () => {
                   )}
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="mr-2 border-amber-500 text-amber-500">
-                      {title.type === 'damage' ? 'Schadenmeldung' : 
-                      title.type === 'evb' ? 'eVB-Anfrage' : 
-                      title.type === 'contract_change' ? 'Vertragsänderung' :
-                      title.type === 'inquiry' ? 'Kundenanfrage' : title.type}
+                      {translateCaseType(title.type)}
                     </Badge>
                     
                     {editingTitleId === title.id ? (

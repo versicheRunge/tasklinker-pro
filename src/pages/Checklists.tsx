@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { cases } from '../data/mockData';
@@ -365,7 +366,7 @@ const Checklists: React.FC = () => {
   };
 
   const handleOpenEditDialog = () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || !isAdmin) return;
     
     setEditingTemplate({
       id: selectedTemplate.id,
@@ -411,7 +412,7 @@ const Checklists: React.FC = () => {
   };
 
   const handleOpenDeleteDialog = () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || !isAdmin) return;
     setTemplateToDelete(selectedTemplate.id);
     setIsDeleteDialogOpen(true);
   };
@@ -570,11 +571,35 @@ const Checklists: React.FC = () => {
             </div>
           ) : (
             <div className="bg-card rounded-xl border border-border p-6 animate-fade-in">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold">{selectedTemplate.title}</h2>
-                <p className="text-muted-foreground text-sm">
-                  Standard-Checkliste für {selectedTemplate.title} Vorgänge
-                </p>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold">{selectedTemplate.title}</h2>
+                  <p className="text-muted-foreground text-sm">
+                    Standard-Checkliste für {selectedTemplate.title} Vorgänge
+                  </p>
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={handleOpenEditDialog}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      <span>Bearbeiten</span>
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={handleOpenDeleteDialog}
+                    >
+                      <Trash className="h-4 w-4" />
+                      <span>Löschen</span>
+                    </Button>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-3">
@@ -851,4 +876,3 @@ const Checklists: React.FC = () => {
 };
 
 export default Checklists;
-
