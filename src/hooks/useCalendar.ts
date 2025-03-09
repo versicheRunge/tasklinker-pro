@@ -3,9 +3,8 @@ import { useCalendarEvents } from './calendar/useCalendarEvents';
 import { useCalendarDate } from './calendar/useCalendarDate';
 import { useEventDialogs } from './calendar/useEventDialogs';
 import { useAdminView } from './calendar/useAdminView';
-import { getEventsForDate } from '../utils/calendarUtils';
+import { getEventsForDate as getEventsForSpecificDate } from '../utils/calendarUtils';
 import { useUser } from '../contexts/UserContext';
-import { CalendarEvent } from '../types/calendar';
 
 export const useCalendar = () => {
   const { users, currentUser, isAdmin } = useUser();
@@ -56,6 +55,11 @@ export const useCalendar = () => {
     setNewEvent(prev => ({ ...prev, date: updatedDate }));
   };
 
+  // Function to get events for a specific date
+  const getEventsForDate = (specificDate: Date) => {
+    return getEventsForSpecificDate(specificDate, events);
+  };
+
   return {
     date,
     events,
@@ -74,6 +78,6 @@ export const useCalendar = () => {
     handleDeleteEvent: deleteEvent,
     handleViewEvent,
     handleDateChange: onDateChange,
-    getEventsForDate: (date: Date) => getEventsForDate(date, events)
+    getEventsForDate
   };
 };
