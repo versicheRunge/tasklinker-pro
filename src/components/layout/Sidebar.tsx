@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, FileText, Users, Settings, BarChart3 } from 'lucide-react';
+import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -11,6 +10,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Vorgänge', path: '/cases', icon: FileText },
     { name: 'Checklisten', path: '/checklists', icon: CheckSquare },
     { name: 'Team', path: '/team', icon: Users },
+    { name: 'Chat', path: '/chat', icon: MessageSquare },
     { name: 'Berichte', path: '/reports', icon: BarChart3 },
     { name: 'Einstellungen', path: '/settings', icon: Settings },
   ];

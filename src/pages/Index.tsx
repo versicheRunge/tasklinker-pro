@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare, ListChecks, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -38,13 +37,11 @@ const Index: React.FC = () => {
     currentUser && c.assignee.id === currentUser.id && !c.archived
   );
 
-  // Dringende und fällige Aufgaben für den aktuellen Benutzer
   const myUrgentCases = myAssignedCases.filter(c => 
     c.priority === 'urgent' || c.priority === 'high' || 
     (c.dueDate && (isToday(new Date(c.dueDate)) || isPast(new Date(c.dueDate))))
   );
   
-  // Aufgaben, die bald fällig sind (innerhalb der nächsten 3 Tage)
   const mySoonDueCases = myAssignedCases.filter(c => {
     if (!c.dueDate || c.status === 'completed') return false;
     const dueDate = new Date(c.dueDate);
@@ -56,11 +53,6 @@ const Index: React.FC = () => {
     currentUser && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
   );
   
-  const myNewCases = myCases.filter(c => c.status === 'new');
-  const myInProgressCases = myCases.filter(c => c.status === 'in_progress');
-  const myWaitingCases = myCases.filter(c => c.status === 'waiting');
-  const myCompletedCases = myCases.filter(c => c.status === 'completed');
-  
   const newCases = allCases.filter(c => c.status === 'new' && !c.archived);
   const inProgressCases = allCases.filter(c => c.status === 'in_progress' && !c.archived);
   const waitingCases = allCases.filter(c => c.status === 'waiting' && !c.archived);
@@ -71,7 +63,6 @@ const Index: React.FC = () => {
     navigate('/cases');
   };
 
-  // Hilfsfunktion für Prioritätsbadge
   const renderPriorityBadge = (priority?: string) => {
     if (!priority) return null;
     
@@ -91,7 +82,7 @@ const Index: React.FC = () => {
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[priority]}`}>
-        {labels[priority]}
+        Prio {labels[priority]}
       </span>
     );
   };
@@ -142,6 +133,26 @@ const Index: React.FC = () => {
         </div>
       </div>
       
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-medium">Team-Chat</h2>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/chat')}>
+            Zum Chat
+          </Button>
+        </div>
+        
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-border p-4">
+          <p className="text-muted-foreground mb-3">Kommunizieren Sie in Echtzeit mit Ihrem Team.</p>
+          <Button onClick={() => navigate('/chat')}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Chat öffnen
+          </Button>
+        </div>
+      </div>
+      
       {currentUser && myUrgentCases.length > 0 && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -160,7 +171,7 @@ const Index: React.FC = () => {
                 <CaseCard key={caseItem.id} caseItem={caseItem} />
                 <div className="absolute top-2 right-2 flex gap-1">
                   {caseItem.priority === 'urgent' && (
-                    <Badge className="bg-red-500">Dringend</Badge>
+                    <Badge className="bg-red-500">Prio Dringend</Badge>
                   )}
                   {caseItem.dueDate && isPast(new Date(caseItem.dueDate)) && (
                     <Badge variant="destructive">Überfällig</Badge>
@@ -204,12 +215,12 @@ const Index: React.FC = () => {
         </div>
       )}
       
-      {currentUser && myAssignedCases.length > 0 && (
+      {currentUser && myActiveCases.length > 0 && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <ListChecks className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-medium">Meine To-Do Liste</h2>
+              <h2 className="text-xl font-medium">Meine Vorgänge</h2>
             </div>
             <Button variant="outline" onClick={() => navigate('/cases')}>
               Alle anzeigen
@@ -217,7 +228,7 @@ const Index: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myAssignedCases.slice(0, 3).map(caseItem => (
+            {myActiveCases.slice(0, 6).map(caseItem => (
               <div key={caseItem.id} className="relative">
                 <CaseCard key={caseItem.id} caseItem={caseItem} />
                 <div className="absolute top-2 right-2 flex gap-1 flex-wrap">
@@ -232,40 +243,6 @@ const Index: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
-      
-      {currentUser && (
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-medium">Meine Vorgänge</h2>
-            <Button variant="outline" onClick={() => navigate('/cases')}>
-              Alle anzeigen
-            </Button>
-          </div>
-          
-          {myActiveCases.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myActiveCases.slice(0, 6).map(caseItem => (
-                <div key={caseItem.id} className="relative">
-                  <CaseCard key={caseItem.id} caseItem={caseItem} />
-                  <div className="absolute top-2 right-2 flex gap-1 flex-wrap">
-                    {renderPriorityBadge(caseItem.priority)}
-                    {caseItem.dueDate && (
-                      <Badge variant="outline" className="text-xs">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {format(new Date(caseItem.dueDate), 'dd.MM.yyyy', {locale: de})}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-lg">
-              <p className="text-muted-foreground">Keine aktiven Vorgänge für Sie</p>
-            </div>
-          )}
         </div>
       )}
       

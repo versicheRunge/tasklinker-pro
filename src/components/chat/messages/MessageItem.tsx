@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Avatar } from '../../ui/avatar';
+import { Paperclip } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Message, User } from '../../../types/chat';

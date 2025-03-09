@@ -20,11 +20,12 @@ const statusColors = {
   completed: 'bg-green-100 text-green-700 border-green-200'
 };
 
-const priorityVariants = {
-  high: "priority-high",
-  medium: "priority-medium",
-  low: "priority-low",
-  none: "priority-none"
+const priorityVariants: Record<string, string> = {
+  high: "bg-red-100 text-red-800",
+  urgent: "bg-red-100 text-red-800",
+  medium: "bg-amber-100 text-amber-800",
+  low: "bg-green-100 text-green-800",
+  none: "bg-gray-100 text-gray-800"
 };
 
 interface CaseCardProps {
@@ -55,16 +56,17 @@ export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
     high: 'Hoch',
     medium: 'Mittel',
     low: 'Niedrig',
-    none: 'Keine'
+    none: 'Keine',
+    urgent: 'Dringend'
   };
 
   return (
-    <Link to={`/cases/${caseItem.id}`}>
+    <Link to={`/vorgaenge/${caseItem.id}`}>
       <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in">
         <div className="flex justify-between items-start mb-3">
           <span className="text-xs text-muted-foreground">#{caseItem.id.slice(0, 8)}</span>
           <div className="flex gap-2">
-            <Badge variant={priorityVariants[priority]} className="flex items-center gap-1 px-2 py-1 text-xs font-medium">
+            <Badge className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${priorityVariants[priority]}`}>
               <Flag className="w-3 h-3" />
               Prio {priorityLabel[priority]}
             </Badge>
