@@ -5,6 +5,8 @@ import { TopBar } from './TopBar';
 import { useUser } from '../../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { LoginScreen } from '../auth/LoginScreen';
+import { MasterPasswordPrompt } from '../auth/MasterPasswordPrompt';
+import { useAccessControl } from '../../hooks/useAccessControl';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -14,16 +16,21 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useUser();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAccessControl();
   
   const handleMenuClick = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   useEffect(() => {
-    if (!currentUser && window.location.pathname !== '/login') {
+    if (!currentUser && window.location.pathname !== '/login' && isAuthenticated) {
       navigate('/login');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return <MasterPasswordPrompt />;
+  }
 
   if (!currentUser) {
     return <LoginScreen />;
