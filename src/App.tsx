@@ -15,7 +15,7 @@ import Login from './pages/Login';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider>
       <UserProvider>
         <Router>
           <Routes>

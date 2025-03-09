@@ -100,6 +100,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
   
+  // Define getFileIcon function at the component level
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) {
       return <Image className="w-5 h-5" />;
@@ -173,6 +174,17 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
     }
   };
   
+  // Define getFileIcon function for FilePreview component
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) {
+      return <Image className="w-5 h-5" />;
+    } else if (mimeType.startsWith('text/')) {
+      return <FileText className="w-5 h-5" />;
+    } else {
+      return <FileIcon className="w-5 h-5" />;
+    }
+  };
+  
   return (
     <div className="flex items-center justify-between p-3 border rounded-md mb-2">
       <div className="flex items-center space-x-3">
@@ -190,7 +202,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, onRemove }) => {
       </div>
       <button
         onClick={(e) => {
-          e.stopPropagation();
+          e.stopP
+
+ropagation();
           onRemove();
         }}
         className="p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
