@@ -17,14 +17,14 @@ const Index: React.FC = () => {
 
   // Count cases assigned to the current user
   const assignedToMeCount = cases.filter(c => 
-    c.assignee && c.assignee.id === currentUser?.id && c.status !== 'archived' && !c.archived
+    c.assignee && c.assignee.id === currentUser?.id && !c.archived
   ).length;
 
   // Count total active cases
-  const activeCasesCount = cases.filter(c => c.status !== 'archived' && !c.archived).length;
+  const activeCasesCount = cases.filter(c => !c.archived).length;
 
   // Count high priority cases
-  const highPriorityCount = cases.filter(c => c.priority === 'high' && c.status !== 'archived' && !c.archived).length;
+  const highPriorityCount = cases.filter(c => c.priority === 'high' && !c.archived).length;
 
   // Count team members
   const teamCount = users.length;
