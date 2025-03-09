@@ -53,7 +53,7 @@ const CaseDetails: React.FC = () => {
       ) {
         // Only notify if the creator is not the current user and not the new assignee
         if (originalCase.creator.id !== caseData.assignee.id) {
-          const { addNotification } = useUser();
+          const addNotification = useUser().addNotification;
           addNotification({
             title: "Vorgang neu zugewiesen",
             message: `${currentUser.name} hat den Vorgang "${originalCase.title}" an ${caseData.assignee.name} zugewiesen.`,
@@ -71,10 +71,27 @@ const CaseDetails: React.FC = () => {
         originalCase.creator && 
         originalCase.creator.id !== currentUser.id
       ) {
-        const { addNotification } = useUser();
+        const addNotification = useUser().addNotification;
         addNotification({
           title: "Vorgang abgeschlossen",
           message: `${currentUser.name} hat den Vorgang "${originalCase.title}" abgeschlossen.`,
+          caseId: id,
+          targetUserId: originalCase.creator.id,
+          type: 'case'
+        });
+      }
+      
+      // Notify if priority has changed
+      if (
+        caseData.priority && 
+        originalCase.priority !== caseData.priority && 
+        originalCase.creator && 
+        originalCase.creator.id !== currentUser.id
+      ) {
+        const addNotification = useUser().addNotification;
+        addNotification({
+          title: "Priorität geändert",
+          message: `${currentUser.name} hat die Priorität des Vorgangs "${originalCase.title}" geändert.`,
           caseId: id,
           targetUserId: originalCase.creator.id,
           type: 'case'

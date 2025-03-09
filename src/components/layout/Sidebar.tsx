@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare } from 'lucide-react';
+import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Shield } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
 
