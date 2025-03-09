@@ -56,6 +56,11 @@ export const useCalendar = () => {
     setNewEvent(prev => ({ ...prev, date: updatedDate }));
   };
 
+  // Get events for a specific date
+  const getEventsForSpecificDate = (date: Date) => {
+    return getEventsForDate(date, events);
+  };
+
   return {
     date,
     events,
@@ -74,6 +79,6 @@ export const useCalendar = () => {
     handleDeleteEvent: deleteEvent,
     handleViewEvent,
     handleDateChange: onDateChange,
-    getEventsForDate: (date: Date) => getEventsForDate(date, events)
+    getEventsForDate: getEventsForSpecificDate
   };
 };
