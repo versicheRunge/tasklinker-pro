@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { cases } from '../data/mockData';
 import { CheckSquare, PlusCircle, Edit2, Trash, Save, ChevronDown, ChevronRight, Plus } from 'lucide-react';
@@ -9,35 +9,43 @@ import { ChecklistItemType, CaseType, SubChecklistItem } from '../types/case';
 const Checklists: React.FC = () => {
   const { isAdmin } = useUser();
   
-  // Group all checklists by type
-  const initialTemplates = [
-    {
-      id: 'template-1',
-      title: 'Schadenmeldung',
-      type: 'damage' as CaseType,
-      items: cases.find(c => c.type === 'damage')?.checklist || []
-    },
-    {
-      id: 'template-2',
-      title: 'eVB-Anfrage',
-      type: 'evb' as CaseType,
-      items: cases.find(c => c.type === 'evb')?.checklist || []
-    },
-    {
-      id: 'template-3',
-      title: 'Vertragsänderung',
-      type: 'contract_change' as CaseType,
-      items: cases.find(c => c.type === 'contract_change')?.checklist || []
-    },
-    {
-      id: 'template-4',
-      title: 'Kundenanfrage',
-      type: 'inquiry' as CaseType,
-      items: cases.find(c => c.type === 'inquiry')?.checklist || []
+  // Load templates from localStorage or use initial data
+  const getStoredTemplates = () => {
+    const storedTemplates = localStorage.getItem('checklistTemplates');
+    if (storedTemplates) {
+      return JSON.parse(storedTemplates);
     }
-  ];
+    
+    // Group all checklists by type
+    return [
+      {
+        id: 'template-1',
+        title: 'Schadenmeldung',
+        type: 'damage' as CaseType,
+        items: cases.find(c => c.type === 'damage')?.checklist || []
+      },
+      {
+        id: 'template-2',
+        title: 'eVB-Anfrage',
+        type: 'evb' as CaseType,
+        items: cases.find(c => c.type === 'evb')?.checklist || []
+      },
+      {
+        id: 'template-3',
+        title: 'Vertragsänderung',
+        type: 'contract_change' as CaseType,
+        items: cases.find(c => c.type === 'contract_change')?.checklist || []
+      },
+      {
+        id: 'template-4',
+        title: 'Kundenanfrage',
+        type: 'inquiry' as CaseType,
+        items: cases.find(c => c.type === 'inquiry')?.checklist || []
+      }
+    ];
+  };
 
-  const [checklistTemplates, setChecklistTemplates] = useState(initialTemplates);
+  const [checklistTemplates, setChecklistTemplates] = useState(getStoredTemplates());
   const [selectedTemplate, setSelectedTemplate] = useState(checklistTemplates[0]);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState('');
@@ -57,6 +65,11 @@ const Checklists: React.FC = () => {
   const [newSubItemText, setNewSubItemText] = useState('');
   const [isCustomType, setIsCustomType] = useState(false);
   const [customType, setCustomType] = useState('');
+
+  // Save templates to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
+  }, [checklistTemplates]);
 
   const toggleItemExpanded = (index: number) => {
     setExpandedItems(prev => {
@@ -94,7 +107,11 @@ const Checklists: React.FC = () => {
     });
     
     setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
+    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
+    if (updatedSelectedTemplate) {
+      setSelectedTemplate(updatedSelectedTemplate);
+    }
+    
     setEditingItemIndex(null);
     setEditingText('');
     setEditingDescription('');
@@ -117,7 +134,10 @@ const Checklists: React.FC = () => {
     });
     
     setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
+    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
+    if (updatedSelectedTemplate) {
+      setSelectedTemplate(updatedSelectedTemplate);
+    }
     
     toast({
       title: "Eintrag gelöscht",
@@ -143,7 +163,11 @@ const Checklists: React.FC = () => {
     });
     
     setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
+    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
+    if (updatedSelectedTemplate) {
+      setSelectedTemplate(updatedSelectedTemplate);
+    }
+    
     setNewItemText('');
     setNewItemDescription('');
     setIsAddingItem(false);
@@ -174,8 +198,16 @@ const Checklists: React.FC = () => {
         });
         return;
       }
-      typeValue = customType.trim();
+      typeValue = customType.trim() as CaseType;
     } else {
+      if (!newTemplate.type) {
+        toast({
+          title: "Fehler",
+          description: "Bitte wählen Sie einen Typ für die Checkliste aus.",
+          variant: "destructive"
+        });
+        return;
+      }
       typeValue = newTemplate.type;
     }
 
@@ -187,7 +219,8 @@ const Checklists: React.FC = () => {
       items: []
     };
 
-    setChecklistTemplates(prev => [...prev, newChecklistTemplate]);
+    const updatedTemplates = [...checklistTemplates, newChecklistTemplate];
+    setChecklistTemplates(updatedTemplates);
     setSelectedTemplate(newChecklistTemplate);
     setIsAddingTemplate(false);
     setNewTemplate({

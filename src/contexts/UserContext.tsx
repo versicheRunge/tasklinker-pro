@@ -1,6 +1,6 @@
 
-import React, { createContext, useContext, useState } from 'react';
-import { users } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { users as initialUsers } from '../data/mockData';
 import { User } from '../types/case';
 
 export type UserRole = 'admin' | 'staff';
@@ -16,12 +16,26 @@ type UserContextType = {
 };
 
 // Convert mockData users to our User type with added userRole
-const extendedUsers: User[] = users.map((user, index) => ({
-  ...user,
-  // Only add email if it doesn't exist (now email is optional in the User type)
-  ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
-  userRole: index === 0 ? 'admin' : 'staff'
-}));
+const getInitialUsers = () => {
+  const storedUsers = localStorage.getItem('users');
+  if (storedUsers) {
+    return JSON.parse(storedUsers);
+  }
+  
+  return initialUsers.map((user, index) => ({
+    ...user,
+    // Only add email if it doesn't exist (now email is optional in the User type)
+    ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
+    userRole: index === 0 ? 'admin' : 'staff',
+    department: user.department || 'Allgemein',
+    phone: user.phone || '',
+    stats: user.stats || {
+      cases: 0,
+      completed: 0,
+      inProgress: 0
+    }
+  }));
+};
 
 const UserContext = createContext<UserContextType>({
   currentUser: null,
@@ -36,8 +50,13 @@ const UserContext = createContext<UserContextType>({
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<User[]>(extendedUsers);
-  const [currentUser, setCurrentUser] = useState<User | null>(extendedUsers[0]); // Default to first user (admin)
+  const [allUsers, setAllUsers] = useState<User[]>(getInitialUsers());
+  const [currentUser, setCurrentUser] = useState<User | null>(getInitialUsers()[0]); // Default to first user (admin)
+  
+  // Save users to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(allUsers));
+  }, [allUsers]);
   
   const isAdmin = currentUser?.userRole === 'admin';
   

@@ -18,7 +18,13 @@ import { Button } from "../components/ui/button";
 import { useUser } from '../contexts/UserContext';
 
 const Cases: React.FC = () => {
-  const [cases, setCases] = useState<CaseItem[]>(initialCasesData);
+  // Use localStorage to persist cases between sessions
+  const getStoredCases = () => {
+    const storedCases = localStorage.getItem('cases');
+    return storedCases ? JSON.parse(storedCases) : initialCasesData;
+  };
+
+  const [cases, setCases] = useState<CaseItem[]>(getStoredCases());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCaseData, setNewCaseData] = useState({
     title: '',
@@ -27,6 +33,11 @@ const Cases: React.FC = () => {
     selectedTemplate: ''
   });
   const { currentUser } = useUser();
+
+  // Save cases to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('cases', JSON.stringify(cases));
+  }, [cases]);
 
   // Mock templates - in a real app, these would be fetched from the server
   const templates = [
@@ -175,7 +186,7 @@ const Cases: React.FC = () => {
                 <option value="contract_change">Vertragsänderung</option>
                 <option value="inquiry">Kundenanfrage</option>
                 <option value="other">Sonstiges</option>
-                {/* Add custom types that might be available from templates */}
+                {/* Custom types from templates */}
                 {templates
                   .filter(template => !['damage', 'evb', 'contract_change', 'inquiry', 'other'].includes(template.type))
                   .map(template => (

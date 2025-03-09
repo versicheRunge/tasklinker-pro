@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, Save, RefreshCw, Archive, Trash2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
@@ -80,7 +81,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       type: 'status',
       content: `Status geändert auf: ${statusLabel[newStatus]}`,
       timestamp: new Date().toISOString(),
-      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
+      caseId: caseItem.id
     };
     
     const updatedCase = {
@@ -93,11 +95,22 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     setCaseItem(updatedCase);
     
     if (updateCase) {
+      // Use a direct update to ensure the state is saved
       updateCase(caseItem.id, {
         status: newStatus,
         lastUpdated: updatedCase.lastUpdated,
         activities: updatedCase.activities
       });
+      
+      // Store in localStorage as a backup
+      const storedCases = localStorage.getItem('cases');
+      if (storedCases) {
+        const allCases = JSON.parse(storedCases) as CaseItem[];
+        const updatedCases = allCases.map(c => 
+          c.id === caseItem.id ? updatedCase : c
+        );
+        localStorage.setItem('cases', JSON.stringify(updatedCases));
+      }
     }
     
     setTimeout(() => {
