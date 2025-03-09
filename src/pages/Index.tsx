@@ -8,11 +8,21 @@ import { CaseCard } from '../components/cases/CaseCard';
 import { dashboardStats, cases } from '../data/mockData';
 import { useUser } from '../contexts/UserContext';
 import { toast } from "../hooks/use-toast";
+import { useNavigate } from 'react-router-dom';
+import { CaseStatus } from '../types/case';
 
 const Index: React.FC = () => {
-  const newCases = cases.filter(c => c.status === 'new');
-  const completedCases = cases.filter(c => c.status === 'completed');
+  const navigate = useNavigate();
+  const newCases = cases.filter(c => c.status === 'new' && !c.archived);
+  const inProgressCases = cases.filter(c => c.status === 'in_progress' && !c.archived);
+  const waitingCases = cases.filter(c => c.status === 'waiting' && !c.archived);
+  const completedCases = cases.filter(c => c.status === 'completed' && !c.archived);
+  const activeCases = cases.filter(c => c.status !== 'completed' && !c.archived);
   const { isAdmin } = useUser();
+  
+  const handleStatCardClick = (status?: CaseStatus) => {
+    navigate('/cases');
+  };
   
   return (
     <AppLayout>
@@ -22,30 +32,42 @@ const Index: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard 
-          title="Offene Vorgänge"
-          value={dashboardStats.totalCases}
-          icon={FileText}
-          color="bg-blue-100 text-blue-600"
-        />
-        <StatCard 
-          title="Neue Vorgänge"
-          value={dashboardStats.newCases}
-          icon={ClipboardCheck}
-          color="bg-purple-100 text-purple-600"
-        />
-        <StatCard 
-          title="In Bearbeitung"
-          value={dashboardStats.inProgressCases}
-          icon={CheckSquare}
-          color="bg-amber-100 text-amber-600"
-        />
-        <StatCard 
-          title="Abgeschlossene Vorgänge"
-          value={completedCases.length}
-          icon={Archive}
-          color="bg-green-100 text-green-600"
-        />
+        <div onClick={() => handleStatCardClick()}>
+          <StatCard 
+            title="Offene Vorgänge"
+            value={activeCases.length}
+            icon={FileText}
+            color="bg-blue-100 text-blue-600"
+            className="cursor-pointer hover:shadow-md transition-shadow"
+          />
+        </div>
+        <div onClick={() => handleStatCardClick('new')}>
+          <StatCard 
+            title="Neue Vorgänge"
+            value={newCases.length}
+            icon={ClipboardCheck}
+            color="bg-purple-100 text-purple-600"
+            className="cursor-pointer hover:shadow-md transition-shadow"
+          />
+        </div>
+        <div onClick={() => handleStatCardClick('in_progress')}>
+          <StatCard 
+            title="In Bearbeitung"
+            value={inProgressCases.length}
+            icon={CheckSquare}
+            color="bg-amber-100 text-amber-600"
+            className="cursor-pointer hover:shadow-md transition-shadow"
+          />
+        </div>
+        <div onClick={() => handleStatCardClick()}>
+          <StatCard 
+            title="Abgeschlossene Vorgänge"
+            value={completedCases.length}
+            icon={Archive}
+            color="bg-green-100 text-green-600"
+            className="cursor-pointer hover:shadow-md transition-shadow"
+          />
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -86,6 +108,15 @@ const Index: React.FC = () => {
                 title: "Export gestartet",
                 description: "Der Export der abgeschlossenen Vorgänge wurde gestartet.",
               });
+              
+              // In a real app, we would trigger an actual export here
+              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(completedCases));
+              const downloadAnchorNode = document.createElement('a');
+              downloadAnchorNode.setAttribute("href", dataStr);
+              downloadAnchorNode.setAttribute("download", "abgeschlossene_vorgaenge.json");
+              document.body.appendChild(downloadAnchorNode);
+              downloadAnchorNode.click();
+              downloadAnchorNode.remove();
             }}
           >
             <Archive className="w-4 h-4" />

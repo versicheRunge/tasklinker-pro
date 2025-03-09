@@ -4,32 +4,21 @@ import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
-  value: string | number;
-  change?: {
-    value: number;
-    positive: boolean;
-  };
+  value: number | string;
   icon: LucideIcon;
   color: string;
+  className?: string;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  change,
-  icon: Icon,
-  color
-}) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, className = '' }) => {
   return (
-    <div className="p-6 rounded-xl border border-border bg-card animate-scale-in">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-semibold mt-1">{value}</h3>
-        </div>
-        <div className={`p-2.5 rounded-xl ${color}`}>
-          <Icon className="w-5 h-5" />
-        </div>
+    <div className={`flex items-center gap-4 p-6 rounded-xl border border-border bg-card ${className}`}>
+      <div className={`p-3 rounded-full ${color}`}>
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        <p className="text-2xl font-bold mt-1">{value}</p>
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
-
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
-export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other';
+export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
 
 export interface User {
   id: string;

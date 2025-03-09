@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, Save, RefreshCw, Archive, Trash2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity } from '../../types/case';
@@ -22,6 +22,13 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   
   const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
   const [savingStatus, setSavingStatus] = useState(false);
+  
+  useEffect(() => {
+    const updatedCase = cases.find(c => c.id === id);
+    if (updatedCase) {
+      setCaseItem(updatedCase);
+    }
+  }, [cases, id]);
 
   if (!caseItem) {
     return (
@@ -175,6 +182,44 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     });
   };
 
+  const handleCommentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const commentForm = e.target as HTMLFormElement;
+    const commentText = new FormData(commentForm).get('comment') as string;
+    
+    if (!commentText.trim()) return;
+    
+    const newComment: CaseActivity = {
+      id: `act-${Date.now()}`,
+      type: 'comment',
+      content: commentText,
+      timestamp: new Date().toISOString(),
+      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+    };
+    
+    const updatedCase = {
+      ...caseItem,
+      lastUpdated: new Date().toISOString(),
+      activities: [newComment, ...caseItem.activities]
+    };
+    
+    setCaseItem(updatedCase);
+    
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+    }
+    
+    commentForm.reset();
+    
+    toast({
+      title: "Kommentar hinzugefügt",
+      description: "Ihr Kommentar wurde erfolgreich hinzugefügt."
+    });
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
@@ -193,7 +238,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
                 {statusLabel[caseItem.status]}
               </Badge>
               <Badge variant="outline" className="bg-secondary text-sm">
-                {typeLabel[caseItem.type]}
+                {typeLabel[caseItem.type as keyof typeof typeLabel] || caseItem.type}
               </Badge>
             </div>
             <h1 className="text-2xl font-semibold mb-1">{caseItem.title}</h1>
@@ -245,7 +290,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             <div className="flex flex-wrap gap-2">
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-blue-100 text-blue-700 hover:bg-blue-200"
-                onClick={handleExportCase}
+                onClick={() => handleExportCase()}
               >
                 <Archive className="w-4 h-4" />
                 Exportieren
@@ -254,7 +299,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               {isAdmin && (
                 <button
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-red-100 text-red-700 hover:bg-red-200"
-                  onClick={handleArchiveCase}
+                  onClick={() => handleArchiveCase()}
                 >
                   <Trash2 className="w-4 h-4" />
                   Archivieren
@@ -273,25 +318,33 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             
             <div className="mt-6 pt-6 border-t border-border">
               <h3 className="text-sm font-medium mb-3">Neuen Kommentar hinzufügen</h3>
-              <div className="flex gap-3">
+              <form onSubmit={handleCommentSubmit} className="flex gap-3">
                 <CustomAvatar name="Max Schmidt" size="sm" />
                 <div className="flex-1">
                   <textarea 
+                    name="comment"
                     className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
                     placeholder="Schreibe einen Kommentar..."
                     rows={3}
+                    required
                   ></textarea>
                   <div className="flex justify-between mt-3">
-                    <button className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+                    <button 
+                      type="button" 
+                      className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+                    >
                       <Paperclip className="w-4 h-4 mr-1" />
                       <span>Anhängen</span>
                     </button>
-                    <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90">
+                    <button 
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+                    >
                       Kommentar senden
                     </button>
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -300,14 +353,18 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           <div className="bg-card rounded-xl border border-border p-6 mb-6">
             <h2 className="text-lg font-medium mb-4">Checkliste</h2>
             <div className="space-y-2">
-              {caseItem.checklist.map((item, index) => (
-                <ChecklistItem 
-                  key={index} 
-                  item={item}
-                  onComplete={(completed) => handleChecklistItemComplete(index, completed)}
-                  readOnly={caseItem.status === 'completed'}
-                />
-              ))}
+              {caseItem.checklist && caseItem.checklist.length > 0 ? (
+                caseItem.checklist.map((item, index) => (
+                  <ChecklistItem 
+                    key={index} 
+                    item={item}
+                    onComplete={(completed) => handleChecklistItemComplete(index, completed)}
+                    readOnly={caseItem.status === 'completed'}
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">Keine Checkliste vorhanden</p>
+              )}
             </div>
           </div>
           

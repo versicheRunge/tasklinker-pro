@@ -1,565 +1,331 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { User, Shield, Bell, Eye, Database, Lock, Upload, Sun, Moon, Download, Trash2 } from 'lucide-react';
-import { CustomAvatar } from '../components/ui/CustomAvatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Separator } from "../components/ui/separator";
+import { Moon, Sun, UserCog, Eye, Download, LucideIcon, Contrast, Type } from 'lucide-react';
 import { toast } from "../hooks/use-toast";
-import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 
-const Settings = () => {
-  const [activeTab, setActiveTab] = useState('profile');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const { currentUser, updateUser, isAdmin } = useUser();
-  const { theme, setTheme, fontSize, setFontSize } = useTheme();
+// Add these types to better structure our settings
+type ThemeMode = 'light' | 'dark' | 'system';
+type ContrastMode = 'normal' | 'high';
+type FontSize = 'small' | 'normal' | 'large';
+
+interface ThemeSetting {
+  mode: ThemeMode;
+  contrast: ContrastMode;
+  fontSize: FontSize;
+}
+
+interface SettingOption {
+  icon: LucideIcon;
+  name: string;
+  description: string;
+  value: string;
+}
+
+const Settings: React.FC = () => {
+  const { currentUser, updateUser } = useUser();
   
-  const [userData, setUserData] = useState({
-    name: currentUser?.name || 'Max Schmidt',
-    email: currentUser?.email || 'max.schmidt@beispiel.de',
-    role: currentUser?.role || 'Administrator',
-    department: 'Leitung',
+  const [themeSettings, setThemeSettings] = useState<ThemeSetting>({
+    mode: 'light',
+    contrast: 'normal',
+    fontSize: 'normal'
   });
   
+  // Apply theme settings when they change
   useEffect(() => {
-    if (currentUser) {
-      setUserData({
-        name: currentUser.name,
-        email: currentUser.email,
-        role: currentUser.role,
-        department: 'Leitung',
-      });
-      if (currentUser.avatar) {
-        setProfileImage(currentUser.avatar);
-      }
+    // Apply theme mode
+    document.documentElement.classList.remove('light', 'dark');
+    if (themeSettings.mode === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.classList.add(systemTheme);
+    } else {
+      document.documentElement.classList.add(themeSettings.mode);
     }
-  }, [currentUser]);
-  
-  const [notificationSettings, setNotificationSettings] = useState({
-    email: true,
-    push: false,
-    inApp: true,
-    updates: false,
-    marketing: false,
-  });
-  
-  const [appearanceSettings, setAppearanceSettings] = useState({
-    theme: theme,
-    fontSize: fontSize,
-    animations: true,
-    highContrast: false,
-  });
-  
-  useEffect(() => {
-    setAppearanceSettings(prev => ({
-      ...prev,
-      theme,
-      fontSize
-    }));
-  }, [theme, fontSize]);
-  
-  const [securitySettings, setSecuritySettings] = useState({
-    twoFactor: false,
-    sessionTimeout: '30',
-    lastLogin: new Date().toLocaleDateString('de-DE'),
-  });
-  
-  const [storageUsage, setStorageUsage] = useState({
-    used: 2.4,
-    total: 5,
-    files: 34,
-  });
-  
-  const [privacySettings, setPrivacySettings] = useState({
-    dataCollection: true,
-    improvementData: true,
-    cookies: true,
-  });
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const imageData = e.target.result as string;
-          setProfileImage(imageData);
-          if (currentUser) {
-            updateUser(currentUser.id, { avatar: imageData });
-          }
-          toast({
-            title: "Profilbild aktualisiert",
-            description: "Ihr Profilbild wurde erfolgreich aktualisiert.",
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+    
+    // Apply contrast
+    document.documentElement.classList.remove('contrast-normal', 'contrast-high');
+    document.documentElement.classList.add(`contrast-${themeSettings.contrast}`);
+    
+    // Apply font size
+    document.documentElement.classList.remove('text-small', 'text-normal', 'text-large');
+    document.documentElement.classList.add(`text-${themeSettings.fontSize}`);
+    
+    // Add CSS variables for the different font sizes
+    if (themeSettings.fontSize === 'small') {
+      document.documentElement.style.setProperty('--font-size-base', '0.875rem');
+    } else if (themeSettings.fontSize === 'normal') {
+      document.documentElement.style.setProperty('--font-size-base', '1rem');
+    } else if (themeSettings.fontSize === 'large') {
+      document.documentElement.style.setProperty('--font-size-base', '1.125rem');
     }
-  };
-
-  const handleSaveProfile = () => {
-    if (currentUser) {
-      updateUser(currentUser.id, { 
-        name: userData.name,
-        email: userData.email,
-        role: userData.role
-      });
+    
+  }, [themeSettings]);
+  
+  const modeOptions: SettingOption[] = [
+    {
+      icon: Sun,
+      name: "Hell",
+      description: "Helles Design für die Verwendung bei Tageslicht",
+      value: "light"
+    },
+    {
+      icon: Moon,
+      name: "Dunkel",
+      description: "Dunkles Design für die Verwendung bei Nacht",
+      value: "dark"
+    },
+    {
+      icon: Sun,
+      name: "System",
+      description: "Passt sich den Systemeinstellungen an",
+      value: "system"
     }
-    toast({
-      title: "Profil gespeichert",
-      description: "Ihre Profiländerungen wurden erfolgreich gespeichert.",
-    });
-  };
+  ];
   
-  const handleChangeNotifications = (setting: keyof typeof notificationSettings) => {
-    setNotificationSettings(prev => {
-      const updated = { ...prev, [setting]: !prev[setting] };
-      toast({
-        title: "Benachrichtigungseinstellungen aktualisiert",
-        description: `${setting} ist jetzt ${updated[setting] ? 'aktiviert' : 'deaktiviert'}.`,
-      });
-      return updated;
-    });
-  };
-  
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme);
-    setAppearanceSettings(prev => ({ ...prev, theme: newTheme }));
-    toast({
-      title: "Design geändert",
-      description: `Design wurde auf ${newTheme === 'light' ? 'Hell' : 'Dunkel'} umgestellt.`,
-    });
-  };
-  
-  const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const size = parseInt(e.target.value) as 1 | 2 | 3;
-    setFontSize(size);
-    setAppearanceSettings(prev => ({ ...prev, fontSize: size }));
-  };
-
-  const handleToggleAnimations = () => {
-    setAppearanceSettings(prev => {
-      const updated = { ...prev, animations: !prev.animations };
-      toast({
-        title: "Animationen",
-        description: `Animationen wurden ${updated.animations ? 'aktiviert' : 'deaktiviert'}.`,
-      });
-      return updated;
-    });
-  };
-  
-  const handleToggleHighContrast = () => {
-    setAppearanceSettings(prev => {
-      const updated = { ...prev, highContrast: !prev.highContrast };
-      toast({
-        title: "Hoher Kontrast",
-        description: `Hoher Kontrast wurde ${updated.highContrast ? 'aktiviert' : 'deaktiviert'}.`,
-      });
-      return updated;
-    });
-  };
-  
-  const handleSecurityChange = (setting: keyof typeof securitySettings, value: any) => {
-    setSecuritySettings(prev => ({ ...prev, [setting]: value }));
-    if (setting === 'twoFactor') {
-      toast({
-        title: "Zwei-Faktor-Authentifizierung",
-        description: `Zwei-Faktor-Authentifizierung wurde ${value ? 'aktiviert' : 'deaktiviert'}.`,
-      });
+  const contrastOptions: SettingOption[] = [
+    {
+      icon: Contrast,
+      name: "Normal",
+      description: "Standard-Kontrast",
+      value: "normal"
+    },
+    {
+      icon: Contrast,
+      name: "Hoch",
+      description: "Erhöhter Kontrast für bessere Lesbarkeit",
+      value: "high"
     }
-  };
+  ];
   
-  const handlePasswordChange = () => {
-    toast({
-      title: "Passwort geändert",
-      description: "Ihr Passwort wurde erfolgreich geändert.",
-    });
-  };
-  
-  const handleDataExport = () => {
-    toast({
-      title: "Datenexport gestartet",
-      description: "Ihre Daten werden vorbereitet und stehen bald zum Download bereit.",
-    });
-  };
-  
-  const handleDataDeletion = () => {
-    toast({
-      title: "Achtung",
-      description: "Möchten Sie wirklich alle Ihre Daten löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
-      variant: "destructive",
-    });
-  };
-  
-  const handlePrivacyToggle = (setting: keyof typeof privacySettings) => {
-    setPrivacySettings(prev => {
-      const updated = { ...prev, [setting]: !prev[setting] };
-      toast({
-        title: "Datenschutzeinstellungen aktualisiert",
-        description: `${setting} ist jetzt ${updated[setting] ? 'aktiviert' : 'deaktiviert'}.`,
-      });
-      return updated;
-    });
-  };
-
-  const navigationItems = [
-    { id: 'profile', icon: User, label: 'Profil' },
-    { id: 'notifications', icon: Bell, label: 'Benachrichtigungen' },
-    { id: 'appearance', icon: Eye, label: 'Darstellung' },
-    { id: 'security', icon: Shield, label: 'Sicherheit' },
-    { id: 'data', icon: Database, label: 'Daten & Speicher' },
-    { id: 'privacy', icon: Lock, label: 'Datenschutz' },
+  const fontSizeOptions: SettingOption[] = [
+    {
+      icon: Type,
+      name: "Klein",
+      description: "Kleinere Schriftgröße",
+      value: "small"
+    },
+    {
+      icon: Type,
+      name: "Normal",
+      description: "Standard-Schriftgröße",
+      value: "normal"
+    },
+    {
+      icon: Type,
+      name: "Groß",
+      description: "Größere Schriftgröße für bessere Lesbarkeit",
+      value: "large"
+    }
   ];
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return (
-          <div className="space-y-4">
-            <div className="mb-6">
-              <div className="flex items-center gap-4">
-                <CustomAvatar name={userData.name} imageSrc={profileImage || undefined} size="lg" />
-                <div>
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
-                    <Upload className="w-4 h-4" />
-                    <span>Profilbild hochladen</span>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                className="w-full p-2 rounded-md border border-input"
-                value={userData.name}
-                onChange={(e) => setUserData({...userData, name: e.target.value})}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="email">
-                E-Mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="w-full p-2 rounded-md border border-input"
-                value={userData.email}
-                onChange={(e) => setUserData({...userData, email: e.target.value})}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="role">
-                Rolle
-              </label>
-              <select 
-                id="role" 
-                className="w-full p-2 rounded-md border border-input"
-                value={userData.role}
-                onChange={(e) => setUserData({...userData, role: e.target.value})}
-              >
-                <option>Administrator</option>
-                <option>Team-Leiter</option>
-                <option>Mitarbeiter</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="department">
-                Abteilung
-              </label>
-              <select 
-                id="department" 
-                className="w-full p-2 rounded-md border border-input"
-                value={userData.department}
-                onChange={(e) => setUserData({...userData, department: e.target.value})}
-              >
-                <option>Leitung</option>
-                <option>Schaden</option>
-                <option>Vertrag</option>
-                <option>Kundenservice</option>
-              </select>
-            </div>
-            
-            <div className="pt-4">
-              <button 
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                onClick={handleSaveProfile}
-              >
-                Speichern
-              </button>
-            </div>
-          </div>
-        );
-      case 'notifications':
-        return (
+  const handleThemeSettingChange = (key: keyof ThemeSetting, value: string) => {
+    setThemeSettings(prev => ({ 
+      ...prev, 
+      [key]: value 
+    }));
+    
+    const settingNames = {
+      mode: 'Farbschema',
+      contrast: 'Kontrast',
+      fontSize: 'Schriftgröße'
+    };
+    
+    toast({
+      title: `${settingNames[key]} geändert`,
+      description: `Die Einstellung wurde erfolgreich aktualisiert.`
+    });
+  };
+
+  return (
+    <AppLayout>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Einstellungen</h1>
+        <p className="text-muted-foreground">Verwalten Sie Ihre Benutzereinstellungen und Voreinstellungen.</p>
+      </div>
+      
+      <Tabs defaultValue="appearance">
+        <TabsList className="w-full max-w-md mb-6">
+          <TabsTrigger value="appearance" className="flex-1">
+            <Eye className="w-4 h-4 mr-2" />
+            Darstellung
+          </TabsTrigger>
+          <TabsTrigger value="account" className="flex-1">
+            <UserCog className="w-4 h-4 mr-2" />
+            Konto
+          </TabsTrigger>
+          <TabsTrigger value="export" className="flex-1">
+            <Download className="w-4 h-4 mr-2" />
+            Datenexport
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="appearance" className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold mb-4">Benachrichtigungen</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">E-Mail Benachrichtigungen</span>
-                  <p className="text-sm text-muted-foreground">Erhalte wichtige Updates per E-Mail</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={notificationSettings.email}
-                    onChange={() => handleChangeNotifications('email')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">Push-Benachrichtigungen</span>
-                  <p className="text-sm text-muted-foreground">Erhalte Benachrichtigungen direkt auf deinem Gerät</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={notificationSettings.push}
-                    onChange={() => handleChangeNotifications('push')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">In-App Benachrichtigungen</span>
-                  <p className="text-sm text-muted-foreground">Zeige Benachrichtigungen innerhalb der Anwendung an</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={notificationSettings.inApp}
-                    onChange={() => handleChangeNotifications('inApp')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">System-Updates</span>
-                  <p className="text-sm text-muted-foreground">Benachrichtigungen über neue Funktionen</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={notificationSettings.updates}
-                    onChange={() => handleChangeNotifications('updates')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">Marketing-E-Mails</span>
-                  <p className="text-sm text-muted-foreground">Erhalte Angebote und Neuigkeiten</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={notificationSettings.marketing}
-                    onChange={() => handleChangeNotifications('marketing')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="pt-4">
-                <button 
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                  onClick={() => toast({
-                    title: "Einstellungen gespeichert",
-                    description: "Ihre Benachrichtigungseinstellungen wurden erfolgreich aktualisiert.",
-                  })}
+            <h2 className="text-xl font-medium mb-2">Farbschema</h2>
+            <p className="text-muted-foreground mb-4">Wählen Sie ein Farbschema für die Benutzeroberfläche.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {modeOptions.map(option => (
+                <button
+                  key={option.value}
+                  className={`flex flex-col items-center text-center p-4 rounded-xl border ${
+                    themeSettings.mode === option.value ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => handleThemeSettingChange('mode', option.value as ThemeMode)}
                 >
-                  Speichern
+                  <option.icon className={`w-8 h-8 mb-2 ${themeSettings.mode === option.value ? 'text-primary' : ''}`} />
+                  <h3 className="font-medium">{option.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
                 </button>
-              </div>
+              ))}
             </div>
           </div>
-        );
-      case 'appearance':
-        return (
+          
+          <Separator className="my-6" />
+          
           <div>
-            <h2 className="text-xl font-semibold mb-4">Darstellung</h2>
-            <div className="space-y-6">
-              <div>
-                <p className="mb-3 font-medium">Farbmodus</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div 
-                    className={`p-4 border rounded-lg flex flex-col items-center cursor-pointer transition-all ${
-                      appearanceSettings.theme === 'light' 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-input hover:border-primary/50'
-                    }`}
-                    onClick={() => handleThemeChange('light')}
-                  >
-                    <div className="w-16 h-16 bg-white border border-gray-200 rounded-md mb-2 flex items-center justify-center">
-                      <Sun className="text-amber-500" />
-                    </div>
-                    <span>Hell</span>
-                  </div>
-                  <div 
-                    className={`p-4 border rounded-lg flex flex-col items-center cursor-pointer transition-all ${
-                      appearanceSettings.theme === 'dark' 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-input hover:border-primary/50'
-                    }`}
-                    onClick={() => handleThemeChange('dark')}
-                  >
-                    <div className="w-16 h-16 bg-gray-900 rounded-md mb-2 flex items-center justify-center">
-                      <Moon className="text-gray-200" />
-                    </div>
-                    <span>Dunkel</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex justify-between mb-2">
-                  <p className="font-medium">Schriftgröße</p>
-                  <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
-                    {appearanceSettings.fontSize === 1 ? 'Klein' : appearanceSettings.fontSize === 2 ? 'Mittel' : 'Groß'}
-                  </span>
-                </div>
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="3" 
-                  value={appearanceSettings.fontSize}
-                  onChange={handleFontSizeChange}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" 
-                />
-                <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                  <span>Klein</span>
-                  <span>Mittel</span>
-                  <span>Groß</span>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border border-input rounded-lg">
+            <h2 className="text-xl font-medium mb-2">Kontrast</h2>
+            <p className="text-muted-foreground mb-4">Passen Sie den Kontrast für bessere Lesbarkeit an.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contrastOptions.map(option => (
+                <button
+                  key={option.value}
+                  className={`flex flex-col items-center text-center p-4 rounded-xl border ${
+                    themeSettings.contrast === option.value ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => handleThemeSettingChange('contrast', option.value as ContrastMode)}
+                >
+                  <option.icon className={`w-8 h-8 mb-2 ${themeSettings.contrast === option.value ? 'text-primary' : ''}`} />
+                  <h3 className="font-medium">{option.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <Separator className="my-6" />
+          
+          <div>
+            <h2 className="text-xl font-medium mb-2">Schriftgröße</h2>
+            <p className="text-muted-foreground mb-4">Passen Sie die Schriftgröße für bessere Lesbarkeit an.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {fontSizeOptions.map(option => (
+                <button
+                  key={option.value}
+                  className={`flex flex-col items-center text-center p-4 rounded-xl border ${
+                    themeSettings.fontSize === option.value ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => handleThemeSettingChange('fontSize', option.value as FontSize)}
+                >
+                  <option.icon className={`w-8 h-8 mb-2 ${themeSettings.fontSize === option.value ? 'text-primary' : ''}`} />
+                  <h3 className="font-medium">{option.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="account" className="space-y-6">
+          <div>
+            <h2 className="text-xl font-medium mb-2">Benutzerprofil</h2>
+            <p className="text-muted-foreground mb-4">Verwalten Sie Ihre persönlichen Informationen.</p>
+            
+            {currentUser && (
+              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <span className="font-medium">Animationen</span>
-                    <p className="text-sm text-muted-foreground">Aktiviere Übergangsanimationen</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={appearanceSettings.animations}
-                      onChange={handleToggleAnimations}
+                    <label className="block text-sm font-medium mb-1" htmlFor="name">
+                      Name
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      className="w-full p-2 rounded-md border border-input"
+                      defaultValue={currentUser.name}
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1" htmlFor="email">
+                      E-Mail
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      className="w-full p-2 rounded-md border border-input"
+                      defaultValue={currentUser.email || ''}
+                    />
+                  </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                  <div>
-                    <span className="font-medium">Hoher Kontrast</span>
-                    <p className="text-sm text-muted-foreground">Verbessert die Lesbarkeit</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={appearanceSettings.highContrast}
-                      onChange={handleToggleHighContrast}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
-                </div>
-              </div>
-              
-              <div className="pt-4">
-                <button 
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                  onClick={() => toast({
-                    title: "Darstellung aktualisiert",
-                    description: "Ihre Darstellungseinstellungen wurden erfolgreich gespeichert.",
-                  })}
-                >
-                  Änderungen speichern
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      case 'security':
-        return (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Sicherheit</h2>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
                 <div>
-                  <span className="font-medium">Zwei-Faktor-Authentifizierung</span>
-                  <p className="text-sm text-muted-foreground">Erhöht die Sicherheit Ihres Kontos</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={securitySettings.twoFactor}
-                    onChange={(e) => handleSecurityChange('twoFactor', e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div>
-                <p className="font-medium mb-2">Automatische Abmeldung nach</p>
-                <select 
-                  className="w-full p-2 rounded-md border border-input"
-                  value={securitySettings.sessionTimeout}
-                  onChange={(e) => handleSecurityChange('sessionTimeout', e.target.value)}
-                >
-                  <option value="15">15 Minuten</option>
-                  <option value="30">30 Minuten</option>
-                  <option value="60">1 Stunde</option>
-                  <option value="120">2 Stunden</option>
-                  <option value="never">Nie (nicht empfohlen)</option>
-                </select>
-              </div>
-              
-              <div className="p-4 bg-primary/5 rounded-lg">
-                <p className="font-medium">Letzte Anmeldung</p>
-                <p className="text-sm">{securitySettings.lastLogin} um 14:32 Uhr • Berlin</p>
-              </div>
-              
-              <div className="space-y-4 pt-4 border-t border-input">
-                <h3 className="font-medium pt-2">Passwort ändern</h3>
-                <div>
-                  <label className="block text-sm font-medium mb-1" htmlFor="currentPassword">
-                    Aktuelles Passwort
+                  <label className="block text-sm font-medium mb-1" htmlFor="role">
+                    Position
                   </label>
                   <input
-                    id="currentPassword"
-                    type="password"
+                    id="role"
+                    type="text"
                     className="w-full p-2 rounded-md border border-input"
+                    defaultValue={currentUser.role}
                   />
                 </div>
+                
+                <div className="flex justify-end">
+                  <button 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    onClick={() => {
+                      const name = (document.getElementById('name') as HTMLInputElement).value;
+                      const email = (document.getElementById('email') as HTMLInputElement).value;
+                      const role = (document.getElementById('role') as HTMLInputElement).value;
+                      
+                      if (!name.trim() || !email.trim() || !role.trim()) {
+                        toast({
+                          title: "Fehler",
+                          description: "Bitte füllen Sie alle Felder aus.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
+                      updateUser(currentUser.id, { name, email, role });
+                      
+                      toast({
+                        title: "Profil aktualisiert",
+                        description: "Ihre Profilinformationen wurden erfolgreich aktualisiert."
+                      });
+                    }}
+                  >
+                    Änderungen speichern
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <Separator className="my-6" />
+          
+          <div>
+            <h2 className="text-xl font-medium mb-2">Passwort ändern</h2>
+            <p className="text-muted-foreground mb-4">Aktualisieren Sie Ihr Passwort für mehr Sicherheit.</p>
+            
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="currentPassword">
+                  Aktuelles Passwort
+                </label>
+                <input
+                  id="currentPassword"
+                  type="password"
+                  className="w-full p-2 rounded-md border border-input"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1" htmlFor="newPassword">
                     Neues Passwort
@@ -580,246 +346,284 @@ const Settings = () => {
                     className="w-full p-2 rounded-md border border-input"
                   />
                 </div>
-                <div className="pt-4">
-                  <button 
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    onClick={handlePasswordChange}
-                  >
-                    Passwort ändern
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      case 'data':
-        return (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Daten & Speicher</h2>
-            <div className="space-y-6">
-              <div className="p-4 border border-input rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Datenspeicher</span>
-                  <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
-                    {storageUsage.used.toFixed(1)} GB von {storageUsage.total} GB
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
-                  <div 
-                    className="bg-primary h-2.5 rounded-full" 
-                    style={{ width: `${(storageUsage.used / storageUsage.total) * 100}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{storageUsage.files} Dateien</span>
-                  <span>{Math.round((storageUsage.used / storageUsage.total) * 100)}% belegt</span>
-                </div>
               </div>
               
-              <div className="p-4 border border-input rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium mb-1">Daten herunterladen</h3>
-                    <p className="text-sm text-muted-foreground mb-3">Sie können eine Kopie aller Ihrer Daten herunterladen.</p>
-                  </div>
-                  <button 
-                    className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                    onClick={handleDataExport}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Exportieren</span>
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-4 border border-input rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium mb-1 text-red-600">Daten löschen</h3>
-                    <p className="text-sm text-muted-foreground mb-3">Löscht alle Ihre Daten unwiderruflich aus unserem System.</p>
-                  </div>
-                  <button 
-                    className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                    onClick={handleDataDeletion}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Löschen</span>
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg">
-                <h3 className="font-medium text-amber-800 mb-1">Temporäre Dateien</h3>
-                <p className="text-sm text-amber-700 mb-3">
-                  {(storageUsage.used * 0.2).toFixed(1)} GB an temporären Dateien können bereinigt werden.
-                </p>
-                <button 
-                  className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
-                  onClick={() => {
-                    toast({
-                      title: "Cache geleert",
-                      description: "Temporäre Dateien wurden erfolgreich gelöscht.",
-                    });
-                  }}
-                >
-                  Cache leeren
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      case 'privacy':
-        return (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Datenschutz</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">Daten für personalisierte Empfehlungen verwenden</span>
-                  <p className="text-sm text-muted-foreground">Verbessert Ihr Nutzungserlebnis durch personalisierte Inhalte</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={privacySettings.dataCollection}
-                    onChange={() => handlePrivacyToggle('dataCollection')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">Nutzungsdaten für Verbesserungen teilen</span>
-                  <p className="text-sm text-muted-foreground">Hilft uns, die Anwendung zu verbessern</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={privacySettings.improvementData}
-                    onChange={() => handlePrivacyToggle('improvementData')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border border-input rounded-lg">
-                <div>
-                  <span className="font-medium">Tracking-Cookies akzeptieren</span>
-                  <p className="text-sm text-muted-foreground">Ermöglicht das Tracking Ihrer Aktivitäten</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={privacySettings.cookies}
-                    onChange={() => handlePrivacyToggle('cookies')}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              
-              <div className="p-4 border border-input rounded-lg">
-                <h3 className="font-medium mb-2">Datenschutzerklärung</h3>
-                <p className="text-sm text-muted-foreground mb-3">Lesen Sie unsere vollständige Datenschutzerklärung.</p>
-                <button 
-                  className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  onClick={() => {
-                    toast({
-                      title: "Datenschutzerklärung",
-                      description: "Die Datenschutzerklärung wurde in einem neuen Tab geöffnet.",
-                    });
-                  }}
-                >
-                  Datenschutzerklärung anzeigen
-                </button>
-              </div>
-              
-              <div className="pt-4">
+              <div className="flex justify-end">
                 <button 
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                  onClick={() => toast({
-                    title: "Datenschutzeinstellungen gespeichert",
-                    description: "Ihre Datenschutzeinstellungen wurden erfolgreich aktualisiert.",
-                  })}
+                  onClick={() => {
+                    toast({
+                      title: "Passwort aktualisiert",
+                      description: "Ihr Passwort wurde erfolgreich geändert."
+                    });
+                    
+                    // Clear the password fields
+                    const passwordFields = document.querySelectorAll('input[type="password"]');
+                    passwordFields.forEach(field => (field as HTMLInputElement).value = '');
+                  }}
                 >
-                  Einstellungen speichern
+                  Passwort ändern
                 </button>
               </div>
             </div>
           </div>
-        );
-      default:
-        return <div>Wählen Sie eine Option aus dem Menü.</div>;
-    }
-  };
-
-  if (!isAdmin) {
-    return (
-      <AppLayout>
-        <div className="flex justify-between items-center mb-6">
+        </TabsContent>
+        
+        <TabsContent value="export" className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Einstellungen</h1>
-            <p className="text-muted-foreground">Verwalte deine persönlichen Einstellungen.</p>
+            <h2 className="text-xl font-medium mb-2">Datenexport</h2>
+            <p className="text-muted-foreground mb-4">Exportieren Sie Ihre Daten in verschiedenen Formaten.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium mb-2">Alle Vorgänge</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Exportieren Sie alle Ihre Vorgänge als CSV- oder JSON-Datei.
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export aller Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake CSV data string
+                        const csvData = "data:text/csv;charset=utf-8,ID,Title,Status,CreatedAt\n" +
+                          "case-1,Schadenmeldung Auto,new,2023-01-01\n" +
+                          "case-2,eVB Anfrage,completed,2023-01-02";
+                          
+                        const encodedUri = encodeURI(csvData);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", "alle_vorgaenge.csv");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    CSV-Export
+                  </button>
+                  <button 
+                    className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export aller Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake JSON data
+                        const jsonData = "data:text/json;charset=utf-8," + 
+                          encodeURIComponent(JSON.stringify([
+                            { id: "case-1", title: "Schadenmeldung Auto", status: "new", createdAt: "2023-01-01" },
+                            { id: "case-2", title: "eVB Anfrage", status: "completed", createdAt: "2023-01-02" }
+                          ]));
+                          
+                        const link = document.createElement("a");
+                        link.setAttribute("href", jsonData);
+                        link.setAttribute("download", "alle_vorgaenge.json");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    JSON-Export
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium mb-2">Abgeschlossene Vorgänge</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Exportieren Sie nur abgeschlossene Vorgänge als CSV- oder JSON-Datei.
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export der abgeschlossenen Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake CSV data string for completed cases
+                        const csvData = "data:text/csv;charset=utf-8,ID,Title,Status,CompletedAt\n" +
+                          "case-2,eVB Anfrage,completed,2023-01-05\n" +
+                          "case-4,Vertragsänderung,completed,2023-01-07";
+                          
+                        const encodedUri = encodeURI(csvData);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", "abgeschlossene_vorgaenge.csv");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    CSV-Export
+                  </button>
+                  <button 
+                    className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export der abgeschlossenen Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake JSON data for completed cases
+                        const jsonData = "data:text/json;charset=utf-8," + 
+                          encodeURIComponent(JSON.stringify([
+                            { id: "case-2", title: "eVB Anfrage", status: "completed", completedAt: "2023-01-05" },
+                            { id: "case-4", title: "Vertragsänderung", status: "completed", completedAt: "2023-01-07" }
+                          ]));
+                          
+                        const link = document.createElement("a");
+                        link.setAttribute("href", jsonData);
+                        link.setAttribute("download", "abgeschlossene_vorgaenge.json");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    JSON-Export
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium mb-2">Archivierte Vorgänge</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Exportieren Sie archivierte Vorgänge als CSV- oder JSON-Datei.
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export der archivierten Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake CSV data string for archived cases
+                        const csvData = "data:text/csv;charset=utf-8,ID,Title,Status,ArchivedAt\n" +
+                          "case-5,Alte Schadenmeldung,completed,2022-11-05\n" +
+                          "case-6,Alter Vertrag,completed,2022-10-07";
+                          
+                        const encodedUri = encodeURI(csvData);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", "archivierte_vorgaenge.csv");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    CSV-Export
+                  </button>
+                  <button 
+                    className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                    onClick={() => {
+                      toast({
+                        title: "Export gestartet",
+                        description: "Der Export der archivierten Vorgänge wurde gestartet. Die Datei wird in Kürze heruntergeladen."
+                      });
+                      
+                      // Simulate download after a short delay
+                      setTimeout(() => {
+                        // Create a fake JSON data for archived cases
+                        const jsonData = "data:text/json;charset=utf-8," + 
+                          encodeURIComponent(JSON.stringify([
+                            { id: "case-5", title: "Alte Schadenmeldung", status: "completed", archivedAt: "2022-11-05" },
+                            { id: "case-6", title: "Alter Vertrag", status: "completed", archivedAt: "2022-10-07" }
+                          ]));
+                          
+                        const link = document.createElement("a");
+                        link.setAttribute("href", jsonData);
+                        link.setAttribute("download", "archivierte_vorgaenge.json");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, 1000);
+                    }}
+                  >
+                    JSON-Export
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-lg font-medium mb-2">Einzelner Vorgang</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Exportieren Sie einen einzelnen Vorgang als PDF-Dokument.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium mb-1" htmlFor="caseId">
+                    Vorgangs-ID
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="caseId"
+                      type="text"
+                      className="flex-1 p-2 rounded-md border border-input"
+                      placeholder="z.B. case-1"
+                    />
+                    <button 
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                      onClick={() => {
+                        const caseId = (document.getElementById('caseId') as HTMLInputElement).value;
+                        
+                        if (!caseId.trim()) {
+                          toast({
+                            title: "Fehler",
+                            description: "Bitte geben Sie eine Vorgangs-ID ein.",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
+                        toast({
+                          title: "Export gestartet",
+                          description: `Der Export des Vorgangs ${caseId} wurde gestartet. Das PDF wird in Kürze erstellt.`
+                        });
+                        
+                        // Simulate PDF creation after a short delay
+                        setTimeout(() => {
+                          toast({
+                            title: "PDF erstellt",
+                            description: `Das PDF für den Vorgang ${caseId} wurde erfolgreich erstellt und wird heruntergeladen.`
+                          });
+                          
+                          // In a real app, this would generate a PDF and download it
+                          // For this demo, we'll just show a mock PDF generation
+                          alert(`PDF für Vorgang ${caseId} würde jetzt heruntergeladen werden.`);
+                        }, 1500);
+                      }}
+                    >
+                      PDF exportieren
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="text-xl font-semibold mb-4">Eingeschränkter Zugriff</h2>
-          <p className="text-muted-foreground">
-            Sie haben keinen Administratorzugriff. Bitte kontaktieren Sie Ihren Administrator, um Änderungen an den Systemeinstellungen vorzunehmen.
-          </p>
-          <div className="mt-6">
-            <button 
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
-              onClick={() => window.history.back()}
-            >
-              Zurück
-            </button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  return (
-    <AppLayout>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Einstellungen</h1>
-          <p className="text-muted-foreground">Verwalte deine persönlichen und Anwendungseinstellungen.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <nav className="space-y-1">
-            {navigationItems.map((item, index) => (
-              <button
-                key={index}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === item.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-foreground/70 hover:bg-muted hover:text-foreground'
-                }`}
-                onClick={() => setActiveTab(item.id)}
-              >
-                <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-primary' : 'text-foreground/70'}`} />
-                <span>{item.label}</span>
-                {activeTab === item.id && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="lg:col-span-3 bg-card rounded-xl border border-border p-6">
-          {renderContent()}
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 };

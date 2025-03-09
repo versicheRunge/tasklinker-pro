@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { CasesList } from '../components/cases/CasesList';
-import { cases as initialCases } from '../data/mockData';
+import { cases as initialCasesData } from '../data/mockData';
 import { PlusCircle } from 'lucide-react';
 import { CaseItem, CaseType, ChecklistTemplate } from '../types/case';
 import { toast } from "../hooks/use-toast";
@@ -11,13 +11,14 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter 
+  DialogFooter,
+  DialogDescription 
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { useUser } from '../contexts/UserContext';
 
 const Cases: React.FC = () => {
-  const [cases, setCases] = useState<CaseItem[]>(initialCases);
+  const [cases, setCases] = useState<CaseItem[]>(initialCasesData);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCaseData, setNewCaseData] = useState({
     title: '',
@@ -71,6 +72,7 @@ const Cases: React.FC = () => {
         id: '1',
         name: 'Max Schmidt',
         role: 'Teamleiter',
+        userRole: 'admin'
       },
       activities: [
         {
@@ -82,6 +84,7 @@ const Cases: React.FC = () => {
             id: '1',
             name: 'Max Schmidt',
             role: 'Teamleiter',
+            userRole: 'admin'
           },
           caseId: `case-${Date.now()}`
         }
@@ -90,7 +93,7 @@ const Cases: React.FC = () => {
         getTemplateItems(newCaseData.selectedTemplate) : []
     };
 
-    setCases(prevCases => [...prevCases, newCase]);
+    setCases(prevCases => [newCase, ...prevCases]);
     setIsCreateDialogOpen(false);
     setNewCaseData({
       title: '',
@@ -127,6 +130,9 @@ const Cases: React.FC = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Neuen Vorgang erstellen</DialogTitle>
+            <DialogDescription>
+              Erstellen Sie einen neuen Vorgang mit den folgenden Informationen.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -169,6 +175,14 @@ const Cases: React.FC = () => {
                 <option value="contract_change">Vertragsänderung</option>
                 <option value="inquiry">Kundenanfrage</option>
                 <option value="other">Sonstiges</option>
+                {/* Add custom types that might be available from templates */}
+                {templates
+                  .filter(template => !['damage', 'evb', 'contract_change', 'inquiry', 'other'].includes(template.type))
+                  .map(template => (
+                    <option key={template.id} value={template.type}>
+                      {template.title}
+                    </option>
+                  ))}
               </select>
             </div>
             <div>

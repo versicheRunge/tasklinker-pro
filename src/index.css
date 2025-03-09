@@ -1,89 +1,116 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    
-    --primary: 210 100% 50%;
-    --primary-foreground: 210 40% 98%;
-    
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 210 100% 50%;
-    
-    --radius: 0.75rem;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 210 100% 50%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+    --font-size-base: 1rem;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    
-    --primary: 210 100% 50%;
-    --primary-foreground: 210 40% 98%;
-    
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
-    
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
-    
-    --accent: 217 33% 18%;
-    --accent-foreground: 210 40% 98%;
-    
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 212 27% 84%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
 
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 18%;
-    --sidebar-ring: 210 100% 50%;
+  /* High contrast mode */
+  .contrast-high {
+    --primary: 240 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --border: 240 10% 20%;
+    --muted-foreground: 240 8% 20%;
+  }
+
+  .dark.contrast-high {
+    --primary: 240 100% 60%;
+    --border: 240 10% 80%;
+    --muted-foreground: 240 8% 80%;
+  }
+
+  /* Font size adjustments */
+  .text-small {
+    font-size: var(--font-size-base);
+  }
+
+  .text-normal {
+    font-size: var(--font-size-base);
+  }
+
+  .text-large {
+    font-size: var(--font-size-base);
+  }
+
+  .text-small h1 {
+    font-size: 1.75rem;
+  }
+
+  .text-normal h1 {
+    font-size: 2rem;
+  }
+
+  .text-large h1 {
+    font-size: 2.25rem;
+  }
+
+  .text-small h2 {
+    font-size: 1.25rem;
+  }
+
+  .text-normal h2 {
+    font-size: 1.5rem;
+  }
+
+  .text-large h2 {
+    font-size: 1.75rem;
+  }
+
+  .text-small p, .text-small button, .text-small input, .text-small textarea, .text-small select {
+    font-size: 0.875rem;
+  }
+
+  .text-normal p, .text-normal button, .text-normal input, .text-normal textarea, .text-normal select {
+    font-size: 1rem;
+  }
+
+  .text-large p, .text-large button, .text-large input, .text-large textarea, .text-large select {
+    font-size: 1.125rem;
   }
 }
 
@@ -91,51 +118,37 @@
   * {
     @apply border-border;
   }
-  
   body {
-    @apply bg-background text-foreground font-sans;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
-  }
-
-  html {
-    @apply scroll-smooth;
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer utilities {
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
 
-  .glass-effect {
-    @apply bg-white/80 backdrop-blur-lg border border-white/20 shadow-sm;
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-  
-  .card-hover {
-    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-1;
-  }
-  
-  .text-balance {
-    text-wrap: balance;
+  to {
+    opacity: 1;
   }
 }
 
-/* Base animations and transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Remove default styles */
-#root {
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  text-align: left;
+@keyframes scaleIn {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

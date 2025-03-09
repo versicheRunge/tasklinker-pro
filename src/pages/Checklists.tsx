@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { cases } from '../data/mockData';
@@ -49,13 +48,15 @@ const Checklists: React.FC = () => {
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
     title: '',
-    type: 'damage' as CaseType
+    type: '' as CaseType
   });
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [editingSubItem, setEditingSubItem] = useState<{parentIndex: number, subIndex: number} | null>(null);
   const [editingSubItemText, setEditingSubItemText] = useState('');
   const [isAddingSubItem, setIsAddingSubItem] = useState<number | null>(null);
   const [newSubItemText, setNewSubItemText] = useState('');
+  const [isCustomType, setIsCustomType] = useState(false);
+  const [customType, setCustomType] = useState('');
 
   const toggleItemExpanded = (index: number) => {
     setExpandedItems(prev => {
@@ -163,11 +164,26 @@ const Checklists: React.FC = () => {
       return;
     }
 
+    let typeValue: CaseType;
+    if (isCustomType) {
+      if (!customType.trim()) {
+        toast({
+          title: "Fehler",
+          description: "Bitte geben Sie einen Typ für die Checkliste ein.",
+          variant: "destructive"
+        });
+        return;
+      }
+      typeValue = customType.trim();
+    } else {
+      typeValue = newTemplate.type;
+    }
+
     const newTemplateId = `template-${Date.now()}`;
     const newChecklistTemplate = {
       id: newTemplateId,
       title: newTemplate.title,
-      type: newTemplate.type,
+      type: typeValue,
       items: []
     };
 
@@ -176,8 +192,10 @@ const Checklists: React.FC = () => {
     setIsAddingTemplate(false);
     setNewTemplate({
       title: '',
-      type: 'damage'
+      type: ''
     });
+    setIsCustomType(false);
+    setCustomType('');
 
     toast({
       title: "Checkliste erstellt",
@@ -350,23 +368,64 @@ const Checklists: React.FC = () => {
                   <label className="block text-sm font-medium mb-1" htmlFor="templateType">
                     Vorgangstyp
                   </label>
-                  <select
-                    id="templateType"
-                    className="w-full p-2 rounded-md border border-input"
-                    value={newTemplate.type}
-                    onChange={(e) => setNewTemplate({...newTemplate, type: e.target.value as CaseType})}
-                  >
-                    <option value="damage">Schadenmeldung</option>
-                    <option value="evb">eVB-Anfrage</option>
-                    <option value="contract_change">Vertragsänderung</option>
-                    <option value="inquiry">Kundenanfrage</option>
-                    <option value="other">Sonstiges</option>
-                  </select>
+                  {!isCustomType ? (
+                    <>
+                      <select
+                        id="templateType"
+                        className="w-full p-2 rounded-md border border-input"
+                        value={newTemplate.type}
+                        onChange={(e) => setNewTemplate({...newTemplate, type: e.target.value as CaseType})}
+                      >
+                        <option value="">Bitte wählen</option>
+                        <option value="damage">Schadenmeldung</option>
+                        <option value="evb">eVB-Anfrage</option>
+                        <option value="contract_change">Vertragsänderung</option>
+                        <option value="inquiry">Kundenanfrage</option>
+                        <option value="other">Sonstiges</option>
+                      </select>
+                      <div className="mt-2">
+                        <button 
+                          type="button" 
+                          className="text-primary text-sm hover:underline"
+                          onClick={() => setIsCustomType(true)}
+                        >
+                          + Eigenen Typ hinzufügen
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        id="customType"
+                        type="text"
+                        className="w-full p-2 rounded-md border border-input"
+                        value={customType}
+                        onChange={(e) => setCustomType(e.target.value)}
+                        placeholder="Eigener Vorgangstyp"
+                      />
+                      <div className="mt-2">
+                        <button 
+                          type="button" 
+                          className="text-muted-foreground text-sm hover:underline"
+                          onClick={() => {
+                            setIsCustomType(false);
+                            setCustomType('');
+                          }}
+                        >
+                          Zurück zu Standard-Typen
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                   <button
                     className="px-4 py-2 rounded-lg border border-input hover:bg-muted/50 transition-colors"
-                    onClick={() => setIsAddingTemplate(false)}
+                    onClick={() => {
+                      setIsAddingTemplate(false);
+                      setIsCustomType(false);
+                      setCustomType('');
+                    }}
                   >
                     Abbrechen
                   </button>

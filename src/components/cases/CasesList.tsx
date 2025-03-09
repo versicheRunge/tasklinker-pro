@@ -24,7 +24,12 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
   const activeCases = filteredCases.filter(c => c.status !== 'completed');
   const completedCases = filteredCases.filter(c => c.status === 'completed');
 
-  const filteredActiveCases = activeCases.filter(caseItem => {
+  // Sort active cases by creation date (newest first)
+  const sortedActiveCases = [...activeCases].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const filteredActiveCases = sortedActiveCases.filter(caseItem => {
     const matchesStatus = statusFilter === 'all' || caseItem.status === statusFilter;
     const matchesType = typeFilter === 'all' || caseItem.type === typeFilter;
     const matchesSearch = 

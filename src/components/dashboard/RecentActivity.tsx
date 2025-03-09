@@ -39,8 +39,12 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) =>
       .slice(0, 2);
   };
 
-  const handleActivityClick = (caseId: string) => {
-    navigate(`/cases/${caseId}`);
+  const handleActivityClick = (caseId?: string) => {
+    if (caseId) {
+      navigate(`/cases/${caseId}`);
+    } else {
+      navigate('/cases');
+    }
   };
 
   return (
