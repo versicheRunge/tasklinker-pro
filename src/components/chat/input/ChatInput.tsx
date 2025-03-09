@@ -58,7 +58,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <MentionInput
             value={inputValue}
             onChange={setInputValue}
-            onMention={(userId, text) => console.log('Mentioned user:', userId, text)}
+            onMention={(userId, text) => console.log('Benutzer erwähnt:', userId, text)}
             placeholder="Schreiben Sie eine Nachricht... (@Benutzer für Erwähnung)"
             multiline={true}
             className="min-h-[80px] max-h-[120px] bg-background border-none focus:ring-0 py-3"

@@ -56,18 +56,6 @@ export const CaseActivityTimeline: React.FC<CaseActivityTimelineProps> = ({ acti
             <div className="text-sm">
               {activity.content}
             </div>
-            
-            {activity.type === 'document' && activity.attachment && (
-              <div className="mt-2 p-3 rounded-lg bg-muted/50 border border-border flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{activity.attachment.name}</p>
-                  <p className="text-xs text-muted-foreground">{activity.attachment.size}</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       ))}

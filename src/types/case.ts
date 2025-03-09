@@ -106,4 +106,3 @@ export interface Notification {
   caseId?: string;
   targetUserId?: string; // Added to target specific users
 }
-

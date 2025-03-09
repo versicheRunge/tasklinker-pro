@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Avatar } from '../../ui/avatar';
-import { Paperclip } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Message, User } from '../../../types/chat';
@@ -75,27 +74,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   __html: formatMessageWithMentions(message.text).formattedText 
                 }}
               />
-              
-              {message.attachments && message.attachments.length > 0 && (
-                <div className="mt-2">
-                  {message.attachments.map((attachment, i) => (
-                    attachment.type === 'image' ? (
-                      <div key={i} className="mt-2 rounded-md overflow-hidden">
-                        <img 
-                          src={attachment.url} 
-                          alt={attachment.name} 
-                          className="max-w-full max-h-[200px] object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div key={i} className="mt-2 flex items-center gap-2 p-2 bg-background/80 rounded-md">
-                        <Paperclip className="h-4 w-4" />
-                        <span className="text-sm truncate max-w-[200px]">{attachment.name}</span>
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
