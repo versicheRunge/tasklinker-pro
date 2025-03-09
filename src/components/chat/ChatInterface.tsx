@@ -72,8 +72,9 @@ export const ChatInterface: React.FC = () => {
     users.forEach(user => {
       const userMention = `@${user.name}`;
       if (text.includes(userMention)) {
-        formattedText = formattedText.replaceAll(
-          userMention,
+        // Use replace with a global regex instead of replaceAll
+        formattedText = formattedText.replace(
+          new RegExp(userMention, 'g'),
           `<span class="text-primary font-medium">${userMention}</span>`
         );
       }
