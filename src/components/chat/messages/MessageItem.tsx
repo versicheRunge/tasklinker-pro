@@ -27,7 +27,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     new Date(message.timestamp).toDateString() !== new Date(allMessages[index - 1].timestamp).toDateString();
 
   return (
-    <React.Fragment>
+    <>
       {showDateHeader && (
         <div className="flex justify-center my-4">
           <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
@@ -78,6 +78,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </div>
         </div>
       </div>
-    </React.Fragment>
+    </>
   );
 };

@@ -5,6 +5,7 @@ import { Send, Smile } from 'lucide-react';
 import { MentionInput } from '../../common/MentionInput';
 import { User } from '../../../types/chat';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { useUser } from '../../../contexts/UserContext';
 
 interface ChatInputProps {
   inputValue: string;
@@ -45,6 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   handleKeyDown,
   sendMessage
 }) => {
+  const { users } = useUser();
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   const addEmoji = (emoji: string) => {
@@ -67,6 +69,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             multiline={true}
             className="min-h-[80px] max-h-[120px] bg-background border-none focus:ring-0 py-3"
             onKeyDown={handleKeyDown}
+            users={users}
           />
           
           <div className="flex items-center justify-between px-3 py-2 bg-muted/20 border-t">

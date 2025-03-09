@@ -412,7 +412,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             userId,
             caseItem.id,
             `${currentUser?.name} hat Sie in einem Kommentar erwähnt`,
-            "case" // Fixed: Pass the correct type string literal
+            "case" // Use the correct type string literal
           );
         }
       }

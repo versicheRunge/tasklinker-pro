@@ -13,6 +13,7 @@ interface MentionInputProps {
   maxLength?: number;
   className?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  users?: User[]; // Optional users prop to override context
 }
 
 export const MentionInput: React.FC<MentionInputProps> = ({
@@ -24,8 +25,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   maxLength,
   className = '',
   onKeyDown,
+  users: usersProp,
 }) => {
-  const { users, mentionUser, currentUser } = useUser();
+  const { users: contextUsers, mentionUser, currentUser } = useUser();
+  const users = usersProp || contextUsers; // Use provided users or fall back to context
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStartPos, setMentionStartPos] = useState<number | null>(null);

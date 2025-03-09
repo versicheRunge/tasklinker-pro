@@ -48,7 +48,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     setCommentText('');
   };
 
-  // Extract user ID from @mention
+  // Extract user ID from @mention and notify them
   const handleMention = (userId: string, text: string) => {
     console.log('Benutzer erwähnt:', userId);
   };
@@ -83,6 +83,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 placeholder="Schreiben Sie einen Kommentar... (@Benutzer für Erwähnung)"
                 multiline={true}
                 className="min-h-[80px] bg-background border focus:ring-1 focus:ring-primary py-2"
+                users={users}
               />
               
               <div className="flex justify-end mt-2">
