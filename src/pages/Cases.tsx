@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { CasesList } from '../components/cases/CasesList';
 import { cases as initialCasesData } from '../data/mockData';
-import { PlusCircle, Filter } from 'lucide-react';
+import { PlusCircle, Filter, Users } from 'lucide-react';
 import { CaseItem, CaseType, ChecklistTemplate, CaseDefaultTitle, CasePriority } from '../types/case';
 import { toast } from "../hooks/use-toast";
 import { 
@@ -41,8 +41,10 @@ const Cases: React.FC = () => {
   const [cases, setCases] = useState<CaseItem[]>(getStoredCases());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [defaultTitles, setDefaultTitles] = useState<CaseDefaultTitle[]>(getDefaultTitles());
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFilterPriorityOpen, setIsFilterPriorityOpen] = useState(false);
+  const [isFilterUserOpen, setIsFilterUserOpen] = useState(false);
   const [filterPriority, setFilterPriority] = useState<CasePriority | 'all'>('all');
+  const [filterUserId, setFilterUserId] = useState<string | 'all'>('all');
   
   const [newCaseData, setNewCaseData] = useState({
     title: '',
@@ -288,9 +290,9 @@ const Cases: React.FC = () => {
     }
   };
 
-  const filteredCases = filterPriority === 'all' 
-    ? cases 
-    : cases.filter(caseItem => caseItem.priority === filterPriority);
+  const filteredCases = cases
+    .filter(caseItem => filterPriority === 'all' || caseItem.priority === filterPriority)
+    .filter(caseItem => filterUserId === 'all' || (caseItem.assignee && caseItem.assignee.id === filterUserId));
 
   return (
     <AppLayout>
@@ -300,7 +302,7 @@ const Cases: React.FC = () => {
           <p className="text-muted-foreground">Alle Vorgänge im Überblick.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <Popover open={isFilterPriorityOpen} onOpenChange={setIsFilterPriorityOpen}>
             <PopoverTrigger asChild>
               <button 
                 className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
@@ -355,6 +357,42 @@ const Cases: React.FC = () => {
                       Dringend
                     </div>
                   </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <Popover open={isFilterUserOpen} onOpenChange={setIsFilterUserOpen}>
+            <PopoverTrigger asChild>
+              <button 
+                className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                <span>Mitarbeiter filtern</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                <h4 className="font-medium mb-2">Nach Mitarbeiter filtern</h4>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    className={`px-3 py-2 rounded-md ${filterUserId === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                    onClick={() => setFilterUserId('all')}
+                  >
+                    Alle Mitarbeiter
+                  </button>
+                  {users.map(user => (
+                    <button 
+                      key={user.id}
+                      className={`px-3 py-2 rounded-md flex items-center gap-2 ${filterUserId === user.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                      onClick={() => setFilterUserId(user.id)}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                        {user.name.charAt(0)}
+                      </div>
+                      <span>{user.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </PopoverContent>
@@ -558,3 +596,4 @@ const Cases: React.FC = () => {
 };
 
 export default Cases;
+

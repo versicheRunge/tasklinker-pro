@@ -7,23 +7,28 @@ import { Badge } from '../ui/badge';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { notifications } = useUser();
+  const { notifications, isAdmin } = useUser();
   
   // Count chat notifications
   const chatNotifications = notifications.filter(
     notif => notif.type === 'chat' && !notif.read
   ).length;
   
-  const navItems = [
+  // Create base navigation items
+  let navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
-    { name: 'Checklisten', path: '/checklists', icon: CheckSquare },
     { name: 'Team', path: '/team', icon: Users },
     { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
     { name: 'Ziele', path: '/goals', icon: Target },
     { name: 'Berichte', path: '/reports', icon: BarChart3 },
     { name: 'Einstellungen', path: '/settings', icon: Settings },
   ];
+  
+  // Add Checklists only for admin users
+  if (isAdmin) {
+    navItems.splice(2, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
+  }
 
   const isActive = (path: string) => {
     return location.pathname === path;
