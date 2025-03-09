@@ -1,75 +1,183 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target, Calendar } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useUser } from '../../contexts/UserContext';
-import { Badge } from '../ui/badge';
+import { 
+  Users, 
+  Home, 
+  FolderOpen, 
+  MessagesSquare, 
+  BarChart3, 
+  CheckSquare, 
+  Archive,
+  Settings,
+  Goal,
+  Calendar,
+  Mail
+} from 'lucide-react';
 
-export const Sidebar: React.FC = () => {
-  const location = useLocation();
-  const { notifications, isAdmin } = useUser();
-  
-  // Count chat notifications
-  const chatNotifications = notifications.filter(
-    notif => notif.type === 'chat' && !notif.read
-  ).length;
-  
-  // Create base navigation items
-  let navItems = [
-    { name: 'Dashboard', path: '/', icon: Home },
-    { name: 'Vorgänge', path: '/cases', icon: FileText },
-    { name: 'Team', path: '/team', icon: Users },
-    { name: 'Kalender', path: '/calendar', icon: Calendar },
-    { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
-    { name: 'Ziele', path: '/goals', icon: Target },
-    { name: 'Einstellungen', path: '/settings', icon: Settings },
-  ];
-  
-  // Add Reports and Checklists only for admin users
-  if (isAdmin) {
-    navItems.splice(6, 0, { name: 'Berichte', path: '/reports', icon: BarChart3 });
-    navItems.splice(3, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
-  }
+interface SidebarProps {
+  isMobile?: boolean;
+  closeMobileMenu?: () => void;
+}
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  isMobile = false, 
+  closeMobileMenu
+}) => {
+  const { isAdmin } = useUser();
+  const appName = localStorage.getItem('appName') || 'TruTeam';
+  const appLogo = localStorage.getItem('appLogo') || 'TR';
+  
+  // Helper function to manage mobile menu closing
+  const handleClick = () => {
+    if (isMobile && closeMobileMenu) {
+      closeMobileMenu();
+    }
   };
-
+  
+  const linkClass = "flex items-center gap-3 px-3 py-2 rounded-md hover:bg-primary/10 transition-colors";
+  const activeLinkClass = "bg-primary/10 text-primary font-medium";
+  
   return (
-    <aside className="w-64 bg-sidebar border-r border-border h-screen sticky top-0 shrink-0">
-      <div className="px-6 py-8">
-        <div className="flex items-center space-x-2 mb-8">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-lg">TR</span>
+    <div className="h-full flex flex-col">
+      <div className="p-4">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center h-8 w-8 rounded bg-primary text-primary-foreground font-bold text-sm">
+            {appLogo}
           </div>
-          <h1 className="text-xl font-semibold">TruTeam</h1>
+          <span className="font-semibold text-lg">{appName}</span>
         </div>
-        
-        <nav className="space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive(item.path)
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-foreground/70 hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-primary' : 'text-foreground/70'}`} />
-              <span>{item.name}</span>
-              {item.badge > 0 && (
-                <Badge variant="destructive" className="ml-auto px-1.5 min-w-5 flex justify-center">
-                  {item.badge}
-                </Badge>
-              )}
-              {isActive(item.path) && !item.badge && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-              )}
-            </Link>
-          ))}
-        </nav>
       </div>
-    </aside>
+      
+      <nav className="flex-1 p-2 space-y-1">
+        <NavLink 
+          to="/" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Home size={18} />
+          <span>Dashboard</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/cases" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive || window.location.pathname.includes('/vorgaenge/') ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <FolderOpen size={18} />
+          <span>Vorgänge</span>
+        </NavLink>
+
+        <NavLink 
+          to="/cases/archived" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Archive size={18} />
+          <span>Archiv</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/chat" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <MessagesSquare size={18} />
+          <span>Chat</span>
+        </NavLink>
+
+        <NavLink 
+          to="/calendar" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Calendar size={18} />
+          <span>Kalender</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/team" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Users size={18} />
+          <span>Team</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/goals" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Goal size={18} />
+          <span>Ziele</span>
+        </NavLink>
+        
+        {isAdmin && (
+          <>
+            <NavLink 
+              to="/checklists" 
+              className={({ isActive }) => 
+                `${linkClass} ${isActive ? activeLinkClass : ''}`
+              }
+              onClick={handleClick}
+            >
+              <CheckSquare size={18} />
+              <span>Checklisten</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/reports" 
+              className={({ isActive }) => 
+                `${linkClass} ${isActive ? activeLinkClass : ''}`
+              }
+              onClick={handleClick}
+            >
+              <BarChart3 size={18} />
+              <span>Berichte</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/email-templates" 
+              className={({ isActive }) => 
+                `${linkClass} ${isActive ? activeLinkClass : ''}`
+              }
+              onClick={handleClick}
+            >
+              <Mail size={18} />
+              <span>E-Mail-Vorlagen</span>
+            </NavLink>
+          </>
+        )}
+      </nav>
+      
+      <div className="p-2 mt-auto">
+        <NavLink 
+          to="/settings" 
+          className={({ isActive }) => 
+            `${linkClass} ${isActive ? activeLinkClass : ''}`
+          }
+          onClick={handleClick}
+        >
+          <Settings size={18} />
+          <span>Einstellungen</span>
+        </NavLink>
+      </div>
+    </div>
   );
 };

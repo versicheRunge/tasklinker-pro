@@ -20,6 +20,7 @@ import NotFound from './pages/NotFound';
 import Chat from './pages/Chat';
 import Goals from './pages/Goals';
 import Calendar from './pages/Calendar';
+import EmailTemplates from './pages/EmailTemplates';
 
 // Geschützte Route Komponente
 import { useUser } from './contexts/UserContext';
@@ -109,6 +110,11 @@ function App() {
                 <Route path="/reports" element={
                   <AdminRoute>
                     <Reports />
+                  </AdminRoute>
+                } />
+                <Route path="/email-templates" element={
+                  <AdminRoute>
+                    <EmailTemplates />
                   </AdminRoute>
                 } />
                 <Route path="/settings" element={<Settings />} />

@@ -60,7 +60,7 @@ const Cases: React.FC = () => {
           </div>
         </div>
         
-        {/* Wrap CasesList in error handler */}
+        {/* Make sure cases is an array before rendering CasesList */}
         {Array.isArray(cases) ? (
           <CasesList cases={cases} updateCase={updateCase} />
         ) : (
