@@ -107,8 +107,8 @@ const CalendarPage: React.FC = () => {
               />
             ) : (
               <div className="space-y-4">
-                {getEventsForDate(date, events).length > 0 ? (
-                  getEventsForDate(date, events).map((event) => (
+                {getEventsForDate(date).length > 0 ? (
+                  getEventsForDate(date).map((event) => (
                     <EventItem 
                       key={event.id}
                       event={event}

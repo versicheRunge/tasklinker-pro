@@ -17,17 +17,27 @@ const Index: React.FC = () => {
 
   // Count cases assigned to the current user
   const assignedToMeCount = cases.filter(c => 
-    c.assignee && c.assignee.id === currentUser?.id && c.status !== 'archived'
+    c.assignee && c.assignee.id === currentUser?.id && c.status !== 'archived' && !c.archived
   ).length;
 
   // Count total active cases
-  const activeCasesCount = cases.filter(c => c.status !== 'archived').length;
+  const activeCasesCount = cases.filter(c => c.status !== 'archived' && !c.archived).length;
 
   // Count high priority cases
-  const highPriorityCount = cases.filter(c => c.priority === 'high' && c.status !== 'archived').length;
+  const highPriorityCount = cases.filter(c => c.priority === 'high' && c.status !== 'archived' && !c.archived).length;
 
   // Count team members
   const teamCount = users.length;
+
+  // Get all case activities
+  const allActivities = cases.flatMap(c => 
+    c.activities ? c.activities.map(a => ({...a, caseId: c.id})) : []
+  );
+  
+  // Sort by timestamp (newest first)
+  const sortedActivities = [...allActivities].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
   return (
     <AppLayout>
@@ -43,29 +53,29 @@ const Index: React.FC = () => {
         <StatCard 
           title="Meine Vorgänge" 
           value={assignedToMeCount.toString()}
-          description="Dir zugewiesene Vorgänge"
           icon={FileText}
+          color="bg-blue-100 text-blue-600"
           onClick={() => navigate('/cases')}
         />
         <StatCard 
           title="Aktive Vorgänge" 
           value={activeCasesCount.toString()}
-          description="Aktuell offene Vorgänge"
           icon={BarChart3}
+          color="bg-green-100 text-green-600"
           onClick={() => navigate('/cases')}
         />
         <StatCard 
           title="Hohe Priorität" 
           value={highPriorityCount.toString()}
-          description="Vorgänge mit hoher Priorität"
           icon={CalendarClock}
+          color="bg-amber-100 text-amber-600"
           onClick={() => navigate('/cases')}
         />
         <StatCard 
           title="Teammitglieder" 
           value={teamCount.toString()}
-          description="Aktive Teammitglieder"
           icon={Users}
+          color="bg-purple-100 text-purple-600"
           onClick={() => navigate('/team')}
         />
       </div>
@@ -73,7 +83,7 @@ const Index: React.FC = () => {
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <Card className="col-span-2 p-4">
           <h2 className="text-xl font-semibold mb-4">Letzte Aktivitäten</h2>
-          <RecentActivity />
+          <RecentActivity activities={sortedActivities} />
         </Card>
         <Card className="p-4">
           <h2 className="text-xl font-semibold mb-4">Schnellzugriff</h2>
