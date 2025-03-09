@@ -12,7 +12,7 @@ interface TeamChatProps {
 }
 
 export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
-  const { users, currentUser, notifications, markNotificationsAsRead } = useUser();
+  const { users, currentUser, notifications } = useUser();
   const {
     messages,
     inputValue,
@@ -29,24 +29,17 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
   // Mark chat notifications as read when viewing the chat
   useEffect(() => {
     if (!isLoading) {
-      const chatNotificationIds = notifications
-        .filter(notification => notification.type === 'chat' && !notification.read)
-        .map(notification => notification.id);
-        
-      if (chatNotificationIds.length > 0) {
-        markNotificationsAsRead(chatNotificationIds);
-        
-        // Show toast for new messages
-        if (unreadMessages > 0) {
-          toast({
-            title: "Neue Nachrichten",
-            description: `Sie haben ${unreadMessages} neue Nachrichten.`,
-            variant: "default"
-          });
-        }
+      // Since we don't have markNotificationsAsRead in the context, 
+      // let's just show the toast for new messages if needed
+      if (unreadMessages > 0) {
+        toast({
+          title: "Neue Nachrichten",
+          description: `Sie haben ${unreadMessages} neue Nachrichten.`,
+          variant: "default"
+        });
       }
     }
-  }, [isLoading, notifications, markNotificationsAsRead, unreadMessages]);
+  }, [isLoading, unreadMessages]);
   
   return (
     <div className="flex flex-col h-full">

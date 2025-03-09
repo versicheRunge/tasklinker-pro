@@ -1,7 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
-import { User, Notification } from '../types/case';
+import { User } from '../types/case';
+import { Notification } from '../types/chat';
 import { toast } from "../hooks/use-toast";
 
 export type UserRole = 'admin' | 'staff';
@@ -21,20 +21,19 @@ type UserContextType = {
   notifications: Notification[];
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
+  markNotificationsAsRead: (ids: string[]) => void;
   clearNotifications: () => void;
-  mentionUser: (userId: string, caseId: string, message: string) => void;
+  mentionUser: (userId: string, caseId: string, message: string, type?: 'chat' | 'case' | 'system') => void;
   validatePassword: (userId: string, password: string) => boolean;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => boolean;
 };
 
-// Convert mockData users to our User type with added userRole and default password
 const getInitialUsers = () => {
   const storedUsers = localStorage.getItem('users');
   if (storedUsers) {
     try {
       const parsedUsers = JSON.parse(storedUsers);
       
-      // Ensure all users have a password field
       const validatedUsers = parsedUsers.map((user: any) => {
         if (!user.password) {
           return { ...user, password: 'password123' };
@@ -51,12 +50,11 @@ const getInitialUsers = () => {
   console.log('Creating default users with passwords');
   return initialUsers.map((user, index) => ({
     ...user,
-    // Only add email if it doesn't exist (now email is optional in the User type)
     ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
     userRole: index === 0 ? 'admin' : 'staff',
     department: user.department || 'Allgemein',
     phone: user.phone || '',
-    password: 'password123', // Default password for all users
+    password: 'password123',
     stats: user.stats || {
       casesHandled: 0,
       completed: 0,
@@ -76,6 +74,7 @@ const UserContext = createContext<UserContextType>({
   notifications: [],
   addNotification: () => {},
   markNotificationAsRead: () => {},
+  markNotificationsAsRead: () => {},
   clearNotifications: () => {},
   mentionUser: () => {},
   validatePassword: () => false,
@@ -86,7 +85,7 @@ export const useUser = () => useContext(UserContext);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<UserWithPassword[]>(getInitialUsers());
-  const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no logged in user
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
   useEffect(() => {
@@ -134,7 +133,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newUser = {
       ...userData,
       id: `user-${Date.now()}`,
-      password: 'password123' // Default password for new users
+      password: 'password123'
     };
     setAllUsers(prev => [...prev, newUser as UserWithPassword]);
   };
@@ -235,6 +234,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  const markNotificationsAsRead = (notificationIds: string[]) => {
+    if (!currentUser) return;
+    
+    try {
+      const storedNotifications = localStorage.getItem('notifications');
+      if (storedNotifications) {
+        const allNotifications = JSON.parse(storedNotifications);
+        const userNotifications = allNotifications[currentUser.id] || [];
+        
+        const updatedUserNotifications = userNotifications.map((notification: Notification) => 
+          notificationIds.includes(notification.id) ? { ...notification, read: true } : notification
+        );
+        
+        allNotifications[currentUser.id] = updatedUserNotifications;
+        localStorage.setItem('notifications', JSON.stringify(allNotifications));
+        
+        setNotifications(updatedUserNotifications);
+      }
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+  
   const clearNotifications = () => {
     if (!currentUser) return;
     
@@ -252,7 +274,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const mentionUser = (userId: string, caseId: string, message: string) => {
+  const mentionUser = (userId: string, caseId: string, message: string, type: 'chat' | 'case' | 'system' = 'case') => {
     if (!currentUser) return;
     
     const mentionedUser = allUsers.find(user => user.id === userId);
@@ -261,15 +283,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // Erstelle eine Benachrichtigung für den erwähnten Benutzer
     const notification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
       title: `Erwähnung in einem Kommentar`,
       message: `${currentUser.name} hat Sie in einem Kommentar erwähnt: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
       caseId,
-      targetUserId: userId
+      targetUserId: userId,
+      type
     };
     
-    // Speichere die Benachrichtigung
     try {
       const storedNotifications = localStorage.getItem('notifications') || '{}';
       const allNotifications = JSON.parse(storedNotifications);
@@ -287,7 +308,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log(`Benachrichtigung an ${mentionedUser.name} für Erwähnung in Vorgang ${caseId} gesendet`);
       
-      // Zeige auch ein Toast für den aktuellen Benutzer an
       toast({
         title: "Benutzer erwähnt",
         description: `${mentionedUser.name} wurde in Ihrem Kommentar erwähnt und benachrichtigt.`
@@ -312,6 +332,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notifications,
         addNotification,
         markNotificationAsRead,
+        markNotificationsAsRead,
         clearNotifications,
         mentionUser,
         validatePassword,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Message, User } from '../types/chat';
 import { useUser } from '../contexts/UserContext';
@@ -16,14 +15,12 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
   const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string>('');
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
-  // Load messages
   useEffect(() => {
     const loadMessages = () => {
       try {
         const storageKey = `chatMessages_${groupId}`;
         const storedMessages = localStorage.getItem(storageKey);
         
-        // Get last seen timestamp
         const lastSeenKey = `lastSeen_${groupId}_${currentUser?.id}`;
         const storedLastSeen = localStorage.getItem(lastSeenKey);
         
@@ -35,7 +32,6 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
           const parsedMessages = JSON.parse(storedMessages);
           setMessages(parsedMessages);
           
-          // Calculate unread messages
           if (storedLastSeen && currentUser) {
             const unread = parsedMessages.filter(
               (msg: Message) => 
@@ -58,7 +54,6 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     loadMessages();
   }, [groupId, currentUser]);
   
-  // Update last seen when viewing messages
   useEffect(() => {
     if (!isLoading && currentUser && messages.length > 0) {
       const lastMessageTimestamp = messages[messages.length - 1].timestamp;
@@ -70,7 +65,6 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     }
   }, [messages, isLoading, currentUser, groupId]);
   
-  // Save messages
   useEffect(() => {
     if (messages.length > 0 && !isLoading) {
       const storageKey = `chatMessages_${groupId}`;
@@ -123,7 +117,6 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
     
-    // Update last seen for sender
     const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
     localStorage.setItem(lastSeenKey, newMessage.timestamp);
     setLastSeenTimestamp(newMessage.timestamp);
@@ -131,14 +124,21 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     mentions.forEach(mentionedName => {
       const mentionedUser = users.find(u => u.name === mentionedName);
       if (mentionedUser && mentionedUser.id !== currentUser.id) {
-        mentionUser(mentionedUser.id, groupId, `@${mentionedUser.name} wurde im Chat erwähnt`, 'chat');
+        mentionUser(
+          mentionedUser.id, 
+          groupId, 
+          `@${mentionedUser.name} wurde im Chat erwähnt`
+        );
       }
     });
     
-    // Create notifications for all users except sender
     users.forEach(user => {
       if (user.id !== currentUser.id) {
-        mentionUser(user.id, groupId, `Neue Nachricht von ${currentUser.name}`, 'chat');
+        mentionUser(
+          user.id, 
+          groupId, 
+          `Neue Nachricht von ${currentUser.name}`
+        );
       }
     });
   };

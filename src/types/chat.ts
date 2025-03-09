@@ -23,3 +23,14 @@ export interface ChatChannel {
   participants?: string[];
   unread?: boolean;
 }
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  caseId?: string;
+  targetUserId?: string;
+  type: 'chat' | 'case' | 'system';
+}

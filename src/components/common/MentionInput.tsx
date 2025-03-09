@@ -12,6 +12,7 @@ interface MentionInputProps {
   multiline?: boolean;
   maxLength?: number;
   className?: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void; // Added this prop
 }
 
 export const MentionInput: React.FC<MentionInputProps> = ({
@@ -22,6 +23,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   multiline = false,
   maxLength,
   className = '',
+  onKeyDown,
 }) => {
   const { users, mentionUser, currentUser } = useUser();
   const [suggestions, setSuggestions] = useState<User[]>([]);
@@ -141,6 +143,11 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         e.preventDefault(); // Prevent focus change
         handleSelectUser(suggestions[selectedSuggestionIndex]);
       }
+    }
+    
+    // Call the external onKeyDown handler if provided
+    if (onKeyDown) {
+      onKeyDown(e);
     }
   };
 
