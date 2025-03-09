@@ -37,10 +37,19 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
         
         if (storedMessages) {
           const parsedMessages = JSON.parse(storedMessages);
-          setMessages(parsedMessages);
+          
+          // Filter messages for direct messages - only show messages between the current user and recipient
+          let filteredMessages = parsedMessages;
+          if (isDirect && currentUser) {
+            filteredMessages = parsedMessages.filter((msg: Message) => 
+              msg.userId === currentUser.id || msg.userId === recipientId
+            );
+          }
+          
+          setMessages(filteredMessages);
           
           if (storedLastSeen && currentUser) {
-            const unread = parsedMessages.filter(
+            const unread = filteredMessages.filter(
               (msg: Message) => 
                 msg.timestamp > storedLastSeen && 
                 msg.userId !== currentUser.id
@@ -59,7 +68,7 @@ export const useChat = ({ groupId = 'global' }: UseChatProps = {}) => {
     };
     
     loadMessages();
-  }, [groupId, currentUser]);
+  }, [groupId, currentUser, isDirect, recipientId]);
   
   useEffect(() => {
     if (!isLoading && currentUser && messages.length > 0) {
