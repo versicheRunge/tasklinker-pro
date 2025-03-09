@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare } from 'lucide-react';
+import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare, ListChecks } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { StatCard } from '../components/dashboard/StatCard';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
@@ -31,11 +31,24 @@ const Index: React.FC = () => {
     !c.archived
   );
   
+  // Meine offenen Vorgänge (nicht abgeschlossen)
+  const myActiveCases = myCases.filter(c => c.status !== 'completed');
+  
+  // Zugewiesene Aufgaben (Todo-Liste)
+  const myAssignedCases = allCases.filter(c => 
+    currentUser && c.assignee.id === currentUser.id && !c.archived
+  );
+  
+  // Alle Fälle, die nicht von diesem Benutzer sind
+  const otherCases = allCases.filter(c => 
+    currentUser && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
+  );
+  
+  // Status-spezifische Filter
   const myNewCases = myCases.filter(c => c.status === 'new');
   const myInProgressCases = myCases.filter(c => c.status === 'in_progress');
   const myWaitingCases = myCases.filter(c => c.status === 'waiting');
   const myCompletedCases = myCases.filter(c => c.status === 'completed');
-  const myActiveCases = myCases.filter(c => c.status !== 'completed');
   
   // All cases (for all users)
   const newCases = allCases.filter(c => c.status === 'new' && !c.archived);
@@ -94,6 +107,28 @@ const Index: React.FC = () => {
         </div>
       </div>
       
+      {/* To-Do Liste (Zugewiesene Aufgaben) */}
+      {currentUser && myAssignedCases.length > 0 && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <ListChecks className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-medium">Meine To-Do Liste</h2>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/cases')}>
+              Alle anzeigen
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myAssignedCases.slice(0, 3).map(caseItem => (
+              <CaseCard key={caseItem.id} caseItem={caseItem} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Meine Vorgänge (Eigene + Zugewiesene) */}
       {currentUser && (
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -114,6 +149,24 @@ const Index: React.FC = () => {
               <p className="text-muted-foreground">Keine aktiven Vorgänge für Sie</p>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Alle anderen Vorgänge (von anderen Mitarbeitern) */}
+      {currentUser && otherCases.length > 0 && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-medium">Vorgänge von Kollegen</h2>
+            <Button variant="outline" onClick={() => navigate('/cases')}>
+              Alle anzeigen
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {otherCases.slice(0, 3).map(caseItem => (
+              <CaseCard key={caseItem.id} caseItem={caseItem} />
+            ))}
+          </div>
         </div>
       )}
       

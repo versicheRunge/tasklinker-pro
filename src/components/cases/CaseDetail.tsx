@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, 
-  Save, RefreshCw, Archive, Trash2, Download, FileText, Plus, X } from 'lucide-react';
+  Save, RefreshCw, Archive, Trash2, Download, FileText, Plus, X, UserPlus } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, Document } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
@@ -22,7 +23,7 @@ interface CaseDetailProps {
 export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, currentUser, users } = useUser();
+  const { isAdmin, currentUser, users, mentionUser } = useUser();
   const initialCase = cases.find(c => c.id === id);
   
   const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
@@ -34,6 +35,12 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   const [isAssigningUser, setIsAssigningUser] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   
   useEffect(() => {
     const updatedCase = cases.find(c => c.id === id);
@@ -41,6 +48,130 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       setCaseItem(updatedCase);
     }
   }, [cases, id]);
+
+  // Filtern der Benutzer für die @-Mention-Vorschläge
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(mentionSearch.toLowerCase()) ||
+    (user.email && user.email.toLowerCase().includes(mentionSearch.toLowerCase()))
+  );
+
+  // Benutzervorschläge basierend auf der Eingabe nach @
+  const handleCommentInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setCommentText(text);
+    
+    const textarea = e.target;
+    const cursorPos = textarea.selectionStart;
+    setCursorPosition(cursorPos);
+    
+    // Finde Position des letzten @ vor dem Cursor
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lastAtPos = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtPos !== -1) {
+      const mentionText = textBeforeCursor.substring(lastAtPos + 1);
+      const wordAfterAt = mentionText.match(/^\S*/)?.[0] || '';
+      
+      // Prüfe, ob ein Leerzeichen nach dem Wort folgt oder wir am Ende des Textes sind
+      const isCompleteWord = 
+        cursorPos === text.length || 
+        text[cursorPos] === ' ' ||
+        mentionText.includes(' ');
+      
+      if (!isCompleteWord && lastAtPos !== cursorPos - 1) {
+        setMentionSearch(wordAfterAt);
+        setShowMentions(true);
+        
+        // Berechne Position für das Dropdown
+        if (commentRef.current) {
+          const cursorCoords = getCaretCoordinates(commentRef.current, cursorPos);
+          setMentionPosition({
+            top: cursorCoords.top + 20,
+            left: cursorCoords.left
+          });
+        }
+      } else {
+        setShowMentions(false);
+      }
+    } else {
+      setShowMentions(false);
+    }
+  };
+
+  // Hilfsfunktion zur Bestimmung der Cursor-Position im Textarea
+  const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {
+    const { offsetLeft, offsetTop } = element;
+    const div = document.createElement('div');
+    const styles = getComputedStyle(element);
+    
+    div.style.position = 'absolute';
+    div.style.top = '0';
+    div.style.left = '0';
+    div.style.visibility = 'hidden';
+    div.style.width = styles.width;
+    div.style.height = 'auto';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordWrap = 'break-word';
+    div.style.paddingTop = styles.paddingTop;
+    div.style.paddingRight = styles.paddingRight;
+    div.style.paddingBottom = styles.paddingBottom;
+    div.style.paddingLeft = styles.paddingLeft;
+    div.style.fontSize = styles.fontSize;
+    div.style.fontFamily = styles.fontFamily;
+    div.style.lineHeight = styles.lineHeight;
+    
+    const text = element.value.substring(0, position);
+    const span = document.createElement('span');
+    span.textContent = text;
+    div.appendChild(span);
+    
+    document.body.appendChild(div);
+    const { offsetTop: spanTop, offsetLeft: spanLeft } = span;
+    document.body.removeChild(div);
+    
+    return {
+      top: offsetTop + spanTop,
+      left: offsetLeft + spanLeft
+    };
+  };
+
+  // Funktion zum Einfügen des ausgewählten Benutzernamens
+  const insertMention = (user: UserType) => {
+    const textBeforeCursor = commentText.substring(0, cursorPosition);
+    const lastAtPos = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtPos !== -1) {
+      const textBeforeAt = commentText.substring(0, lastAtPos);
+      const textAfterCursor = commentText.substring(cursorPosition);
+      
+      // Erstelle neuen Text mit eingesetztem Benutzernamen
+      const newText = textBeforeAt + '@' + user.name.replace(/\s+/g, '') + ' ' + textAfterCursor;
+      setCommentText(newText);
+      
+      // Setze Cursor nach dem eingefügten Benutzernamen
+      setTimeout(() => {
+        if (commentRef.current) {
+          const newCursorPos = lastAtPos + user.name.replace(/\s+/g, '').length + 2; // +2 für @ und Leerzeichen
+          commentRef.current.focus();
+          commentRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    }
+    
+    setShowMentions(false);
+  };
+
+  // Klick außerhalb schließt die Mention-Liste
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowMentions(false);
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   if (!caseItem) {
     return (
@@ -538,7 +669,9 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     
     // Add case info
     doc.setFontSize(12);
-    doc.text(`Vorgangsnummer: ${caseItem.id.replace('case', 'Vorgang')}`, 14, 30);
+    // Ersetze 'case' mit 'Vorgang' in der ID
+    const formattedId = caseItem.id.replace('case', 'Vorgang');
+    doc.text(`Vorgangsnummer: ${formattedId}`, 14, 30);
     doc.text(`Titel: ${caseItem.title}`, 14, 37);
     doc.text(`Kunde: ${customerName}`, 14, 44);
     doc.text(`Status: ${statusLabel[caseItem.status]}`, 14, 51);
@@ -564,7 +697,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       
       doc.setFontSize(12);
       caseItem.checklist.forEach((item, index) => {
-        const checkboxSymbol = item.completed ? '☑' : '☐';
+        // Bessere Checkbox-Symbole verwenden
+        const checkboxSymbol = item.completed ? '✓' : '□';
         doc.text(`${checkboxSymbol} ${item.text}`, 14, yPos);
         yPos += 7;
         
@@ -579,7 +713,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
         // Add sub-items with proper checkbox symbols
         if (item.subItems && item.subItems.length > 0) {
           item.subItems.forEach(subItem => {
-            const subCheckboxSymbol = subItem.completed ? '☑' : '☐';
+            const subCheckboxSymbol = subItem.completed ? '✓' : '□';
             doc.text(`   ${subCheckboxSymbol} ${subItem.text}`, 20, yPos);
             yPos += 7;
           });
@@ -711,20 +845,14 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       mentionedUsernames.add(username);
     }
     
-    if (mentionedUsernames.size > 0) {
+    if (mentionedUsernames.size > 0 && currentUser) {
       // Find user IDs that match the usernames
       users.forEach(user => {
-        const usernameFromEmail = user.email?.split('@')[0] || '';
         const usernameFromName = user.name.toLowerCase().replace(/\s+/g, '');
         
-        if (mentionedUsernames.has(usernameFromEmail) || 
-            mentionedUsernames.has(usernameFromName)) {
-          // Send notification to this user
-          sendNotification(
-            user.id,
-            `Erwähnung in Kommentar: ${caseItem.title}`,
-            `${currentUser?.name} hat Sie in einem Kommentar in "${caseItem.title}" erwähnt.`
-          );
+        if (mentionedUsernames.has(usernameFromName)) {
+          // Verwende die mentionUser-Funktion aus dem UserContext
+          mentionUser(user.id, caseItem.id, text);
         }
       });
     }
@@ -735,8 +863,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
 
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const commentForm = e.target as HTMLFormElement;
-    const commentText = new FormData(commentForm).get('comment') as string;
     
     if (!commentText.trim()) return;
     
@@ -766,7 +892,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
-    commentForm.reset();
+    setCommentText('');
     
     toast({
       title: "Kommentar hinzugefügt",
@@ -821,20 +947,21 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             </button>
             
             <div className="flex flex-col items-end">
+              <button 
+                onClick={() => setIsAssigningUser(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors mb-2"
+                title="Benutzer zuweisen"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Zuweisen</span>
+              </button>
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-sm font-medium">Zugewiesen an</p>
                   <p className="text-sm text-muted-foreground">{caseItem.assignee.name}</p>
                 </div>
-                <button 
-                  onClick={() => setIsAssigningUser(true)}
-                  className="hover:bg-muted rounded-full p-1"
-                  title="Benutzer zuweisen"
-                >
-                  <User className="w-4 h-4 text-muted-foreground" />
-                </button>
+                <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="md" />
               </div>
-              <CustomAvatar name={caseItem.assignee.name} imageSrc={caseItem.assignee.avatar} size="lg" />
             </div>
           </div>
         </div>
@@ -905,14 +1032,47 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               <h3 className="text-sm font-medium mb-3">Neuen Kommentar hinzufügen</h3>
               <form onSubmit={handleCommentSubmit} className="flex gap-3">
                 <CustomAvatar name={currentUser?.name || "Max Schmidt"} size="sm" />
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <textarea 
+                    ref={commentRef}
                     name="comment"
                     className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
                     placeholder="Schreibe einen Kommentar... @benutzername für Erwähnungen"
                     rows={3}
                     required
+                    value={commentText}
+                    onChange={handleCommentInputChange}
                   ></textarea>
+                  
+                  {/* @-Mentions Dropdown */}
+                  {showMentions && filteredUsers.length > 0 && (
+                    <div 
+                      className="absolute bg-white dark:bg-gray-800 border border-border rounded-md shadow-md z-10 max-h-60 overflow-y-auto"
+                      style={{
+                        top: `${mentionPosition.top}px`,
+                        left: `${mentionPosition.left}px`,
+                        width: '220px'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {filteredUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer"
+                          onClick={() => insertMention(user)}
+                        >
+                          <CustomAvatar name={user.name} imageSrc={user.avatar} size="xs" />
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-medium truncate">{user.name}</p>
+                            {user.email && (
+                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between mt-3">
                     <label 
                       htmlFor="file-upload" 
@@ -934,6 +1094,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
                       Kommentar senden
                     </button>
                   </div>
+                  
+                  {/* Angehängte Datei anzeigen */}
                   {selectedFile && (
                     <div className="mt-2 p-2 bg-muted rounded-md flex justify-between items-center">
                       <div className="flex items-center gap-2">

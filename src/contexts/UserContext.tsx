@@ -1,6 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
 import { User, Notification } from '../types/case';
+import { toast } from "../hooks/use-toast";
 
 export type UserRole = 'admin' | 'staff';
 
@@ -114,9 +116,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser) {
       const storedNotifications = localStorage.getItem('notifications');
       if (storedNotifications) {
-        const allNotifications = JSON.parse(storedNotifications);
-        const userNotifications = allNotifications[currentUser.id] || [];
-        setNotifications(userNotifications);
+        try {
+          const allNotifications = JSON.parse(storedNotifications);
+          const userNotifications = allNotifications[currentUser.id] || [];
+          setNotifications(userNotifications);
+        } catch (error) {
+          console.error('Error parsing notifications:', error);
+          setNotifications([]);
+        }
       }
     }
   }, [currentUser]);
@@ -187,56 +194,74 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       read: false
     };
     
-    const storedNotifications = localStorage.getItem('notifications') || '{}';
-    const allNotifications = JSON.parse(storedNotifications);
-    
-    const userId = notificationData.targetUserId || currentUser.id;
-    const userNotifications = allNotifications[userId] || [];
-    allNotifications[userId] = [newNotification, ...userNotifications];
-    
-    localStorage.setItem('notifications', JSON.stringify(allNotifications));
-    
-    if (userId === currentUser.id) {
-      setNotifications(prev => [newNotification, ...prev]);
+    try {
+      const storedNotifications = localStorage.getItem('notifications') || '{}';
+      const allNotifications = JSON.parse(storedNotifications);
+      
+      const userId = notificationData.targetUserId || currentUser.id;
+      const userNotifications = allNotifications[userId] || [];
+      allNotifications[userId] = [newNotification, ...userNotifications];
+      
+      localStorage.setItem('notifications', JSON.stringify(allNotifications));
+      
+      if (userId === currentUser.id) {
+        setNotifications(prev => [newNotification, ...prev]);
+      }
+    } catch (error) {
+      console.error('Error adding notification:', error);
     }
   };
   
   const markNotificationAsRead = (notificationId: string) => {
     if (!currentUser) return;
     
-    const storedNotifications = localStorage.getItem('notifications');
-    if (storedNotifications) {
-      const allNotifications = JSON.parse(storedNotifications);
-      const userNotifications = allNotifications[currentUser.id] || [];
-      
-      const updatedUserNotifications = userNotifications.map((notification: Notification) => 
-        notification.id === notificationId ? { ...notification, read: true } : notification
-      );
-      
-      allNotifications[currentUser.id] = updatedUserNotifications;
-      localStorage.setItem('notifications', JSON.stringify(allNotifications));
-      
-      setNotifications(updatedUserNotifications);
+    try {
+      const storedNotifications = localStorage.getItem('notifications');
+      if (storedNotifications) {
+        const allNotifications = JSON.parse(storedNotifications);
+        const userNotifications = allNotifications[currentUser.id] || [];
+        
+        const updatedUserNotifications = userNotifications.map((notification: Notification) => 
+          notification.id === notificationId ? { ...notification, read: true } : notification
+        );
+        
+        allNotifications[currentUser.id] = updatedUserNotifications;
+        localStorage.setItem('notifications', JSON.stringify(allNotifications));
+        
+        setNotifications(updatedUserNotifications);
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
   
   const clearNotifications = () => {
     if (!currentUser) return;
     
-    const storedNotifications = localStorage.getItem('notifications');
-    if (storedNotifications) {
-      const allNotifications = JSON.parse(storedNotifications);
-      allNotifications[currentUser.id] = [];
-      localStorage.setItem('notifications', JSON.stringify(allNotifications));
-      
-      setNotifications([]);
+    try {
+      const storedNotifications = localStorage.getItem('notifications');
+      if (storedNotifications) {
+        const allNotifications = JSON.parse(storedNotifications);
+        allNotifications[currentUser.id] = [];
+        localStorage.setItem('notifications', JSON.stringify(allNotifications));
+        
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
     }
   };
   
   const mentionUser = (userId: string, caseId: string, message: string) => {
-    const mentionedUser = allUsers.find(user => user.id === userId);
-    if (!mentionedUser || !currentUser) return;
+    if (!currentUser) return;
     
+    const mentionedUser = allUsers.find(user => user.id === userId);
+    if (!mentionedUser) {
+      console.log(`User with ID ${userId} not found for mention`);
+      return;
+    }
+    
+    // Erstelle eine Benachrichtigung für den erwähnten Benutzer
     const notification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
       title: `Erwähnung in einem Kommentar`,
       message: `${currentUser.name} hat Sie in einem Kommentar erwähnt: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
@@ -244,9 +269,32 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       targetUserId: userId
     };
     
-    addNotification(notification);
-    
-    console.log(`Notification sent to user ${mentionedUser.name} for mention in case ${caseId}`);
+    // Speichere die Benachrichtigung
+    try {
+      const storedNotifications = localStorage.getItem('notifications') || '{}';
+      const allNotifications = JSON.parse(storedNotifications);
+      
+      const userNotifications = allNotifications[userId] || [];
+      const newNotification: Notification = {
+        ...notification,
+        id: `notification-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      
+      allNotifications[userId] = [newNotification, ...userNotifications];
+      localStorage.setItem('notifications', JSON.stringify(allNotifications));
+      
+      console.log(`Benachrichtigung an ${mentionedUser.name} für Erwähnung in Vorgang ${caseId} gesendet`);
+      
+      // Zeige auch ein Toast für den aktuellen Benutzer an
+      toast({
+        title: "Benutzer erwähnt",
+        description: `${mentionedUser.name} wurde in Ihrem Kommentar erwähnt und benachrichtigt.`
+      });
+    } catch (error) {
+      console.error('Error creating mention notification:', error);
+    }
   };
   
   const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
