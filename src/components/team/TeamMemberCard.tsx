@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "../ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 
 interface TeamMemberCardProps {
   user: User;
@@ -45,7 +46,7 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
   
   return (
     <div className="bg-card rounded-xl overflow-hidden border border-border">
-      <div className={`h-20 ${color.bg}`} />
+      <div className={`h-20 ${color.bg || color.primary}`} />
       <div className="p-5 pb-6 relative">
         <div className="absolute -top-12 left-5">
           <div 
