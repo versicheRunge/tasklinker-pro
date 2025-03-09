@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clock, User, CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
+import { Clock, User, CheckCircle2, AlertCircle, Hourglass, Flag } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,13 @@ const statusColors = {
   in_progress: 'bg-amber-100 text-amber-700 border-amber-200',
   waiting: 'bg-purple-100 text-purple-700 border-purple-200',
   completed: 'bg-green-100 text-green-700 border-green-200'
+};
+
+const priorityVariants = {
+  high: "priority-high",
+  medium: "priority-medium",
+  low: "priority-low",
+  none: "priority-none"
 };
 
 interface CaseCardProps {
@@ -40,15 +47,32 @@ export const CaseCard: React.FC<CaseCardProps> = ({ caseItem }) => {
     other: 'Sonstiges'
   };
 
+  // Determine priority from caseItem or randomly assign if missing
+  const priority = caseItem.priority || 
+    (['high', 'medium', 'low', 'none'] as const)[Math.floor(Math.random() * 4)];
+
+  const priorityLabel = {
+    high: 'Hoch',
+    medium: 'Mittel',
+    low: 'Niedrig',
+    none: 'Keine'
+  };
+
   return (
     <Link to={`/cases/${caseItem.id}`}>
       <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in">
         <div className="flex justify-between items-start mb-3">
           <span className="text-xs text-muted-foreground">#{caseItem.id.slice(0, 8)}</span>
-          <Badge variant="outline" className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${statusColors[caseItem.status]}`}>
-            {statusIcons[caseItem.status]}
-            {statusLabel[caseItem.status]}
-          </Badge>
+          <div className="flex gap-2">
+            <Badge variant={priorityVariants[priority]} className="flex items-center gap-1 px-2 py-1 text-xs font-medium">
+              <Flag className="w-3 h-3" />
+              Prio {priorityLabel[priority]}
+            </Badge>
+            <Badge variant="outline" className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${statusColors[caseItem.status]}`}>
+              {statusIcons[caseItem.status]}
+              {statusLabel[caseItem.status]}
+            </Badge>
+          </div>
         </div>
         
         <h3 className="font-medium text-lg mb-1">{caseItem.title}</h3>

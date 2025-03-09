@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from './pages/Index';
 import Cases from './pages/Cases';
@@ -20,8 +21,10 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/cases" element={<Cases />} />
-            <Route path="/cases/:id" element={<CaseDetails />} />
+            <Route path="/vorgaenge" element={<Cases />} />
+            <Route path="/cases" element={<Cases />} /> {/* Keep this for backwards compatibility */}
+            <Route path="/vorgaenge/:id" element={<CaseDetails />} />
+            <Route path="/cases/:id" element={<CaseDetails />} /> {/* Keep this for backwards compatibility */}
             <Route path="/team" element={<Team />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/settings" element={<Settings />} />

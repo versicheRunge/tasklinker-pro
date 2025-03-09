@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -32,7 +31,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   
-  // Initialisiere den Chat-Verlauf aus dem localStorage
   useEffect(() => {
     const loadMessages = () => {
       try {
@@ -43,7 +41,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
           setMessages(JSON.parse(storedMessages));
         }
         
-        // Simuliere Ladezeit für bessere UX
         setTimeout(() => {
           setIsLoading(false);
         }, 800);
@@ -56,7 +53,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     loadMessages();
   }, [groupId]);
   
-  // Speichere Nachrichten im localStorage
   useEffect(() => {
     if (messages.length > 0 && !isLoading) {
       const storageKey = `chatMessages_${groupId}`;
@@ -64,38 +60,31 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     }
   }, [messages, isLoading, groupId]);
   
-  // Scrolle automatisch zum Ende des Chats
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
   
-  // Simuliere "User is typing" Effekt
   const simulateUserTyping = (userId: string) => {
     if (!typingUsers.includes(userId)) {
       setTypingUsers(prev => [...prev, userId]);
       
-      // Entferne den "typing" Status nach 2 Sekunden
       setTimeout(() => {
         setTypingUsers(prev => prev.filter(id => id !== userId));
       }, 2000);
     }
   };
   
-  // Behandle Datei-Upload
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0 || !currentUser) return;
     
-    // In einer realen App würden wir die Datei hochladen
-    // Hier simulieren wir den Upload
     toast({
       title: "Datei ausgewählt",
       description: `${files[0].name} wird hochgeladen...`
     });
     
-    // Simuliere Upload-Verzögerung
     setTimeout(() => {
       const fileType = files[0].type.startsWith('image/') ? 'image' : 'file';
       const fakeUrl = `${fileType === 'image' ? '/placeholder.svg' : '#'}`;
@@ -120,22 +109,18 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
         description: `${files[0].name} wurde erfolgreich hochgeladen.`
       });
       
-      // Setze den Datei-Input zurück
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }, 1500);
   };
   
-  // Formatiere Erwähnungen in der Nachricht
   const formatMessageWithMentions = (text: string) => {
     let formattedText = text;
     
-    // Suche nach @Username im Text
     const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex) || [];
     
-    // Ersetze @Username mit formatiertem Username
     users.forEach(user => {
       const userMention = `@${user.name}`;
       if (text.includes(userMention)) {
@@ -149,7 +134,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     return { formattedText, mentions: mentions.map(m => m.substring(1)) };
   };
   
-  // Sende eine Nachricht
   const sendMessage = () => {
     if (!inputValue.trim() || !currentUser) return;
     
@@ -166,7 +150,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
     
-    // Benachrichtige erwähnte Benutzer
     mentions.forEach(mentionedName => {
       const mentionedUser = users.find(u => u.name === mentionedName);
       if (mentionedUser && mentionedUser.id !== currentUser.id) {
@@ -180,25 +163,21 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
       e.preventDefault();
       sendMessage();
     } else {
-      // Simuliere "User is typing" für andere Benutzer
       if (currentUser) {
         simulateUserTyping(currentUser.id);
       }
     }
   };
   
-  // Finde Benutzer anhand der ID
   const getUserById = (userId: string) => {
     return users.find(user => user.id === userId);
   };
   
-  // Rendere eine einzelne Nachricht
   const renderMessage = (message: Message, index: number, allMessages: Message[]) => {
     const sender = getUserById(message.userId);
     const isCurrentUser = message.userId === currentUser?.id;
     const isConsecutive = index > 0 && allMessages[index - 1].userId === message.userId;
     
-    // Bestimme ob ein Datums-Header angezeigt werden soll
     const showDateHeader = index === 0 || 
       new Date(message.timestamp).toDateString() !== new Date(allMessages[index - 1].timestamp).toDateString();
     
@@ -294,7 +273,6 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
       
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
-          // Lade-Zustand
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-start gap-3 mb-4">
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -305,16 +283,13 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
             </div>
           ))
         ) : messages.length > 0 ? (
-          // Chat-Nachrichten
           messages.map((message, index, allMessages) => renderMessage(message, index, allMessages))
         ) : (
-          // Keine Nachrichten
           <div className="text-center py-8 text-muted-foreground">
             <p>Noch keine Nachrichten. Starte die Unterhaltung!</p>
           </div>
         )}
         
-        {/* Typing Indicator */}
         {typingUsers.length > 0 && typingUsers[0] !== currentUser?.id && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
             <div className="flex items-center space-x-1">

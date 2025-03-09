@@ -18,6 +18,15 @@ const badgeVariants = cva(
         outline: "text-foreground",
         warning:
           "border-transparent bg-amber-500 text-white hover:bg-amber-600",
+        // Priority colors
+        "priority-high": 
+          "border-transparent bg-red-500 text-white hover:bg-red-600",
+        "priority-medium": 
+          "border-transparent bg-amber-500 text-white hover:bg-amber-600",
+        "priority-low": 
+          "border-transparent bg-green-500 text-white hover:bg-green-600",
+        "priority-none": 
+          "border-transparent bg-gray-400 text-white hover:bg-gray-500",
       },
     },
     defaultVariants: {
