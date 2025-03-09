@@ -1,12 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Goal } from '../../types/chat';
 import { Button } from '../ui/button';
-import { Target, Plus, Minus, Pencil, Trash, Check, X } from 'lucide-react';
+import { Target, Plus, Minus, Pencil, Trash, Check, X, Award, Trophy, Star } from 'lucide-react';
 import { Progress } from '../ui/progress';
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
 import { showConfetti } from '../cases/detail/ConfettiEffect';
+import { toast } from '../../hooks/use-toast';
 
 interface GoalCardProps {
   goal: Goal;
@@ -21,7 +22,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   onDeleteGoal,
   isEditable = false
 }) => {
-  const { currentUser, isAdmin } = useUser();
+  const { currentUser, isAdmin, users } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(goal.title);
   const [editTarget, setEditTarget] = useState(goal.target.toString());
@@ -32,22 +33,78 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   const myContribution = currentUser 
     ? goal.userContributions.find(c => c.userId === currentUser.id)?.contribution || 0
     : 0;
+    
+  // Check for achievement celebration
+  const checkForAchievements = (userId: string, newContribution: number) => {
+    if (!currentUser) return null;
+    
+    const userContribIndex = goal.userContributions.findIndex(c => c.userId === userId);
+    if (userContribIndex === -1) return null;
+    
+    const userContrib = goal.userContributions[userContribIndex];
+    const achievements = userContrib.achievementsCelebrated || {};
+    const userName = users.find(u => u.id === userId)?.name || "Teammitglied";
+    
+    const isFirstAchievement = !achievements;
+    
+    if (newContribution >= 100 && !achievements?.hundred) {
+      showConfetti();
+      toast({
+        title: "🎉 Beeindruckend! 100 Stück erreicht!",
+        description: `${userName} hat 100 Stück erreicht! Eine fantastische Leistung!`,
+      });
+      return { ...achievements, hundred: true };
+    } else if (newContribution >= 50 && !achievements?.fifty) {
+      toast({
+        title: "🏆 Großartig! 50 Stück erreicht!",
+        description: `${userName} hat 50 Stück erreicht! Weiter so!`,
+      });
+      return { ...achievements, fifty: true };
+    } else if (newContribution >= 25 && !achievements?.twentyFive) {
+      toast({
+        title: "⭐ Super! 25 Stück erreicht!",
+        description: `${userName} hat 25 Stück erreicht! Du machst einen tollen Job!`,
+      });
+      return { ...achievements, twentyFive: true };
+    } else if (newContribution >= 10 && !achievements?.ten) {
+      toast({
+        title: "👏 Gut gemacht! 10 Stück erreicht!",
+        description: `${userName} hat 10 Stück erreicht! Ein guter Start!`,
+      });
+      return { ...achievements, ten: true };
+    }
+    
+    return null;
+  };
   
   const handleIncrement = () => {
     // Don't allow going over target
     if (goal.current >= goal.target) return;
     
+    if (!currentUser) return;
+    
     const newUserContributions = [...goal.userContributions];
     const userContribIndex = newUserContributions.findIndex(
-      c => currentUser && c.userId === currentUser.id
+      c => c.userId === currentUser.id
     );
+    
+    let newUserContribution = 0;
     
     if (userContribIndex >= 0) {
       newUserContributions[userContribIndex].contribution += 1;
-    } else if (currentUser) {
+      newUserContribution = newUserContributions[userContribIndex].contribution;
+      
+      // Check for achievements
+      const newAchievements = checkForAchievements(currentUser.id, newUserContribution);
+      if (newAchievements) {
+        newUserContributions[userContribIndex].achievementsCelebrated = newAchievements;
+      }
+    } else {
+      newUserContribution = 1;
       newUserContributions.push({
         userId: currentUser.id,
-        contribution: 1
+        contribution: 1,
+        achievementsCelebrated: { ten: false, twentyFive: false, fifty: false, hundred: false }
       });
     }
     
@@ -62,6 +119,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     // Show confetti if we've hit the target exactly
     if (updatedGoal.current === updatedGoal.target) {
       showConfetti();
+      toast({
+        title: "🎊 Ziel erreicht!",
+        description: "Herzlichen Glückwunsch! Das Team hat das Ziel erreicht!",
+      });
     }
   };
   
@@ -69,9 +130,11 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     // Don't allow going below zero
     if (goal.current <= 0) return;
     
+    if (!currentUser) return;
+    
     const newUserContributions = [...goal.userContributions];
     const userContribIndex = newUserContributions.findIndex(
-      c => currentUser && c.userId === currentUser.id
+      c => c.userId === currentUser.id
     );
     
     if (userContribIndex >= 0 && newUserContributions[userContribIndex].contribution > 0) {
@@ -99,6 +162,20 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     });
     
     setIsEditing(false);
+  };
+  
+  // Render different achievement icons based on contribution
+  const renderAchievementIcon = () => {
+    if (myContribution >= 100) {
+      return <Trophy className="text-yellow-500 w-5 h-5 ml-1" />;
+    } else if (myContribution >= 50) {
+      return <Award className="text-yellow-500 w-5 h-5 ml-1" />;
+    } else if (myContribution >= 25) {
+      return <Star className="text-yellow-500 w-5 h-5 ml-1" />;
+    } else if (myContribution >= 10) {
+      return <Target className="text-blue-500 w-5 h-5 ml-1" />;
+    }
+    return null;
   };
 
   return (
@@ -172,7 +249,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
           
           <div className="flex items-center justify-between mt-3 mb-2">
             <span className="text-2xl font-bold">
-              {goal.current} <span className="text-muted-foreground text-sm">/ {goal.target}</span>
+              {goal.type === 'sum' ? `${goal.current} €` : goal.current} <span className="text-muted-foreground text-sm">/ {goal.type === 'sum' ? `${goal.target} €` : goal.target}</span>
             </span>
             <Badge variant={progressPercentage >= 100 ? "success" : "outline"}>
               {progressPercentage}%
@@ -183,8 +260,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({
           
           {currentUser && (
             <div className="mt-4">
-              <div className="text-sm text-muted-foreground mb-2">
-                Ihr Beitrag: <span className="font-medium text-foreground">{myContribution}</span>
+              <div className="text-sm text-muted-foreground mb-2 flex items-center">
+                Ihr Beitrag: <span className="font-medium text-foreground ml-1">{goal.type === 'sum' ? `${myContribution} €` : myContribution}</span>
+                {renderAchievementIcon()}
               </div>
               
               <div className="flex gap-2">

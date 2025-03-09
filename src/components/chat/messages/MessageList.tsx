@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { MessageItem } from './MessageItem';
 import { Message, User } from '../../../types/chat';
 import { Skeleton } from '../../ui/skeleton';
@@ -27,6 +27,15 @@ export const MessageList: React.FC<MessageListProps> = ({
   onEditMessage,
   onDeleteMessage
 }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom when messages update
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -81,6 +90,9 @@ export const MessageList: React.FC<MessageListProps> = ({
           {typingUsers.length === 1 ? ' tippt...' : ' tippen...'}
         </div>
       )}
+      
+      {/* Invisible div to scroll to */}
+      <div ref={messagesEndRef} />
     </div>
   );
 };

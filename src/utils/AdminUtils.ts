@@ -1,4 +1,3 @@
-
 import { toast } from "../hooks/use-toast";
 
 /**
@@ -9,6 +8,7 @@ import { toast } from "../hooks/use-toast";
 interface AppSettings {
   appName: string;
   logoUrl: string;
+  tips?: string[]; // Array von Tipps des Tages
 }
 
 export class AdminUtils {
@@ -16,11 +16,15 @@ export class AdminUtils {
   private static keySequence: string[] = [];
   private static resetSequence = "rustwrkx"; // Tastenkombination zum Zurücksetzen: r-u-s-t-w-r-k-x
   private static settingsSequence = "trtmadmn"; // Tastenkombination für Einstellungen: t-r-t-m-a-d-m-n
+  private static tipsSequence = "daytips"; // Tastenkombination für Tipps des Tages: d-a-y-t-i-p-s
   
   // Standardeinstellungen
   private static defaultSettings: AppSettings = {
     appName: "TruTeam",
-    logoUrl: "/logo.png"
+    logoUrl: "/logo.png",
+    tips: ["Nutze @-Erwähnungen um Teammitglieder zu benachrichtigen", 
+           "Über die Schnellsuche findest du alles, was du brauchst", 
+           "Regelmäßige Updates helfen deinem Team auf dem Laufenden zu bleiben"]
   };
   
   // Aktuell gespeicherte Einstellungen
@@ -76,6 +80,12 @@ export class AdminUtils {
         this.openSettingsDialog();
         this.keySequence = []; // Sequenz zurücksetzen
       }
+      
+      // Prüfe auf Tipps-Sequenz
+      else if (currentSequence.includes(this.tipsSequence)) {
+        this.openTipsDialog();
+        this.keySequence = []; // Sequenz zurücksetzen
+      }
     }
   }
 
@@ -108,6 +118,138 @@ export class AdminUtils {
         variant: "destructive"
       });
     }
+  }
+
+  /**
+   * Gibt einen zufälligen Tipp des Tages zurück
+   */
+  public static getRandomTip(): string {
+    if (!this.settings.tips || this.settings.tips.length === 0) {
+      return "Tipp des Tages: Regelmäßige Updates helfen deinem Team auf dem Laufenden zu bleiben.";
+    }
+    
+    const randomIndex = Math.floor(Math.random() * this.settings.tips.length);
+    return `Tipp des Tages: ${this.settings.tips[randomIndex]}`;
+  }
+
+  /**
+   * Öffnet einen Dialog zum Bearbeiten der Tipps des Tages
+   */
+  private static openTipsDialog(): void {
+    // Erstelle dynamisch einen Dialog
+    const dialog = document.createElement('div');
+    dialog.style.position = 'fixed';
+    dialog.style.top = '0';
+    dialog.style.left = '0';
+    dialog.style.width = '100%';
+    dialog.style.height = '100%';
+    dialog.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    dialog.style.display = 'flex';
+    dialog.style.justifyContent = 'center';
+    dialog.style.alignItems = 'center';
+    dialog.style.zIndex = '9999';
+
+    const dialogContent = document.createElement('div');
+    dialogContent.style.backgroundColor = 'white';
+    dialogContent.style.padding = '2rem';
+    dialogContent.style.borderRadius = '0.5rem';
+    dialogContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+    dialogContent.style.width = '600px';
+    dialogContent.style.maxWidth = '90%';
+    dialogContent.style.maxHeight = '80vh';
+    dialogContent.style.overflowY = 'auto';
+
+    let tipsHtml = '';
+    if (this.settings.tips && this.settings.tips.length > 0) {
+      this.settings.tips.forEach((tip, index) => {
+        tipsHtml += `
+          <div style="display: flex; margin-bottom: 0.5rem; gap: 0.5rem;">
+            <input type="text" id="tip-${index}" value="${tip}" style="flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+            <button class="remove-tip" data-index="${index}" style="padding: 0.5rem; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Entfernen</button>
+          </div>
+        `;
+      });
+    }
+
+    dialogContent.innerHTML = `
+      <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Tipps des Tages verwalten</h2>
+      <p style="margin-bottom: 1rem;">Diese Tipps werden im Dashboard täglich wechselnd angezeigt.</p>
+      <div id="tips-container" style="margin-bottom: 1rem;">
+        ${tipsHtml}
+      </div>
+      <button id="add-tip" style="width: 100%; padding: 0.5rem; background-color: #4CAF50; color: white; border: none; border-radius: 4px; margin-bottom: 1.5rem; cursor: pointer;">+ Neuen Tipp hinzufügen</button>
+      <div style="display: flex; justify-content: space-between;">
+        <button id="admin-cancel" style="padding: 0.5rem 1rem; border: 1px solid #ccc; background-color: #f2f2f2; border-radius: 4px; cursor: pointer;">Abbrechen</button>
+        <button id="admin-save" style="padding: 0.5rem 1rem; background-color: #0070f3; color: white; border: none; border-radius: 4px; cursor: pointer;">Speichern</button>
+      </div>
+    `;
+
+    dialog.appendChild(dialogContent);
+    document.body.appendChild(dialog);
+
+    // Event-Listener für den "Neuen Tipp hinzufügen" Button
+    document.getElementById('add-tip')?.addEventListener('click', () => {
+      const tipsContainer = document.getElementById('tips-container');
+      if (!tipsContainer) return;
+      
+      const newIndex = tipsContainer.children.length;
+      const newTipDiv = document.createElement('div');
+      newTipDiv.style.display = 'flex';
+      newTipDiv.style.marginBottom = '0.5rem';
+      newTipDiv.style.gap = '0.5rem';
+      
+      newTipDiv.innerHTML = `
+        <input type="text" id="tip-${newIndex}" value="" style="flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" placeholder="Neuen Tipp eingeben...">
+        <button class="remove-tip" data-index="${newIndex}" style="padding: 0.5rem; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Entfernen</button>
+      `;
+      
+      tipsContainer.appendChild(newTipDiv);
+      
+      // Event-Listener für den neuen "Entfernen" Button
+      newTipDiv.querySelector('.remove-tip')?.addEventListener('click', function() {
+        tipsContainer.removeChild(newTipDiv);
+      });
+    });
+    
+    // Event-Listener für die "Entfernen" Buttons
+    document.querySelectorAll('.remove-tip').forEach(button => {
+      button.addEventListener('click', function(e) {
+        const target = e.target as HTMLElement;
+        const tipElement = target.closest('div');
+        if (tipElement && tipElement.parentNode) {
+          tipElement.parentNode.removeChild(tipElement);
+        }
+      });
+    });
+
+    // Event-Listener für die Buttons
+    document.getElementById('admin-cancel')?.addEventListener('click', () => {
+      document.body.removeChild(dialog);
+    });
+
+    document.getElementById('admin-save')?.addEventListener('click', () => {
+      const tipInputs = document.querySelectorAll('[id^="tip-"]');
+      const tips: string[] = [];
+      
+      tipInputs.forEach(input => {
+        const value = (input as HTMLInputElement).value.trim();
+        if (value) {
+          tips.push(value);
+        }
+      });
+      
+      this.settings.tips = tips;
+      
+      // Einstellungen speichern
+      localStorage.setItem('adminSettings', JSON.stringify(this.settings));
+      
+      toast({
+        title: "Tipps gespeichert",
+        description: `${tips.length} Tipps des Tages wurden erfolgreich gespeichert.`
+      });
+      
+      document.body.removeChild(dialog);
+    });
   }
 
   /**
@@ -188,7 +330,7 @@ export class AdminUtils {
   private static applySettings(): void {
     try {
       // App-Namen ändern
-      const appTitleElements = document.querySelectorAll('.app-title, .app-name');
+      const appTitleElements = document.querySelectorAll('[class*="app-title"], [class*="app-name"]');
       appTitleElements.forEach(el => {
         if (el instanceof HTMLElement) {
           el.innerText = this.settings.appName;
@@ -196,7 +338,7 @@ export class AdminUtils {
       });
       
       // Logo ändern
-      const logoElements = document.querySelectorAll('.app-logo');
+      const logoElements = document.querySelectorAll('[class*="app-logo"]');
       logoElements.forEach(el => {
         if (el instanceof HTMLImageElement) {
           el.src = this.settings.logoUrl;
@@ -211,3 +353,4 @@ export class AdminUtils {
     }
   }
 }
+

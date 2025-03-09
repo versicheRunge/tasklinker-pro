@@ -46,5 +46,11 @@ export interface Goal {
   userContributions: {
     userId: string;
     contribution: number;
+    achievementsCelebrated?: {
+      ten?: boolean;
+      twentyFive?: boolean;
+      fifty?: boolean;
+      hundred?: boolean;
+    };
   }[];
 }

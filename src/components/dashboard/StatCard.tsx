@@ -1,6 +1,7 @@
 
-import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { LucideIcon, LightbulbIcon } from 'lucide-react';
+import { AdminUtils } from '../../utils/AdminUtils';
 
 interface StatCardProps {
   title: string;
@@ -8,9 +9,41 @@ interface StatCardProps {
   icon: LucideIcon;
   color: string;
   className?: string;
+  showTipOfDay?: boolean;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, className = '' }) => {
+export const StatCard: React.FC<StatCardProps> = ({ 
+  title, 
+  value, 
+  icon: Icon, 
+  color, 
+  className = '',
+  showTipOfDay = false
+}) => {
+  const [tipOfDay, setTipOfDay] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (showTipOfDay) {
+      // @ts-ignore - AdminUtils may not be recognized properly
+      const tip = AdminUtils.getRandomTip?.() || "Tipp des Tages: Regelmäßige Updates helfen deinem Team auf dem Laufenden zu bleiben.";
+      setTipOfDay(tip);
+    }
+  }, [showTipOfDay]);
+
+  if (showTipOfDay && tipOfDay) {
+    return (
+      <div className={`p-6 rounded-xl border border-border bg-card ${className}`}>
+        <div className="flex items-center gap-4 mb-3">
+          <div className={`p-3 rounded-full bg-amber-100 text-amber-600`}>
+            <LightbulbIcon className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-medium">{tipOfDay.split(':')[0]}</h3>
+        </div>
+        <p className="text-muted-foreground pl-[52px]">{tipOfDay.split(':').slice(1).join(':').trim()}</p>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-center gap-4 p-6 rounded-xl border border-border bg-card ${className}`}>
       <div className={`p-3 rounded-full ${color}`}>
