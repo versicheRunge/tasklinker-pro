@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, CasePriority } from '../../types/case';
@@ -291,15 +290,11 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     }
   };
 
-  const handleAddSubItem = (parentItem: ChecklistItemType, subItemText: string, addToTemplate: boolean) => {
+  const handleAddSubItem = (parentIndex: number, subItemText: string, addToTemplate: boolean) => {
     const newSubItem: SubChecklistItem = {
       text: subItemText,
       completed: false
     };
-
-    // Find index of parent item
-    const parentIndex = caseItem.checklist.findIndex(item => item.text === parentItem.text);
-    if (parentIndex === -1) return;
 
     // Create updated checklist
     const updatedChecklist = [...caseItem.checklist];
@@ -319,7 +314,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     const newActivity: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'checklist',
-      content: `Neuer Unterpunkt hinzugefügt zu "${parentItem.text}": "${subItemText}"`,
+      content: `Neuer Unterpunkt hinzugefügt zu "${updatedChecklist[parentIndex].text}": "${subItemText}"`,
       timestamp: new Date().toISOString(),
       user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
       caseId: caseItem.id
@@ -350,7 +345,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
         const templateToUpdate = templates.find((t: any) => t.type === caseItem.type);
         
         if (templateToUpdate) {
-          const templateParentIndex = templateToUpdate.items.findIndex((item: any) => item.text === parentItem.text);
+          const templateParentItem = updatedChecklist[parentIndex];
+          const templateParentIndex = templateToUpdate.items.findIndex((item: any) => item.text === templateParentItem.text);
           
           if (templateParentIndex !== -1) {
             if (!templateToUpdate.items[templateParentIndex].subItems) {

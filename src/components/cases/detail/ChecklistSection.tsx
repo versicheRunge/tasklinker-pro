@@ -18,7 +18,7 @@ interface ChecklistSectionProps {
     addToTemplate: boolean
   ) => void;
   onAddSubItem: (
-    parentItem: ChecklistItemType, 
+    parentItemIndex: number, 
     subItemText: string, 
     addToTemplate: boolean
   ) => void;
@@ -93,8 +93,9 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
               item={item}
               onComplete={(completed) => onChecklistItemComplete(index, completed)}
               onAddSubItem={(subItemText, addToTemplate) => 
-                onAddSubItem(item, subItemText, addToTemplate)
+                onAddSubItem(index, subItemText, addToTemplate)
               }
+              allowEditing
             />
           ))
         )}

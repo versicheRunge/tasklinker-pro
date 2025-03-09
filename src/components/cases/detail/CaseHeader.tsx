@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, UserPlus, Clock, Flag } from 'lucide-react';
-import { CaseItem, User } from '../../../types/case';
+import { CaseItem, User, CaseStatus, CasePriority } from '../../../types/case';
 import { CustomAvatar } from '../../ui/CustomAvatar';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
