@@ -9,10 +9,16 @@ export interface User {
   role: string;
 }
 
+export interface SubChecklistItem {
+  text: string;
+  completed: boolean;
+}
+
 export interface ChecklistItemType {
   text: string;
   description?: string;
   completed: boolean;
+  subItems?: SubChecklistItem[];
 }
 
 export interface Document {

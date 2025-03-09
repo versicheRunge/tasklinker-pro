@@ -7,6 +7,7 @@ import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { CaseCard } from '../components/cases/CaseCard';
 import { dashboardStats, cases } from '../data/mockData';
 import { useUser } from '../contexts/UserContext';
+import { toast } from "../hooks/use-toast";
 
 const Index: React.FC = () => {
   const newCases = cases.filter(c => c.status === 'new');

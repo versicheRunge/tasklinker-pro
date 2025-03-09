@@ -1,20 +1,28 @@
 
-import React from 'react';
-import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { CaseItem } from '../../types/case';
+import React, { useState } from 'react';
+import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, Save, RefreshCw, Archive, Trash2 } from 'lucide-react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { CaseItem, CaseStatus } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
 import { CaseActivityTimeline } from './CaseActivityTimeline';
+import { toast } from "../../hooks/use-toast";
+import { useUser } from '../../contexts/UserContext';
 
 interface CaseDetailProps {
   cases: CaseItem[];
+  updateCase?: (id: string, caseData: Partial<CaseItem>) => void;
 }
 
-export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
+export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => {
   const { id } = useParams<{ id: string }>();
-  const caseItem = cases.find(c => c.id === id);
+  const navigate = useNavigate();
+  const { isAdmin } = useUser();
+  const initialCase = cases.find(c => c.id === id);
+  
+  const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   if (!caseItem) {
     return (
@@ -54,6 +62,132 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
     contract_change: 'Vertragsänderung',
     inquiry: 'Kundenanfrage',
     other: 'Sonstiges'
+  };
+
+  const handleStatusChange = (newStatus: CaseStatus) => {
+    if (caseItem.status === newStatus) return;
+    
+    setSavingStatus(true);
+    
+    // Update case with new status
+    const updatedCase = {
+      ...caseItem,
+      status: newStatus,
+      lastUpdated: new Date().toISOString(),
+      activities: [
+        {
+          id: `act-${Date.now()}`,
+          type: 'status',
+          content: `Status geändert auf: ${statusLabel[newStatus]}`,
+          timestamp: new Date().toISOString(),
+          user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+        },
+        ...caseItem.activities
+      ]
+    };
+    
+    // Update local state
+    setCaseItem(updatedCase);
+    
+    // Call the updateCase function if provided
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        status: newStatus,
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+    }
+    
+    setTimeout(() => {
+      setSavingStatus(false);
+      
+      toast({
+        title: "Status aktualisiert",
+        description: `Der Status wurde auf "${statusLabel[newStatus]}" geändert.`
+      });
+      
+      // If the case is now completed, offer to go back to case list
+      if (newStatus === 'completed') {
+        toast({
+          title: "Vorgang abgeschlossen",
+          description: "Der Vorgang wurde als erledigt markiert und zu den abgeschlossenen Vorgängen verschoben."
+        });
+      }
+    }, 500);
+  };
+
+  const handleChecklistItemComplete = (index: number, completed: boolean) => {
+    // Create a copy of the checklist array
+    const updatedChecklist = [...caseItem.checklist];
+    
+    // Update the specific item
+    updatedChecklist[index] = {
+      ...updatedChecklist[index],
+      completed
+    };
+    
+    // Create new activities entry
+    const newActivity = {
+      id: `act-${Date.now()}`,
+      type: 'checklist',
+      content: `Checklist-Aufgabe "${updatedChecklist[index].text}" ${completed ? 'abgeschlossen' : 'wieder geöffnet'}`,
+      timestamp: new Date().toISOString(),
+      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+    };
+    
+    // Update the case with the new checklist
+    const updatedCase = {
+      ...caseItem,
+      checklist: updatedChecklist,
+      lastUpdated: new Date().toISOString(),
+      activities: [newActivity, ...caseItem.activities]
+    };
+    
+    // Update local state
+    setCaseItem(updatedCase);
+    
+    // Call the updateCase function if provided
+    if (updateCase) {
+      updateCase(caseItem.id, {
+        checklist: updatedChecklist,
+        lastUpdated: updatedCase.lastUpdated,
+        activities: updatedCase.activities
+      });
+    }
+    
+    // Suggest changing status if all items are complete
+    const allComplete = updatedChecklist.every(item => item.completed);
+    if (allComplete && caseItem.status !== 'completed') {
+      toast({
+        title: "Alle Aufgaben erledigt",
+        description: "Möchten Sie den Status auf 'Erledigt' ändern?",
+        action: (
+          <button 
+            className="px-3 py-1 bg-green-500 text-white rounded-md text-xs"
+            onClick={() => handleStatusChange('completed')}
+          >
+            Ja, erledigt
+          </button>
+        )
+      });
+    }
+  };
+
+  const handleArchiveCase = () => {
+    // In a real app, this would move the case to an archive
+    // For now, we'll just show a toast and navigate back
+    toast({
+      title: "Vorgang archiviert",
+      description: "Der Vorgang wurde erfolgreich archiviert."
+    });
+    navigate('/cases');
+  };
+
+  const handleExportCase = () => {
+    toast({
+      title: "Vorgang exportiert",
+      description: "Der Vorgang wurde erfolgreich exportiert."
+    });
   };
 
   return (
@@ -96,6 +230,54 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
             {caseItem.description}
           </p>
         </div>
+        
+        {caseItem.status !== 'completed' && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <h3 className="font-medium mb-3">Status ändern</h3>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(statusLabel) as CaseStatus[]).map((status) => (
+                <button
+                  key={status}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
+                    caseItem.status === status
+                      ? 'bg-primary text-primary-foreground'
+                      : `${statusColors[status]} bg-opacity-50 hover:bg-opacity-70`
+                  }`}
+                  onClick={() => handleStatusChange(status)}
+                  disabled={caseItem.status === status || savingStatus}
+                >
+                  {statusIcons[status]}
+                  {statusLabel[status]}
+                  {savingStatus && caseItem.status !== status && <RefreshCw className="w-3 h-3 ml-1 animate-spin" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {caseItem.status === 'completed' && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-blue-100 text-blue-700 hover:bg-blue-200"
+                onClick={handleExportCase}
+              >
+                <Archive className="w-4 h-4" />
+                Exportieren
+              </button>
+              
+              {isAdmin && (
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-red-100 text-red-700 hover:bg-red-200"
+                  onClick={handleArchiveCase}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Archivieren
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -134,7 +316,12 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases }) => {
             <h2 className="text-lg font-medium mb-4">Checkliste</h2>
             <div className="space-y-2">
               {caseItem.checklist.map((item, index) => (
-                <ChecklistItem key={index} item={item} />
+                <ChecklistItem 
+                  key={index} 
+                  item={item}
+                  onComplete={(completed) => handleChecklistItemComplete(index, completed)}
+                  readOnly={caseItem.status === 'completed'}
+                />
               ))}
             </div>
           </div>

@@ -2,17 +2,25 @@
 import React, { useState } from 'react';
 import { CaseCard } from './CaseCard';
 import { CaseItem, CaseStatus, CaseType } from '../../types/case';
+import { Archive, Download, Trash } from 'lucide-react';
+import { toast } from "../../hooks/use-toast";
+import { useUser } from '../../contexts/UserContext';
 
 interface CasesListProps {
   cases: CaseItem[];
+  showCompletedSection?: boolean;
 }
 
-export const CasesList: React.FC<CasesListProps> = ({ cases }) => {
+export const CasesList: React.FC<CasesListProps> = ({ cases, showCompletedSection = true }) => {
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CaseType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const { isAdmin } = useUser();
 
-  const filteredCases = cases.filter(caseItem => {
+  const activeCases = cases.filter(c => c.status !== 'completed');
+  const completedCases = cases.filter(c => c.status === 'completed');
+
+  const filteredActiveCases = activeCases.filter(caseItem => {
     const matchesStatus = statusFilter === 'all' || caseItem.status === statusFilter;
     const matchesType = typeFilter === 'all' || caseItem.type === typeFilter;
     const matchesSearch = 
@@ -22,12 +30,20 @@ export const CasesList: React.FC<CasesListProps> = ({ cases }) => {
     return matchesStatus && matchesType && (searchTerm === '' || matchesSearch);
   });
 
+  const filteredCompletedCases = completedCases.filter(caseItem => {
+    const matchesType = typeFilter === 'all' || caseItem.type === typeFilter;
+    const matchesSearch = 
+      caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      caseItem.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesType && (searchTerm === '' || matchesSearch);
+  });
+
   const statusOptions = [
     { value: 'all', label: 'Alle Status' },
     { value: 'new', label: 'Neu' },
     { value: 'in_progress', label: 'In Bearbeitung' },
-    { value: 'waiting', label: 'Wartet auf Rückmeldung' },
-    { value: 'completed', label: 'Erledigt' }
+    { value: 'waiting', label: 'Wartet auf Rückmeldung' }
   ];
 
   const typeOptions = [
@@ -39,8 +55,22 @@ export const CasesList: React.FC<CasesListProps> = ({ cases }) => {
     { value: 'other', label: 'Sonstiges' }
   ];
 
+  const handleExportCompleted = () => {
+    toast({
+      title: "Export gestartet",
+      description: "Der Export der abgeschlossenen Vorgänge wurde gestartet.",
+    });
+  };
+
+  const handleArchiveAll = () => {
+    toast({
+      title: "Archivierung gestartet",
+      description: "Die abgeschlossenen Vorgänge werden archiviert.",
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1">
           <input
@@ -79,15 +109,58 @@ export const CasesList: React.FC<CasesListProps> = ({ cases }) => {
         </div>
       </div>
       
-      {filteredCases.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCases.map(caseItem => (
-            <CaseCard key={caseItem.id} caseItem={caseItem} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Keine Vorgänge gefunden</p>
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Aktive Vorgänge</h2>
+        {filteredActiveCases.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredActiveCases.map(caseItem => (
+              <CaseCard key={caseItem.id} caseItem={caseItem} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-muted/30 rounded-lg">
+            <p className="text-muted-foreground">Keine aktiven Vorgänge gefunden</p>
+          </div>
+        )}
+      </div>
+      
+      {showCompletedSection && completedCases.length > 0 && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Abgeschlossene Vorgänge</h2>
+            
+            <div className="flex gap-2">
+              <button 
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                onClick={handleExportCompleted}
+              >
+                <Download className="w-4 h-4" />
+                Exportieren
+              </button>
+              
+              {isAdmin && (
+                <button 
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                  onClick={handleArchiveAll}
+                >
+                  <Trash className="w-4 h-4" />
+                  Alle archivieren
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {filteredCompletedCases.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCompletedCases.map(caseItem => (
+                <CaseCard key={caseItem.id} caseItem={caseItem} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-muted/30 rounded-lg">
+              <p className="text-muted-foreground">Keine abgeschlossenen Vorgänge gefunden</p>
+            </div>
+          )}
         </div>
       )}
     </div>
