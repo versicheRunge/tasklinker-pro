@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { CaseType, CaseDefaultTitle, ChecklistTemplate, CasePriority } from '../../types/case';
+import { CaseType, CaseDefaultTitle, ChecklistTemplate, CasePriority, CaseStatus } from '../../types/case';
 import { toast } from "../../hooks/use-toast";
 import { Button } from "../ui/button";
 import { useUser } from '../../contexts/UserContext';
@@ -36,7 +35,8 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
     selectedDefaultTitle: '',
     dueDate: '',
     followUpDate: '',
-    priority: 'medium' as CasePriority
+    priority: 'medium' as CasePriority,
+    status: 'new' as CaseStatus
   });
   
   const { currentUser, users } = useUser();
@@ -101,9 +101,24 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
       return;
     }
 
-    onCreateCase(newCaseData, selectedAssignee);
+    const assignee = users.find(user => user.id === selectedAssignee);
+    if (!assignee) {
+      toast({
+        title: "Fehler",
+        description: "Der ausgewählte Benutzer wurde nicht gefunden.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const caseData = {
+      ...newCaseData,
+      assignee,
+      status: newCaseData.status || 'new',
+    };
+
+    onCreateCase(caseData, selectedAssignee);
     
-    // Reset form after submission
     setNewCaseData({
       title: '',
       description: '',
@@ -113,9 +128,11 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
       selectedDefaultTitle: '',
       dueDate: '',
       followUpDate: '',
-      priority: 'medium'
+      priority: 'medium',
+      status: 'new'
     });
     setSelectedAssignee('');
+    onOpenChange(false);
   };
 
   return (
@@ -225,6 +242,23 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
               <option value="medium">Mittel</option>
               <option value="high">Hoch</option>
               <option value="urgent">Dringend</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="status">
+              Status
+            </label>
+            <select
+              id="status"
+              className="w-full p-2 rounded-md border border-input"
+              value={newCaseData.status}
+              onChange={(e) => setNewCaseData({...newCaseData, status: e.target.value as CaseStatus})}
+            >
+              <option value="new">Neu</option>
+              <option value="in_progress">In Bearbeitung</option>
+              <option value="waiting">Wartend</option>
+              <option value="completed">Abgeschlossen</option>
             </select>
           </div>
           

@@ -57,8 +57,8 @@ export const useCasesManager = () => {
     // Then filter by priority if one is selected
     if (filterPriority !== 'all' && c.priority !== filterPriority) return false;
     
-    // Then filter by assigned user if one is selected
-    if (filterUserId !== 'all' && c.assignee.id !== filterUserId) return false;
+    // Then filter by assigned user if one is selected and assignee exists
+    if (filterUserId !== 'all' && c.assignee && c.assignee.id !== filterUserId) return false;
     
     return true;
   });
