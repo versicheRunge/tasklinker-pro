@@ -7,6 +7,7 @@ export interface User {
   name: string;
   avatar?: string;
   role: string;
+  email?: string;
 }
 
 export interface SubChecklistItem {

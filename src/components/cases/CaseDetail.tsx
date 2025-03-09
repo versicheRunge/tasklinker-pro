@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Clock, User, CheckCircle2, AlertCircle, Hourglass, Paperclip, MessageSquare, Save, RefreshCw, Archive, Trash2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CaseItem, CaseStatus } from '../../types/case';
+import { CaseItem, CaseStatus, CaseActivity } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { Badge } from '../ui/badge';
 import { ChecklistItem } from '../checklists/ChecklistItem';
@@ -69,27 +68,23 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     
     setSavingStatus(true);
     
-    // Update case with new status
+    const newActivity: CaseActivity = {
+      id: `act-${Date.now()}`,
+      type: 'status',
+      content: `Status geändert auf: ${statusLabel[newStatus]}`,
+      timestamp: new Date().toISOString(),
+      user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
+    };
+    
     const updatedCase = {
       ...caseItem,
       status: newStatus,
       lastUpdated: new Date().toISOString(),
-      activities: [
-        {
-          id: `act-${Date.now()}`,
-          type: 'status',
-          content: `Status geändert auf: ${statusLabel[newStatus]}`,
-          timestamp: new Date().toISOString(),
-          user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
-        },
-        ...caseItem.activities
-      ]
+      activities: [newActivity, ...caseItem.activities]
     };
     
-    // Update local state
     setCaseItem(updatedCase);
     
-    // Call the updateCase function if provided
     if (updateCase) {
       updateCase(caseItem.id, {
         status: newStatus,
@@ -106,7 +101,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
         description: `Der Status wurde auf "${statusLabel[newStatus]}" geändert.`
       });
       
-      // If the case is now completed, offer to go back to case list
       if (newStatus === 'completed') {
         toast({
           title: "Vorgang abgeschlossen",
@@ -117,17 +111,14 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   };
 
   const handleChecklistItemComplete = (index: number, completed: boolean) => {
-    // Create a copy of the checklist array
     const updatedChecklist = [...caseItem.checklist];
     
-    // Update the specific item
     updatedChecklist[index] = {
       ...updatedChecklist[index],
       completed
     };
     
-    // Create new activities entry
-    const newActivity = {
+    const newActivity: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'checklist',
       content: `Checklist-Aufgabe "${updatedChecklist[index].text}" ${completed ? 'abgeschlossen' : 'wieder geöffnet'}`,
@@ -135,7 +126,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       user: { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' }
     };
     
-    // Update the case with the new checklist
     const updatedCase = {
       ...caseItem,
       checklist: updatedChecklist,
@@ -143,10 +133,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       activities: [newActivity, ...caseItem.activities]
     };
     
-    // Update local state
     setCaseItem(updatedCase);
     
-    // Call the updateCase function if provided
     if (updateCase) {
       updateCase(caseItem.id, {
         checklist: updatedChecklist,
@@ -155,7 +143,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
-    // Suggest changing status if all items are complete
     const allComplete = updatedChecklist.every(item => item.completed);
     if (allComplete && caseItem.status !== 'completed') {
       toast({
@@ -174,8 +161,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   };
 
   const handleArchiveCase = () => {
-    // In a real app, this would move the case to an archive
-    // For now, we'll just show a toast and navigate back
     toast({
       title: "Vorgang archiviert",
       description: "Der Vorgang wurde erfolgreich archiviert."

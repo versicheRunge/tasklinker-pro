@@ -26,7 +26,8 @@ type UserContextType = {
 // Convert mockData users to our User type with added userRole
 const extendedUsers: User[] = users.map((user, index) => ({
   ...user,
-  email: user.email || `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de`,
+  // Only add email if it doesn't exist (now email is optional in the User type)
+  ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
   userRole: index === 0 ? 'admin' : 'staff'
 }));
 
