@@ -7,6 +7,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
 import { useCalendar } from '../hooks/useCalendar';
+import { getEventsForDate } from '../utils/calendarUtils';
 import { CalendarLegend } from '../components/calendar/CalendarLegend';
 import { EventItem } from '../components/calendar/EventItem';
 import { AdminFilteredEvents } from '../components/calendar/AdminFilteredEvents';
@@ -33,8 +34,7 @@ const CalendarPage: React.FC = () => {
     handleAddEvent,
     handleDeleteEvent,
     handleViewEvent,
-    handleDateChange,
-    getEventsForDate
+    handleDateChange
   } = useCalendar();
 
   return (
@@ -107,8 +107,8 @@ const CalendarPage: React.FC = () => {
               />
             ) : (
               <div className="space-y-4">
-                {getEventsForDate(date).length > 0 ? (
-                  getEventsForDate(date).map((event) => (
+                {getEventsForDate(date, events).length > 0 ? (
+                  getEventsForDate(date, events).map((event) => (
                     <EventItem 
                       key={event.id}
                       event={event}

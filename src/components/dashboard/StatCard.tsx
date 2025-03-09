@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { LucideIcon, LightbulbIcon } from 'lucide-react';
+import { AdminUtils } from '../../utils/AdminUtils';
 
 interface StatCardProps {
   title: string;
@@ -9,7 +10,6 @@ interface StatCardProps {
   color: string;
   className?: string;
   showTipOfDay?: boolean;
-  onClick?: () => void;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ 
@@ -18,8 +18,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon: Icon, 
   color, 
   className = '',
-  showTipOfDay = false,
-  onClick
+  showTipOfDay = false
 }) => {
   const [tipOfDay, setTipOfDay] = useState<string | null>(null);
   
@@ -45,10 +44,8 @@ export const StatCard: React.FC<StatCardProps> = ({
     );
   }
 
-  const cardClasses = `flex items-center gap-4 p-6 rounded-xl border border-border bg-card ${className} ${onClick ? 'cursor-pointer hover:bg-muted/30 transition-colors' : ''}`;
-
   return (
-    <div className={cardClasses} onClick={onClick}>
+    <div className={`flex items-center gap-4 p-6 rounded-xl border border-border bg-card ${className}`}>
       <div className={`p-3 rounded-full ${color}`}>
         <Icon className="w-6 h-6" />
       </div>
