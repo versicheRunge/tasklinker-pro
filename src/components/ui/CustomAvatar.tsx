@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from './avatar';
 interface CustomAvatarProps {
   name: string;
   imageSrc?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export const CustomAvatar: React.FC<CustomAvatarProps> = ({ name, imageSrc, size = 'md' }) => {
@@ -21,6 +21,7 @@ export const CustomAvatar: React.FC<CustomAvatarProps> = ({ name, imageSrc, size
 
   // Map size to CSS classes
   const sizeClasses = {
+    xs: 'h-6 w-6',
     sm: 'h-8 w-8',
     md: 'h-10 w-10',
     lg: 'h-16 w-16 border-4 border-background',
