@@ -139,7 +139,7 @@ const Index: React.FC = () => {
             <MessageSquare className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-medium">Team-Chat</h2>
           </div>
-          <Button variant="outline" onClick={() => navigate('/chat')}>
+          <Button onClick={() => navigate('/chat')}>
             Zum Chat
           </Button>
         </div>

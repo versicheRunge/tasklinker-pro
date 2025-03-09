@@ -12,7 +12,7 @@ interface MentionInputProps {
   multiline?: boolean;
   maxLength?: number;
   className?: string;
-  onKeyDown?: (e: React.KeyboardEvent) => void; // Added this prop
+  onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
 export const MentionInput: React.FC<MentionInputProps> = ({
@@ -58,7 +58,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         onMention(user.id, newValue);
       } else if (mentionUser && currentUser) {
         // Use the mentionUser function from context if no specific callback is provided
-        mentionUser(user.id, "", newValue);
+        mentionUser(user.id, "", newValue, "case");
       }
       
       // Focus back on input and set cursor position after the inserted mention

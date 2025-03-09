@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
 import { User } from '../types/case';
@@ -88,6 +89,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
+  // Initialize app settings
+  useEffect(() => {
+    // Set default app settings if not already in localStorage
+    if (!localStorage.getItem('appName')) {
+      localStorage.setItem('appName', 'TruTeam');
+    }
+    
+    if (!localStorage.getItem('appLogo')) {
+      localStorage.setItem('appLogo', 'TR');
+    }
+  }, []);
+
+  // Load current user on mount
   useEffect(() => {
     const savedUserId = localStorage.getItem('currentUserId');
     if (savedUserId) {

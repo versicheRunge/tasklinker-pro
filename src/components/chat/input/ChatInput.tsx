@@ -51,6 +51,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setInputValue(inputValue + emoji);
   };
 
+  const handleMention = (userId: string, text: string) => {
+    console.log('Benutzer erwähnt:', userId, text);
+  };
+
   return (
     <div className="p-4 border-t mt-auto">
       <div className="flex flex-col">
@@ -58,7 +62,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <MentionInput
             value={inputValue}
             onChange={setInputValue}
-            onMention={(userId, text) => console.log('Benutzer erwähnt:', userId, text)}
+            onMention={handleMention}
             placeholder="Schreiben Sie eine Nachricht... (@Benutzer für Erwähnung)"
             multiline={true}
             className="min-h-[80px] max-h-[120px] bg-background border-none focus:ring-0 py-3"

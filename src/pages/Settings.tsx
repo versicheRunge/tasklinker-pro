@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useUser } from '../contexts/UserContext';
 import { Button } from '../components/ui/button';
@@ -99,6 +99,7 @@ const Settings = () => {
       description: "Die Anwendungsidentität wurde erfolgreich aktualisiert. Die Änderungen werden nach einem Neuladen sichtbar."
     });
     
+    // Force reload to apply changes
     setTimeout(() => {
       window.location.reload();
     }, 1500);
@@ -368,7 +369,7 @@ const Settings = () => {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                      <p className="font-bold text-center">sicher?</p>
+                      <p className="font-bold text-center">Sind Sie wirklich sicher?</p>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setShowResetConfirm(false)}>

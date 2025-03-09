@@ -12,7 +12,7 @@ interface TeamChatProps {
 }
 
 export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
-  const { users, currentUser, notifications } = useUser();
+  const { users, currentUser, notifications, mentionUser } = useUser();
   const {
     messages,
     inputValue,
@@ -40,6 +40,13 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
       }
     }
   }, [isLoading, unreadMessages]);
+
+  // Custom onMention handler for chat
+  const handleMention = (userId: string, text: string) => {
+    if (currentUser && mentionUser) {
+      mentionUser(userId, "", text, "chat");
+    }
+  };
   
   return (
     <div className="flex flex-col h-full">
