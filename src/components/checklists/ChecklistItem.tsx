@@ -6,15 +6,19 @@ import { toast } from "../../hooks/use-toast";
 
 interface ChecklistItemProps {
   item: ChecklistItemType;
+  index?: number; // Make index optional to maintain backward compatibility
   onComplete?: (completed: boolean) => void;
+  onToggleComplete?: (completed: boolean) => void; // Add the new prop from ChecklistSection
   readOnly?: boolean;
   onAddSubItem?: (subItemText: string, addToTemplate: boolean) => void;
   allowEditing?: boolean;
 }
 
 export const ChecklistItem: React.FC<ChecklistItemProps> = ({ 
-  item: initialItem, 
+  item: initialItem,
+  index,
   onComplete,
+  onToggleComplete,
   readOnly = false,
   onAddSubItem,
   allowEditing = false
@@ -38,9 +42,13 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({
       completed: newCompleted
     }));
     
-    // Notify parent component
+    // Notify parent component - support both callback methods
     if (onComplete) {
       onComplete(newCompleted);
+    }
+    
+    if (onToggleComplete) {
+      onToggleComplete(newCompleted);
     }
     
     // Auto-save notification
