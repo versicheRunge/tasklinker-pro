@@ -8,7 +8,7 @@ interface ChecklistItemProps {
   item: ChecklistItemType;
   onComplete?: (completed: boolean) => void;
   readOnly?: boolean;
-  onAddSubItem?: (parentItem: ChecklistItemType, subItem: string, addToTemplate?: boolean) => void;
+  onAddSubItem?: (subItemText: string, addToTemplate: boolean) => void;
   allowEditing?: boolean;
 }
 
@@ -54,7 +54,7 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({
     if (!newSubItemText.trim()) return;
     
     if (onAddSubItem) {
-      onAddSubItem(item, newSubItemText, addToTemplate);
+      onAddSubItem(newSubItemText, addToTemplate);
     }
     
     setNewSubItemText('');

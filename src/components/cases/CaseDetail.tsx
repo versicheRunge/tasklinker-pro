@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, CasePriority } from '../../types/case';
@@ -411,7 +412,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
             userId,
             caseItem.id,
             `${currentUser?.name} hat Sie in einem Kommentar erwähnt`,
-            `Vorgang: ${caseItem.title}`
+            "case" // Fixed: Pass the correct type string literal
           );
         }
       }
