@@ -64,6 +64,11 @@ export const useCasesManager = () => {
   });
   
   const addCase = (newCase: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
+    if (!newCase.assignee) {
+      console.error('Attempted to create a case without an assignee');
+      return '';
+    }
+    
     const caseId = `case-${Date.now()}`;
     const now = new Date().toISOString();
     

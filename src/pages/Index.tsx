@@ -27,14 +27,14 @@ const Index: React.FC = () => {
   }, []);
   
   const myCases = allCases.filter(c => 
-    (currentUser && (c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id))) && 
+    (currentUser && c.assignee && (c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id))) && 
     !c.archived
   );
   
   const myActiveCases = myCases.filter(c => c.status !== 'completed');
   
   const myAssignedCases = allCases.filter(c => 
-    currentUser && c.assignee.id === currentUser.id && !c.archived
+    currentUser && c.assignee && c.assignee.id === currentUser.id && !c.archived
   );
 
   const myUrgentCases = myAssignedCases.filter(c => 
@@ -50,7 +50,7 @@ const Index: React.FC = () => {
   });
   
   const otherCases = allCases.filter(c => 
-    currentUser && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
+    currentUser && c.assignee && c.assignee.id !== currentUser.id && !c.archived && c.status !== 'completed'
   );
   
   const newCases = allCases.filter(c => c.status === 'new' && !c.archived);
