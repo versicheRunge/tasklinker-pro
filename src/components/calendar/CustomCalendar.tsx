@@ -2,8 +2,10 @@
 import React from 'react';
 import { Calendar } from '../ui/calendar';
 import { de } from 'date-fns/locale';
+import { isWeekend } from 'date-fns';
 import { CalendarEvent } from '../../types/calendar';
 import { USER_COLORS } from '../../contexts/UserTypes';
+import { isHoliday } from '../../utils/calendarUtils';
 
 interface CustomCalendarProps {
   date: Date;
@@ -12,6 +14,9 @@ interface CustomCalendarProps {
 }
 
 export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChange, events }) => {
+  // Get holidays for styling
+  const holidays = events.filter(event => event.type === 'holiday');
+
   // Custom day rendering for the calendar
   const renderDay = (day: Date) => {
     const getEventsForDate = (date: Date) => {
@@ -32,9 +37,19 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChan
     };
 
     const dayEvents = getEventsForDate(day);
+    const isWeekendDay = isWeekend(day);
+    const isHolidayDay = isHoliday(day, holidays);
+
+    // Determine day background color based on type
+    let dayBgColor = '';
+    if (isHolidayDay) {
+      dayBgColor = 'bg-red-50';
+    } else if (isWeekendDay) {
+      dayBgColor = 'bg-gray-50';
+    }
 
     return (
-      <div className="relative w-full h-full">
+      <div className={`relative w-full h-full ${dayBgColor} rounded-md`}>
         <div className="absolute top-0 left-0 right-0 p-0.5">
           {dayEvents.length > 0 && (
             <div className="flex flex-wrap gap-0.5">
