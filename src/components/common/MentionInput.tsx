@@ -23,13 +23,14 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   maxLength,
   className = '',
 }) => {
-  const { users, mentionUser } = useUser();
+  const { users, mentionUser, currentUser } = useUser();
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStartPos, setMentionStartPos] = useState<number | null>(null);
   const [cursorPosition, setCursorPosition] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
@@ -53,7 +54,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
       // Notify about the mention if callback is provided
       if (onMention) {
         onMention(user.id, newValue);
-      } else if (mentionUser) {
+      } else if (mentionUser && currentUser) {
         // Use the mentionUser function from context if no specific callback is provided
         mentionUser(user.id, "", newValue);
       }
@@ -101,7 +102,9 @@ export const MentionInput: React.FC<MentionInputProps> = ({
           const filteredUsers = users.filter(user => 
             user.name.toLowerCase().includes(query.toLowerCase())
           );
+          
           setSuggestions(filteredUsers);
+          setSelectedSuggestionIndex(0); // Reset selection index with new suggestions
           return;
         }
       }
@@ -121,14 +124,22 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   // Handle key navigation through suggestions
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (suggestions.length > 0) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault(); // Prevent cursor movement in input
-        // Navigation logic would go here
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : 0);
       } else if (e.key === 'Enter' && suggestions.length > 0) {
         e.preventDefault(); // Prevent form submission
-        handleSelectUser(suggestions[0]);
+        handleSelectUser(suggestions[selectedSuggestionIndex]);
       } else if (e.key === 'Escape') {
         setSuggestions([]);
+      } else if (e.key === 'Tab' && suggestions.length > 0) {
+        e.preventDefault(); // Prevent focus change
+        handleSelectUser(suggestions[selectedSuggestionIndex]);
       }
     }
   };
@@ -165,17 +176,21 @@ export const MentionInput: React.FC<MentionInputProps> = ({
       {suggestions.length > 0 && (
         <div 
           ref={suggestionsRef}
-          className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white border rounded-md shadow-lg"
+          className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-md shadow-lg"
         >
-          {suggestions.map(user => (
+          {suggestions.map((user, index) => (
             <div
               key={user.id}
-              className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+              className={`flex items-center gap-2 p-2 cursor-pointer ${
+                index === selectedSuggestionIndex 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent/50'
+              }`}
               onClick={() => handleSelectUser(user)}
             >
-              <CustomAvatar name={user.name} imageSrc={user.avatar} size="xs" />
+              <CustomAvatar name={user.name} imageSrc={user.avatar} size="sm" />
               <span>{user.name}</span>
-              <span className="text-xs text-muted-foreground">({user.role})</span>
+              <span className="text-xs text-muted-foreground">({user.role || user.userRole})</span>
             </div>
           ))}
         </div>

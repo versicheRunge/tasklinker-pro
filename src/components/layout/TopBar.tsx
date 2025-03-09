@@ -136,7 +136,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                 </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-sm border-border">
               <div className="px-3 py-2 text-sm">
                 <div className="font-medium">{currentUser?.name}</div>
                 <div className="text-muted-foreground text-xs">{currentUser?.email}</div>
