@@ -8,7 +8,7 @@ import { useUser } from '../contexts/UserContext';
 
 const CaseDetails: React.FC = () => {
   const [cases, setCases] = useState<CaseItem[]>([]);
-  const { currentUser } = useUser();
+  const { currentUser, addNotification } = useUser();
   
   // Load cases from localStorage
   useEffect(() => {
@@ -53,7 +53,6 @@ const CaseDetails: React.FC = () => {
       ) {
         // Only notify if the creator is not the current user and not the new assignee
         if (originalCase.creator.id !== caseData.assignee.id) {
-          const addNotification = useUser().addNotification;
           addNotification({
             title: "Vorgang neu zugewiesen",
             message: `${currentUser.name} hat den Vorgang "${originalCase.title}" an ${caseData.assignee.name} zugewiesen.`,
@@ -71,7 +70,6 @@ const CaseDetails: React.FC = () => {
         originalCase.creator && 
         originalCase.creator.id !== currentUser.id
       ) {
-        const addNotification = useUser().addNotification;
         addNotification({
           title: "Vorgang abgeschlossen",
           message: `${currentUser.name} hat den Vorgang "${originalCase.title}" abgeschlossen.`,
@@ -88,7 +86,6 @@ const CaseDetails: React.FC = () => {
         originalCase.creator && 
         originalCase.creator.id !== currentUser.id
       ) {
-        const addNotification = useUser().addNotification;
         addNotification({
           title: "Priorität geändert",
           message: `${currentUser.name} hat die Priorität des Vorgangs "${originalCase.title}" geändert.`,
