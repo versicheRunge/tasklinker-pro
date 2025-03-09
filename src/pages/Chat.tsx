@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Hash, Search, Plus, Edit, Trash2, Menu } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -13,11 +12,11 @@ import { Label } from '../components/ui/label';
 import { toast } from '../hooks/use-toast';
 import { ChatChannel } from '../types/chat';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
-import { useMobile } from '../hooks/use-mobile';
+import { useIsMobile } from '../hooks/use-mobile';
 
 const Chat: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChannel, setActiveChannel] = useState<ChatChannel>({
     id: 'general',
