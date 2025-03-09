@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CaseType, CaseDefaultTitle, ChecklistTemplate, CasePriority, CaseStatus } from '../../types/case';
 import { toast } from "../../hooks/use-toast";
@@ -90,12 +91,28 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
   const templates = getTemplates();
 
   const handleCreateCase = () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast({
+        title: "Fehler",
+        description: "Sie müssen angemeldet sein, um einen Vorgang zu erstellen.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (!newCaseData.title.trim()) {
       toast({
         title: "Fehler",
         description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!selectedAssignee) {
+      toast({
+        title: "Fehler", 
+        description: "Bitte wählen Sie einen Bearbeiter aus.",
         variant: "destructive"
       });
       return;
@@ -111,28 +128,38 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
       return;
     }
 
-    const caseData = {
-      ...newCaseData,
-      assignee,
-      status: newCaseData.status || 'new',
-    };
+    try {
+      const caseData = {
+        ...newCaseData,
+        creator: currentUser,
+        assignee,
+        status: newCaseData.status || 'new',
+      };
 
-    onCreateCase(caseData, selectedAssignee);
-    
-    setNewCaseData({
-      title: '',
-      description: '',
-      type: 'damage',
-      selectedTemplate: '',
-      customerName: '',
-      selectedDefaultTitle: '',
-      dueDate: '',
-      followUpDate: '',
-      priority: 'medium',
-      status: 'new'
-    });
-    setSelectedAssignee('');
-    onOpenChange(false);
+      onCreateCase(caseData, selectedAssignee);
+      
+      setNewCaseData({
+        title: '',
+        description: '',
+        type: 'damage',
+        selectedTemplate: '',
+        customerName: '',
+        selectedDefaultTitle: '',
+        dueDate: '',
+        followUpDate: '',
+        priority: 'medium',
+        status: 'new'
+      });
+      setSelectedAssignee('');
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Fehler beim Erstellen des Vorgangs:", error);
+      toast({
+        title: "Fehler",
+        description: "Der Vorgang konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -263,7 +290,7 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="assignee">
+            <label className="block text-sm font-medium mb-1 required" htmlFor="assignee">
               Zuweisen an
             </label>
             <select
@@ -271,7 +298,9 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
               className="w-full p-2 rounded-md border border-input"
               value={selectedAssignee}
               onChange={(e) => setSelectedAssignee(e.target.value)}
+              required
             >
+              <option value="">Bitte wählen Sie einen Bearbeiter</option>
               {users.map(user => (
                 <option key={user.id} value={user.id}>
                   {user.name} ({user.role})

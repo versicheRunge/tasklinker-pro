@@ -88,11 +88,13 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
                   <Camera className="w-4 h-4 mr-2" />
                   <span>Avatar ändern</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onManageBadges(user)}>
-                  <Award className="w-4 h-4 mr-2" />
-                  <span>Auszeichnungen verwalten</span>
-                </DropdownMenuItem>
-                {onManageVacation && (
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => onManageBadges(user)}>
+                    <Award className="w-4 h-4 mr-2" />
+                    <span>Auszeichnungen verwalten</span>
+                  </DropdownMenuItem>
+                )}
+                {onManageVacation && isAdmin && (
                   <DropdownMenuItem onClick={() => onManageVacation(user)}>
                     <CalendarClock className="w-4 h-4 mr-2" />
                     <span>Urlaubsanspruch</span>

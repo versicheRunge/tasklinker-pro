@@ -22,12 +22,12 @@ export const Sidebar: React.FC = () => {
     { name: 'Kalender', path: '/calendar', icon: Calendar },
     { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
     { name: 'Ziele', path: '/goals', icon: Target },
-    { name: 'Berichte', path: '/reports', icon: BarChart3 },
     { name: 'Einstellungen', path: '/settings', icon: Settings },
   ];
   
-  // Add Checklists only for admin users
+  // Add Reports and Checklists only for admin users
   if (isAdmin) {
+    navItems.splice(6, 0, { name: 'Berichte', path: '/reports', icon: BarChart3 });
     navItems.splice(3, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
   }
 
