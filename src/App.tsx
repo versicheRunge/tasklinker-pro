@@ -41,6 +41,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Index />} />
               <Route path="/cases" element={<Cases />} />
+              <Route path="/cases/archived" element={<Cases />} />
               <Route path="/vorgaenge/:id" element={<CaseDetails />} />
               <Route path="/team" element={<Team />} />
               <Route path="/chat" element={<Chat />} />

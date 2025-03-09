@@ -176,7 +176,6 @@ function getInitialUsers() {
     }
   }
   
-  console.log('Creating default users with passwords');
   return initialUsers.map((user, index) => ({
     ...user,
     ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),

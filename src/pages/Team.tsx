@@ -51,6 +51,67 @@ const Team: React.FC = () => {
   const [userToChangeAvatar, setUserToChangeAvatar] = useState<User | null>(null);
   const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false);
   const [userForBadges, setUserForBadges] = useState<User | null>(null);
+  const [userAbsenceStats, setUserAbsenceStats] = useState<{userId: string, absence: number, sick: number}[]>([]);
+
+  // Calculate absence statistics for admin view
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    // Get events from calendar
+    const storedEvents = localStorage.getItem('calendarEvents');
+    if (!storedEvents) return;
+    
+    try {
+      const events = JSON.parse(storedEvents);
+      const stats = users.map(user => {
+        // Count absence days
+        const absenceDays = events
+          .filter((event: any) => 
+            event.type === 'absence' && 
+            event.userId === user.id
+          )
+          .reduce((total: number, event: any) => {
+            if (!event.endDate) return total + 1;
+            
+            // Calculate days between dates for multi-day events
+            const start = new Date(event.date);
+            const end = new Date(event.endDate);
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            return total + diffDays;
+          }, 0);
+        
+        // Count sick days
+        const sickDays = events
+          .filter((event: any) => 
+            event.type === 'sick' && 
+            event.userId === user.id
+          )
+          .reduce((total: number, event: any) => {
+            if (!event.endDate) return total + 1;
+            
+            // Calculate days between dates for multi-day events
+            const start = new Date(event.date);
+            const end = new Date(event.endDate);
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            return total + diffDays;
+          }, 0);
+        
+        return {
+          userId: user.id,
+          absence: absenceDays,
+          sick: sickDays
+        };
+      });
+      
+      setUserAbsenceStats(stats);
+    } catch (e) {
+      console.error('Error calculating absence stats:', e);
+    }
+  }, [users, isAdmin]);
 
   // Handle opening email client
   const handleEmailClick = (email: string) => {
@@ -225,6 +286,12 @@ const Team: React.FC = () => {
     localStorage.setItem('teamUsers', JSON.stringify(users));
   }, [users]);
 
+  // Get absence stats for a user
+  const getUserAbsenceStats = (userId: string) => {
+    const stats = userAbsenceStats.find(stat => stat.userId === userId);
+    return stats || { absence: 0, sick: 0 };
+  };
+
   // Categories of badges
   const badgeCategories = [
     { id: 'achievement', name: 'Leistung' },
@@ -234,68 +301,21 @@ const Team: React.FC = () => {
     { id: 'special', name: 'Besondere Auszeichnung' }
   ];
 
-  // List of 50 available badges
-  const availableBadges = [
-    // Achievement badges
-    { id: 'badge-1', name: 'Top Performer', category: 'achievement', icon: '🏆' },
-    { id: 'badge-2', name: 'Kundenmagnet', category: 'achievement', icon: '🧲' },
-    { id: 'badge-3', name: 'Problemlöser', category: 'achievement', icon: '🔧' },
-    { id: 'badge-4', name: 'Überflieger', category: 'achievement', icon: '🚀' },
-    { id: 'badge-5', name: 'Vertriebsstar', category: 'achievement', icon: '⭐' },
-    { id: 'badge-6', name: 'Ideengeber', category: 'achievement', icon: '💡' },
-    { id: 'badge-7', name: 'Servicekönig', category: 'achievement', icon: '👑' },
-    { id: 'badge-8', name: 'Verkaufstalent', category: 'achievement', icon: '💰' },
-    { id: 'badge-9', name: 'Teamplayer', category: 'achievement', icon: '🤝' },
-    { id: 'badge-10', name: 'Innovator', category: 'achievement', icon: '🔄' },
-    
-    // Skill badges
-    { id: 'badge-11', name: 'Excel-Experte', category: 'skill', icon: '📊' },
-    { id: 'badge-12', name: 'Verhandlungskünstler', category: 'skill', icon: '🗣️' },
-    { id: 'badge-13', name: 'Social Media Profi', category: 'skill', icon: '📱' },
-    { id: 'badge-14', name: 'Projektmanager', category: 'skill', icon: '📋' },
-    { id: 'badge-15', name: 'Kommunikationstalent', category: 'skill', icon: '💬' },
-    { id: 'badge-16', name: 'IT-Kenner', category: 'skill', icon: '💻' },
-    { id: 'badge-17', name: 'Designheld', category: 'skill', icon: '🎨' },
-    { id: 'badge-18', name: 'Analytiker', category: 'skill', icon: '📈' },
-    { id: 'badge-19', name: 'Sprachtalent', category: 'skill', icon: '🌐' },
-    { id: 'badge-20', name: 'Präsentationsmeister', category: 'skill', icon: '🎭' },
-    
-    // Tenure badges
-    { id: 'badge-21', name: '1 Jahr Zugehörigkeit', category: 'tenure', icon: '🕐' },
-    { id: 'badge-22', name: '5 Jahre Zugehörigkeit', category: 'tenure', icon: '🕔' },
-    { id: 'badge-23', name: '10 Jahre Zugehörigkeit', category: 'tenure', icon: '🕙' },
-    { id: 'badge-24', name: '15 Jahre Zugehörigkeit', category: 'tenure', icon: '🕞' },
-    { id: 'badge-25', name: '20 Jahre Zugehörigkeit', category: 'tenure', icon: '🕣' },
-    { id: 'badge-26', name: '25 Jahre Zugehörigkeit', category: 'tenure', icon: '⏰' },
-    { id: 'badge-27', name: 'Urgestein', category: 'tenure', icon: '🗿' },
-    { id: 'badge-28', name: 'Firmenpionier', category: 'tenure', icon: '🧭' },
-    { id: 'badge-29', name: 'Loyalitätsorden', category: 'tenure', icon: '🎖️' },
-    { id: 'badge-30', name: 'Jubiläumsauszeichnung', category: 'tenure', icon: '📅' },
-    
-    // Certification badges
-    { id: 'badge-31', name: 'Versicherungsfachmann/-frau (IHK)', category: 'certification', icon: '📜' },
-    { id: 'badge-32', name: 'Fachwirt/in Versicherungen', category: 'certification', icon: '📝' },
-    { id: 'badge-33', name: 'Fachberater/in', category: 'certification', icon: '📚' },
-    { id: 'badge-34', name: 'Versicherungsbetriebswirt/in', category: 'certification', icon: '🎓' },
-    { id: 'badge-35', name: 'Sachkundenachweis §34d', category: 'certification', icon: '⚖️' },
-    { id: 'badge-36', name: 'Ausbilder/in', category: 'certification', icon: '👨‍🏫' },
-    { id: 'badge-37', name: 'Gutachter/in', category: 'certification', icon: '🔍' },
-    { id: 'badge-38', name: 'Spezialist/in KFZ', category: 'certification', icon: '🚗' },
-    { id: 'badge-39', name: 'Spezialist/in Gewerbe', category: 'certification', icon: '🏭' },
-    { id: 'badge-40', name: 'Spezialist/in Leben', category: 'certification', icon: '❤️' },
-    
-    // Special badges
-    { id: 'badge-41', name: 'Mitarbeiter des Monats', category: 'special', icon: '🌟' },
-    { id: 'badge-42', name: 'Mitarbeiter des Jahres', category: 'special', icon: '🌠' },
-    { id: 'badge-43', name: 'Kundenliebling', category: 'special', icon: '😍' },
-    { id: 'badge-44', name: 'Einserkandidat', category: 'special', icon: '🥇' },
-    { id: 'badge-45', name: 'Firmengesicht', category: 'special', icon: '👤' },
-    { id: 'badge-46', name: 'Sonderauszeichnung', category: 'special', icon: '✨' },
-    { id: 'badge-47', name: 'Innovationspreis', category: 'special', icon: '🧪' },
-    { id: 'badge-48', name: 'Ehrenmitglied', category: 'special', icon: '🎭' },
-    { id: 'badge-49', name: 'Vorbild', category: 'special', icon: '👑' },
-    { id: 'badge-50', name: 'Lebenswerk', category: 'special', icon: '🏛️' }
-  ];
+  // Get available badges from localStorage
+  const getAvailableBadges = () => {
+    const storedBadges = localStorage.getItem('userBadges');
+    if (storedBadges) {
+      try {
+        return JSON.parse(storedBadges);
+      } catch (e) {
+        console.error('Error parsing badges:', e);
+      }
+    }
+    return [];
+  };
+
+  // List of available badges
+  const availableBadges = getAvailableBadges();
 
   return (
     <AppLayout>
@@ -319,6 +339,58 @@ const Team: React.FC = () => {
         )}
       </div>
       
+      {/* Admin Only: Absence Statistics */}
+      {isAdmin && (
+        <div className="mb-8 bg-card rounded-xl border border-border p-6">
+          <h2 className="text-xl font-bold mb-4">Urlaubsübersicht</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="p-3 text-left">Mitarbeiter</th>
+                  <th className="p-3 text-center">Urlaubstage</th>
+                  <th className="p-3 text-center">Krankheitstage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(user => {
+                  const stats = getUserAbsenceStats(user.id);
+                  return (
+                    <tr key={user.id} className="border-b border-border hover:bg-muted/20">
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={user.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'} 
+                            alt={user.name} 
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">{user.role}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="text-blue-500">🏖️</span>
+                          {stats.absence}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="text-pink-500">🤒</span>
+                          {stats.sick}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((user) => (
           <div key={user.id} className="bg-card rounded-xl border border-border p-6">
@@ -327,7 +399,7 @@ const Team: React.FC = () => {
                 <img 
                   src={user.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'} 
                   alt={user.name} 
-                  className="w-16 h-16 rounded-full object-cover"
+                  className="w-20 h-20 rounded-full object-cover"
                 />
                 {isAdmin && (
                   <button 

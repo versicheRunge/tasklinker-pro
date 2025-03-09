@@ -1,16 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
-import { Edit2, Save, X, Plus } from 'lucide-react';
+import { Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 import { CaseDefaultTitle, CaseType } from '../../types/case';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { toast } from "../../hooks/use-toast";
+import { UserBadge } from '../../contexts/UserTypes';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 
 export const TitleManager: React.FC = () => {
   const [defaultTitles, setDefaultTitles] = useState<CaseDefaultTitle[]>([]);
   const [newDefaultTitle, setNewDefaultTitle] = useState({ title: '', type: 'damage' as CaseType });
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingTitleText, setEditingTitleText] = useState('');
+  
+  // Badge management states
+  const [badges, setBadges] = useState<UserBadge[]>([]);
+  const [newBadge, setNewBadge] = useState<Omit<UserBadge, 'id'>>({ name: '', icon: '🏆', category: 'achievement' });
+  const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false);
+  const [editingBadgeId, setEditingBadgeId] = useState<string | null>(null);
 
   // Lade Titel beim Start
   useEffect(() => {
@@ -28,7 +36,28 @@ export const TitleManager: React.FC = () => {
       setDefaultTitles(initialTitles);
       localStorage.setItem('defaultTitles', JSON.stringify(initialTitles));
     }
+    
+    // Load badges
+    const storedBadges = localStorage.getItem('userBadges');
+    if (storedBadges) {
+      setBadges(JSON.parse(storedBadges));
+    } else {
+      // Default badges will be loaded from UserTypes.ts
+      const availableBadges = getDefaultBadges();
+      setBadges(availableBadges);
+      localStorage.setItem('userBadges', JSON.stringify(availableBadges));
+    }
   }, []);
+
+  // Helper function to get default badges
+  const getDefaultBadges = (): UserBadge[] => {
+    return [
+      // Just a few examples here - the rest come from UserTypes.ts
+      { id: 'badge-1', name: 'Top Performer', category: 'achievement', icon: '🏆' },
+      { id: 'badge-2', name: 'Kundenmagnet', category: 'achievement', icon: '🧲' },
+      { id: 'badge-3', name: 'Problemlöser', category: 'achievement', icon: '🔧' },
+    ];
+  };
 
   // Speichere Titel bei Änderungen
   useEffect(() => {
@@ -36,6 +65,13 @@ export const TitleManager: React.FC = () => {
       localStorage.setItem('defaultTitles', JSON.stringify(defaultTitles));
     }
   }, [defaultTitles]);
+  
+  // Save badges when they change
+  useEffect(() => {
+    if (badges.length > 0) {
+      localStorage.setItem('userBadges', JSON.stringify(badges));
+    }
+  }, [badges]);
 
   const handleAddDefaultTitle = () => {
     if (!newDefaultTitle.title.trim()) {
@@ -99,6 +135,74 @@ export const TitleManager: React.FC = () => {
     });
   };
 
+  // Badge Management Functions
+  const handleAddBadge = () => {
+    if (!newBadge.name.trim() || !newBadge.icon.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Namen und ein Icon für das Badge ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const badgeToAdd: UserBadge = {
+      id: `badge-${Date.now()}`,
+      name: newBadge.name,
+      icon: newBadge.icon,
+      category: newBadge.category
+    };
+
+    setBadges(prev => [...prev, badgeToAdd]);
+    setNewBadge({ name: '', icon: '🏆', category: 'achievement' });
+    setIsBadgeDialogOpen(false);
+
+    toast({
+      title: "Badge hinzugefügt",
+      description: "Das neue Badge wurde erfolgreich hinzugefügt."
+    });
+  };
+
+  const handleEditBadge = (badge: UserBadge) => {
+    setEditingBadgeId(badge.id);
+    setNewBadge({
+      name: badge.name,
+      icon: badge.icon,
+      category: badge.category
+    });
+    setIsBadgeDialogOpen(true);
+  };
+
+  const handleSaveEditedBadge = () => {
+    if (!editingBadgeId || !newBadge.name.trim() || !newBadge.icon.trim()) return;
+
+    setBadges(prev => 
+      prev.map(badge => 
+        badge.id === editingBadgeId 
+          ? { ...badge, name: newBadge.name, icon: newBadge.icon, category: newBadge.category }
+          : badge
+      )
+    );
+
+    setEditingBadgeId(null);
+    setNewBadge({ name: '', icon: '🏆', category: 'achievement' });
+    setIsBadgeDialogOpen(false);
+
+    toast({
+      title: "Badge aktualisiert",
+      description: "Das Badge wurde erfolgreich aktualisiert."
+    });
+  };
+
+  const handleDeleteBadge = (id: string) => {
+    setBadges(prev => prev.filter(badge => badge.id !== id));
+
+    toast({
+      title: "Badge gelöscht",
+      description: "Das Badge wurde erfolgreich gelöscht."
+    });
+  };
+
   // Funktion zum Übersetzen der Vorgangstypen
   const translateCaseType = (type: string): string => {
     switch (type) {
@@ -109,6 +213,27 @@ export const TitleManager: React.FC = () => {
       default: return type;
     }
   };
+  
+  // Translate badge categories
+  const translateBadgeCategory = (category: string): string => {
+    switch (category) {
+      case 'achievement': return 'Leistung';
+      case 'skill': return 'Kompetenz';
+      case 'tenure': return 'Zugehörigkeit';
+      case 'certification': return 'Zertifizierung';
+      case 'special': return 'Besondere Auszeichnung';
+      default: return category;
+    }
+  };
+
+  // Badge categories for dropdown
+  const badgeCategories = [
+    { id: 'achievement', name: 'Leistung' },
+    { id: 'skill', name: 'Kompetenz' },
+    { id: 'tenure', name: 'Zugehörigkeit' },
+    { id: 'certification', name: 'Zertifizierung' },
+    { id: 'special', name: 'Besondere Auszeichnung' }
+  ];
 
   return (
     <div className="bg-card rounded-lg border border-border p-6">
@@ -214,7 +339,125 @@ export const TitleManager: React.FC = () => {
             </Button>
           </div>
         </div>
+        
+        {/* Badge Management Section */}
+        <div className="mt-8 pt-8 border-t border-border">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Mitarbeiter-Badges verwalten</h2>
+              <p className="text-muted-foreground">
+                Hier können Sie Badges für Mitarbeiter hinzufügen, bearbeiten oder löschen.
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                setEditingBadgeId(null);
+                setNewBadge({ name: '', icon: '🏆', category: 'achievement' });
+                setIsBadgeDialogOpen(true);
+              }}
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neues Badge
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto">
+            {badges.map(badge => (
+              <div key={badge.id} className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{badge.icon}</span>
+                  <div>
+                    <p className="font-medium">{badge.name}</p>
+                    <p className="text-xs text-muted-foreground">{translateBadgeCategory(badge.category)}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleEditBadge(badge)}
+                    className="p-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteBadge(badge.id)}
+                    className="p-1 text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+      
+      {/* Badge Edit Dialog */}
+      <Dialog open={isBadgeDialogOpen} onOpenChange={setIsBadgeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingBadgeId ? "Badge bearbeiten" : "Neues Badge erstellen"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="badge-name">
+                Badge Name*
+              </label>
+              <input
+                id="badge-name"
+                className="w-full p-2 rounded-md border border-input"
+                value={newBadge.name}
+                onChange={(e) => setNewBadge({...newBadge, name: e.target.value})}
+                placeholder="z.B. Top Performer"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="badge-icon">
+                Emoji/Icon*
+              </label>
+              <input
+                id="badge-icon"
+                className="w-full p-2 rounded-md border border-input"
+                value={newBadge.icon}
+                onChange={(e) => setNewBadge({...newBadge, icon: e.target.value})}
+                placeholder="z.B. 🏆"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="badge-category">
+                Kategorie
+              </label>
+              <select
+                id="badge-category"
+                className="w-full p-2 rounded-md border border-input"
+                value={newBadge.category}
+                onChange={(e) => setNewBadge({...newBadge, category: e.target.value})}
+              >
+                {badgeCategories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsBadgeDialogOpen(false)}
+            >
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={editingBadgeId ? handleSaveEditedBadge : handleAddBadge}
+            >
+              {editingBadgeId ? "Speichern" : "Hinzufügen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

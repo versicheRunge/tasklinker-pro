@@ -1,233 +1,142 @@
 
 import { useState, useEffect } from 'react';
-import { CaseItem, CasePriority, ChecklistTemplate, CaseType, User, CaseDefaultTitle } from '../types/case';
-import { cases as initialCasesData } from '../data/mockData';
-import { toast } from "../hooks/use-toast";
+import { CaseItem, CaseType, CaseStatus, CasePriority, User } from '../types/case';
 import { useUser } from '../contexts/UserContext';
+import { useLocation } from 'react-router-dom';
 
 export const useCasesManager = () => {
-  const getStoredCases = () => {
-    const storedCases = localStorage.getItem('cases');
-    return storedCases ? JSON.parse(storedCases) : initialCasesData;
-  };
-
-  const getDefaultTitles = (): CaseDefaultTitle[] => {
-    const storedTitles = localStorage.getItem('defaultTitles');
-    if (storedTitles) {
-      return JSON.parse(storedTitles);
-    }
-    
-    return [
-      { id: 'title-1', title: 'Schadenmeldung', type: 'damage' },
-      { id: 'title-2', title: 'eVB-Anforderung', type: 'evb' },
-      { id: 'title-3', title: 'Rückrufbitte', type: 'inquiry' },
-      { id: 'title-4', title: 'Vertragsänderung', type: 'contract_change' }
-    ];
-  };
-
-  const [cases, setCases] = useState<CaseItem[]>(getStoredCases());
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [defaultTitles, setDefaultTitles] = useState<CaseDefaultTitle[]>(getDefaultTitles());
-  const [isFilterPriorityOpen, setIsFilterPriorityOpen] = useState(false);
-  const [isFilterUserOpen, setIsFilterUserOpen] = useState(false);
-  const [filterPriority, setFilterPriority] = useState<CasePriority | 'all'>('all');
-  const [filterUserId, setFilterUserId] = useState<string | 'all'>('all');
+  const [cases, setCases] = useState<CaseItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser } = useUser();
+  const location = useLocation();
   
-  const { currentUser, users, addNotification } = useUser();
-
+  // Check if we're on the archived cases route
+  const isArchived = location.pathname === '/cases/archived';
+  
   useEffect(() => {
-    localStorage.setItem('cases', JSON.stringify(cases));
-  }, [cases]);
-
-  useEffect(() => {
-    localStorage.setItem('defaultTitles', JSON.stringify(defaultTitles));
-  }, [defaultTitles]);
-
-  useEffect(() => {
-    const checkDueDates = () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const dueCases = cases.filter(caseItem => {
-        if (!caseItem.dueDate || caseItem.status === 'completed' || caseItem.reminderSent) return false;
-        
-        const dueDate = new Date(caseItem.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        
-        return dueDate <= today;
-      });
-      
-      dueCases.forEach(caseItem => {
-        if (!currentUser) return;
-        
-        setCases(prev => prev.map(c => 
-          c.id === caseItem.id ? { ...c, reminderSent: true } : c
-        ));
-        
-        if (caseItem.assignee && caseItem.assignee.id) {
-          addNotification({
-            title: "Fällige Aufgabe",
-            message: `Der Vorgang "${caseItem.title}" ist fällig.`,
-            caseId: caseItem.id,
-            targetUserId: caseItem.assignee.id,
-            type: 'case'
-          });
+    const loadCases = () => {
+      setIsLoading(true);
+      const storedCases = localStorage.getItem('cases');
+      if (storedCases) {
+        try {
+          const parsedCases = JSON.parse(storedCases);
+          setCases(parsedCases);
+        } catch (e) {
+          console.error('Error parsing stored cases:', e);
+          setCases([]);
         }
-        
-        if (caseItem.assignee.id === currentUser.id) {
-          toast({
-            title: "Fällige Aufgabe",
-            description: `Der Vorgang "${caseItem.title}" ist jetzt fällig.`,
-            variant: "destructive"
-          });
-        }
-      });
-      
-      const followUpCases = cases.filter(caseItem => {
-        if (!caseItem.followUpDate || caseItem.status === 'completed' || caseItem.reminderSent) return false;
-        
-        const followUpDate = new Date(caseItem.followUpDate);
-        followUpDate.setHours(0, 0, 0, 0);
-        
-        return followUpDate <= today;
-      });
-      
-      followUpCases.forEach(caseItem => {
-        if (!currentUser) return;
-        
-        setCases(prev => prev.map(c => 
-          c.id === caseItem.id ? { ...c, reminderSent: true } : c
-        ));
-        
-        if (caseItem.assignee && caseItem.assignee.id) {
-          addNotification({
-            title: "Wiedervorlage",
-            message: `Der Vorgang "${caseItem.title}" ist zur Wiedervorlage fällig.`,
-            caseId: caseItem.id,
-            targetUserId: caseItem.assignee.id,
-            type: 'case'
-          });
-        }
-        
-        if (caseItem.assignee.id === currentUser.id) {
-          toast({
-            title: "Wiedervorlage",
-            description: `Der Vorgang "${caseItem.title}" sollte heute wiedervorgelegt werden.`,
-            variant: "warning"
-          });
-        }
-      });
+      } else {
+        setCases([]);
+      }
+      setIsLoading(false);
     };
     
-    checkDueDates();
+    loadCases();
+  }, []);
+  
+  // Filter based on archive status
+  const filteredCases = cases.filter(c => isArchived ? c.archived : !c.archived);
+  
+  const addCase = (newCase: Omit<CaseItem, 'id' | 'createdAt' | 'lastUpdated' | 'activities' | 'checklist'>) => {
+    const caseId = `case-${Date.now()}`;
+    const now = new Date().toISOString();
     
-    const interval = setInterval(checkDueDates, 24 * 60 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, [cases, currentUser, addNotification]);
-
-  const getTemplates = () => {
-    const storedTemplates = localStorage.getItem('checklistTemplates');
-    if (storedTemplates) {
-      return JSON.parse(storedTemplates) as ChecklistTemplate[];
-    }
-    
-    return [
-      { id: 'template-1', title: 'Schadenmeldung', type: 'damage', items: [] },
-      { id: 'template-2', title: 'eVB-Anfrage', type: 'evb', items: [] },
-      { id: 'template-3', title: 'Vertragsänderung', type: 'contract_change', items: [] },
-      { id: 'template-4', title: 'Kundenanfrage', type: 'inquiry', items: [] }
-    ];
-  };
-
-  const getTemplateItems = (templateId: string) => {
-    const templates = getTemplates();
-    const template = templates.find(t => t.id === templateId);
-    if (!template) return [];
-    
-    return template.items;
-  };
-
-  const updateCase = (id: string, caseData: Partial<CaseItem>) => {
-    setCases(prevCases => 
-      prevCases.map(caseItem => 
-        caseItem.id === id ? { ...caseItem, ...caseData } : caseItem
-      )
-    );
-  };
-
-  const handleCreateCase = (newCaseData: any, selectedAssignee: string) => {
-    if (!currentUser) return;
-    
-    const assignee = users.find(user => user.id === selectedAssignee) || currentUser;
-
-    const newCase: CaseItem = {
-      id: `case-${Date.now()}`,
-      title: newCaseData.title,
-      description: newCaseData.description,
-      status: 'new',
-      type: newCaseData.type,
-      createdAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      customerName: newCaseData.customerName,
-      assignee: assignee,
-      creator: currentUser,
-      dueDate: newCaseData.dueDate || undefined,
-      followUpDate: newCaseData.followUpDate || undefined,
-      priority: newCaseData.priority,
-      reminderSent: false,
+    const caseToAdd: CaseItem = {
+      id: caseId,
+      ...newCase,
+      createdAt: now,
+      lastUpdated: now,
       activities: [
         {
-          id: `act-${Date.now()}`,
+          id: `activity-${Date.now()}`,
           type: 'status',
-          content: 'Neuer Vorgang erstellt',
-          timestamp: new Date().toISOString(),
-          user: currentUser,
-          caseId: `case-${Date.now()}`
+          content: `Vorgang erstellt und Status auf "${newCase.status === 'new' ? 'Neu' : 
+            newCase.status === 'in_progress' ? 'In Bearbeitung' :
+            newCase.status === 'waiting' ? 'Wartend' : 'Abgeschlossen'}" gesetzt.`,
+          timestamp: now,
+          user: currentUser!,
+          caseId: caseId
         }
       ],
-      checklist: newCaseData.selectedTemplate ? 
-        getTemplateItems(newCaseData.selectedTemplate) : []
+      checklist: [],
+      archived: false
     };
-
-    setCases(prevCases => [newCase, ...prevCases]);
-    setIsCreateDialogOpen(false);
-
-    toast({
-      title: "Vorgang erstellt",
-      description: "Der neue Vorgang wurde erfolgreich angelegt."
-    });
-
-    if (assignee.id !== currentUser.id) {
-      addNotification({
-        title: "Neuer Vorgang zugewiesen",
-        message: `${currentUser.name} hat Ihnen den Vorgang "${newCaseData.title}" zugewiesen.`,
-        caseId: newCase.id,
-        targetUserId: assignee.id,
-        type: 'case'
-      });
-    }
+    
+    const updatedCases = [...cases, caseToAdd];
+    setCases(updatedCases);
+    localStorage.setItem('cases', JSON.stringify(updatedCases));
+    
+    return caseId;
   };
-
-  const filteredCases = cases
-    .filter(caseItem => filterPriority === 'all' || caseItem.priority === filterPriority)
-    .filter(caseItem => filterUserId === 'all' || (caseItem.assignee && caseItem.assignee.id === filterUserId));
-
+  
+  const updateCase = (id: string, caseData: Partial<CaseItem>) => {
+    const updatedCases = cases.map(c => {
+      if (c.id === id) {
+        return {
+          ...c,
+          ...caseData,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      return c;
+    });
+    
+    setCases(updatedCases);
+    localStorage.setItem('cases', JSON.stringify(updatedCases));
+  };
+  
+  const archiveCase = (id: string) => {
+    const updatedCases = cases.map(c => {
+      if (c.id === id) {
+        return {
+          ...c,
+          archived: true,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      return c;
+    });
+    
+    setCases(updatedCases);
+    localStorage.setItem('cases', JSON.stringify(updatedCases));
+  };
+  
+  const restoreCase = (id: string) => {
+    const updatedCases = cases.map(c => {
+      if (c.id === id) {
+        return {
+          ...c,
+          archived: false,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      return c;
+    });
+    
+    setCases(updatedCases);
+    localStorage.setItem('cases', JSON.stringify(updatedCases));
+  };
+  
+  const deleteCase = (id: string) => {
+    const updatedCases = cases.filter(c => c.id !== id);
+    setCases(updatedCases);
+    localStorage.setItem('cases', JSON.stringify(updatedCases));
+  };
+  
+  const getCaseById = (id: string) => {
+    return cases.find(c => c.id === id);
+  };
+  
   return {
-    cases,
-    filteredCases,
-    defaultTitles,
-    isCreateDialogOpen,
-    setIsCreateDialogOpen,
-    isFilterPriorityOpen,
-    setIsFilterPriorityOpen,
-    isFilterUserOpen,
-    setIsFilterUserOpen,
-    filterPriority,
-    setFilterPriority,
-    filterUserId,
-    setFilterUserId,
+    cases: filteredCases,
+    allCases: cases,
+    isLoading,
+    addCase,
     updateCase,
-    handleCreateCase
+    deleteCase,
+    getCaseById,
+    archiveCase,
+    restoreCase,
+    isArchived
   };
 };
