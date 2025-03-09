@@ -2,7 +2,7 @@
 import React from 'react';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { Badge } from '../ui/badge';
-import { CalendarEvent } from '../../types/calendar';
+import { CalendarEvent, BadgeVariant } from '../../types/calendar';
 import { User } from '../../types/case';
 import { getEventEmoji, getEventBadgeVariant, formatDate } from '../../utils/calendarUtils';
 import { USER_COLORS } from '../../contexts/UserTypes';

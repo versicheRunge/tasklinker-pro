@@ -110,7 +110,7 @@ export const getEventsForDate = (date: Date, events: CalendarEvent[]): CalendarE
 };
 
 // Get badge color based on event type
-export const getEventBadgeVariant = (type: string): string => {
+export const getEventBadgeVariant = (type: string): "destructive" | "secondary" | "warning" | "default" | "success" | "outline" | "priority-high" | "priority-medium" | "priority-low" | "priority-none" => {
   switch (type) {
     case 'holiday':
       return 'destructive';

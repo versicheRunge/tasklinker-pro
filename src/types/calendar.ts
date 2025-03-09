@@ -13,3 +13,5 @@ export interface CalendarEvent {
 }
 
 export type AdminViewType = 'all' | 'absences' | 'sick';
+
+export type BadgeVariant = "destructive" | "secondary" | "warning" | "default" | "success" | "outline" | "priority-high" | "priority-medium" | "priority-low" | "priority-none";
