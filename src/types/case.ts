@@ -37,11 +37,13 @@ export interface Document {
   type: string;
   uploadedAt: string;
   uploadedBy: User;
+  file?: File;
+  url?: string;
 }
 
 export interface CaseActivity {
   id: string;
-  type: 'comment' | 'status' | 'document' | 'checklist' | 'other';
+  type: 'comment' | 'status' | 'document' | 'checklist' | 'assignment' | 'other';
   content: string;
   timestamp: string;
   user: User;
@@ -49,7 +51,9 @@ export interface CaseActivity {
   attachment?: {
     name: string;
     size: string;
+    url?: string;
   };
+  mentions?: string[]; // Array of user IDs mentioned in a comment
 }
 
 export interface CaseItem {
@@ -61,6 +65,7 @@ export interface CaseItem {
   createdAt: string;
   lastUpdated: string;
   assignee: User;
+  creator?: User; // Added to track who created the case
   activities: CaseActivity[];
   checklist: ChecklistItemType[];
   documents?: Document[];
@@ -91,4 +96,5 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   caseId?: string;
+  targetUserId?: string; // Added to target specific users
 }

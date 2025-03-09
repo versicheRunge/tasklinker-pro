@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Bell, User, X, Sun, Moon, Menu as MenuIcon } from 'lucide-react';
+import { Bell, User, X, Sun, Moon, Menu as MenuIcon, LogOut } from 'lucide-react';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -14,7 +15,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { setTheme, theme } = useTheme();
-  const { currentUser, users, setCurrentUser, notifications, markNotificationAsRead, clearNotifications } = useUser();
+  const { currentUser, setCurrentUser, notifications, markNotificationAsRead, clearNotifications } = useUser();
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
 
@@ -22,15 +23,13 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const switchUser = (newUser: UserType) => {
-    if (newUser.id !== currentUser?.id) {
-      setCurrentUser(newUser);
-      
-      toast({
-        title: "Benutzer gewechselt",
-        description: `Sie sind jetzt als ${newUser.name} angemeldet.`,
-      });
-    }
+  const handleLogout = () => {
+    setCurrentUser(null);
+    toast({
+      title: "Abmeldung erfolgreich",
+      description: "Sie wurden erfolgreich abgemeldet.",
+    });
+    navigate('/login');
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -145,20 +144,10 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   {currentUser?.userRole === 'admin' ? 'Administrator' : 'Mitarbeiter'}
                 </div>
               </div>
-              <div className="px-3 py-2 text-sm font-medium">Benutzer wechseln</div>
-              {users.map(user => (
-                <DropdownMenuItem key={user.id} onClick={() => switchUser(user)}>
-                  <div className="flex items-center gap-2">
-                    <CustomAvatar name={user.name} imageSrc={user.avatar} size="sm" />
-                    <div>
-                      <p className="text-sm">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {user.userRole === 'admin' ? 'Admin' : 'Mitarbeiter'}
-                      </p>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Abmelden</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

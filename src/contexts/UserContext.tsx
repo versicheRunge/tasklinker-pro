@@ -14,8 +14,10 @@ type UserContextType = {
   updateUser: (id: string, userData: Partial<User>) => void;
   deleteUser: (id: string) => void;
   notifications: Notification[];
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
   clearNotifications: () => void;
+  mentionUser: (userId: string, caseId: string, message: string) => void;
 };
 
 // Convert mockData users to our User type with added userRole
@@ -49,16 +51,36 @@ const UserContext = createContext<UserContextType>({
   updateUser: () => {},
   deleteUser: () => {},
   notifications: [],
+  addNotification: () => {},
   markNotificationAsRead: () => {},
   clearNotifications: () => {},
+  mentionUser: () => {},
 });
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<User[]>(getInitialUsers());
-  const [currentUser, setCurrentUser] = useState<User | null>(getInitialUsers()[0]); // Default to first user (admin)
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no logged in user
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  // Load current user from localStorage on mount
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('currentUserId');
+    if (savedUserId) {
+      const user = allUsers.find(u => u.id === savedUserId);
+      if (user) setCurrentUser(user);
+    }
+  }, [allUsers]);
+  
+  // Save current user ID to localStorage
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('currentUserId', currentUser.id);
+    } else {
+      localStorage.removeItem('currentUserId');
+    }
+  }, [currentUser]);
   
   // Save users to localStorage when they change
   useEffect(() => {
@@ -102,6 +124,32 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAllUsers(prev => prev.filter(user => user.id !== id));
   };
   
+  const addNotification = (notificationData: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    if (!currentUser) return;
+    
+    const newNotification: Notification = {
+      ...notificationData,
+      id: `notification-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    const storedNotifications = localStorage.getItem('notifications') || '{}';
+    const allNotifications = JSON.parse(storedNotifications);
+    
+    // Add notification to the target user's notifications
+    const userId = notificationData.targetUserId || currentUser.id;
+    const userNotifications = allNotifications[userId] || [];
+    allNotifications[userId] = [newNotification, ...userNotifications];
+    
+    localStorage.setItem('notifications', JSON.stringify(allNotifications));
+    
+    // Update current user's notifications if needed
+    if (userId === currentUser.id) {
+      setNotifications(prev => [newNotification, ...prev]);
+    }
+  };
+  
   const markNotificationAsRead = (notificationId: string) => {
     if (!currentUser) return;
     
@@ -134,6 +182,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  const mentionUser = (userId: string, caseId: string, message: string) => {
+    const mentionedUser = allUsers.find(user => user.id === userId);
+    if (!mentionedUser || !currentUser) return;
+    
+    const notification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
+      title: `Erwähnung in einem Kommentar`,
+      message: `${currentUser.name} hat Sie in einem Kommentar erwähnt: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
+      caseId,
+      targetUserId: userId
+    };
+    
+    addNotification(notification);
+  };
+  
   return (
     <UserContext.Provider 
       value={{ 
@@ -145,8 +207,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUser, 
         deleteUser,
         notifications,
+        addNotification,
         markNotificationAsRead,
-        clearNotifications
+        clearNotifications,
+        mentionUser
       }}
     >
       {children}

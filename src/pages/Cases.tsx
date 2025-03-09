@@ -58,7 +58,15 @@ const Cases: React.FC = () => {
     customerName: '',
     selectedDefaultTitle: ''
   });
-  const { currentUser, isAdmin } = useUser();
+  const { currentUser, isAdmin, users } = useUser();
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
+
+  // Initialize assignee when dialog opens with current user
+  useEffect(() => {
+    if (isCreateDialogOpen && currentUser) {
+      setSelectedAssignee(currentUser.id);
+    }
+  }, [isCreateDialogOpen, currentUser]);
 
   // Save cases to localStorage whenever they change
   useEffect(() => {
@@ -194,6 +202,8 @@ const Cases: React.FC = () => {
   };
 
   const handleCreateCase = () => {
+    if (!currentUser) return;
+    
     if (!newCaseData.title.trim()) {
       toast({
         title: "Fehler",
@@ -202,6 +212,8 @@ const Cases: React.FC = () => {
       });
       return;
     }
+
+    const assignee = users.find(user => user.id === selectedAssignee) || currentUser;
 
     const newCase: CaseItem = {
       id: `case-${Date.now()}`,
@@ -212,24 +224,15 @@ const Cases: React.FC = () => {
       createdAt: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
       customerName: newCaseData.customerName,
-      assignee: currentUser || {
-        id: '1',
-        name: 'Max Schmidt',
-        role: 'Teamleiter',
-        userRole: 'admin'
-      },
+      assignee: assignee,
+      creator: currentUser, // Store the creator
       activities: [
         {
           id: `act-${Date.now()}`,
           type: 'status',
           content: 'Neuer Vorgang erstellt',
           timestamp: new Date().toISOString(),
-          user: currentUser || {
-            id: '1',
-            name: 'Max Schmidt',
-            role: 'Teamleiter',
-            userRole: 'admin'
-          },
+          user: currentUser,
           caseId: `case-${Date.now()}`
         }
       ],
@@ -247,11 +250,23 @@ const Cases: React.FC = () => {
       customerName: '',
       selectedDefaultTitle: ''
     });
+    setSelectedAssignee('');
 
     toast({
       title: "Vorgang erstellt",
       description: "Der neue Vorgang wurde erfolgreich angelegt."
     });
+
+    // Notify the assignee if it's not the creator
+    if (assignee.id !== currentUser.id) {
+      const { addNotification } = useUser();
+      addNotification({
+        title: "Neuer Vorgang zugewiesen",
+        message: `${currentUser.name} hat Ihnen den Vorgang "${newCaseData.title}" zugewiesen.`,
+        caseId: newCase.id,
+        targetUserId: assignee.id
+      });
+    }
   };
 
   return (
@@ -347,6 +362,23 @@ const Cases: React.FC = () => {
                 onChange={(e) => setNewCaseData({...newCaseData, description: e.target.value})}
                 placeholder="Beschreibung des Vorgangs"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="assignee">
+                Zuweisen an
+              </label>
+              <select
+                id="assignee"
+                className="w-full p-2 rounded-md border border-input"
+                value={selectedAssignee}
+                onChange={(e) => setSelectedAssignee(e.target.value)}
+              >
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.role})
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="type">
