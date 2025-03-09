@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { CalendarEvent } from '../../types/calendar';
 import { User } from '../../types/case';
+import { calculateWorkingDays, getGermanHolidays } from '../../utils/calendarUtils';
 
 interface AddEventDialogProps {
   newEvent: Omit<CalendarEvent, 'id'>;
@@ -24,6 +25,20 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
   currentUserId,
   isAdmin
 }) => {
+  const [workingDays, setWorkingDays] = useState<number | null>(null);
+  
+  // Calculate working days for vacation periods
+  useEffect(() => {
+    if (newEvent.type === 'absence' && newEvent.date && newEvent.endDate) {
+      const currentYear = new Date().getFullYear();
+      const holidays = [...getGermanHolidays(currentYear), ...getGermanHolidays(currentYear + 1)];
+      const days = calculateWorkingDays(newEvent.date, newEvent.endDate, holidays);
+      setWorkingDays(days);
+    } else {
+      setWorkingDays(null);
+    }
+  }, [newEvent.type, newEvent.date, newEvent.endDate]);
+
   return (
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
@@ -112,6 +127,17 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
             />
           </div>
         </div>
+        
+        {newEvent.type === 'absence' && workingDays !== null && (
+          <div className="bg-muted/50 p-3 rounded-md">
+            <p className="text-sm">
+              <strong>Arbeitstage: {workingDays}</strong>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Es werden nur Arbeitstage (Mo-Fr) ohne Feiertage gezählt.
+              </span>
+            </p>
+          </div>
+        )}
         
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="event-description">

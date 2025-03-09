@@ -8,6 +8,7 @@ import { AddUserDialog } from '../components/team/AddUserDialog';
 import { EditUserDialog } from '../components/team/EditUserDialog';
 import { AvatarDialog } from '../components/team/AvatarDialog';
 import { BadgeManagementDialog } from '../components/team/BadgeManagementDialog';
+import { VacationAllowanceDialog } from '../components/team/VacationAllowanceDialog';
 import { AbsenceStatsTable } from '../components/team/AbsenceStatsTable';
 import { useTeamManager } from '../hooks/useTeamManager';
 
@@ -16,7 +17,7 @@ const Team: React.FC = () => {
     users,
     currentUser,
     isAdmin,
-    userAbsenceStats,
+    calendarEvents,
     isDialogOpen,
     setIsDialogOpen,
     isEditingDialogOpen,
@@ -33,6 +34,9 @@ const Team: React.FC = () => {
     isBadgeDialogOpen,
     setIsBadgeDialogOpen,
     userForBadges,
+    isVacationDialogOpen,
+    setIsVacationDialogOpen,
+    userForVacation,
     badgeCategories,
     availableBadges,
     handleAddUser,
@@ -44,6 +48,8 @@ const Team: React.FC = () => {
     handleOpenBadgeDialog,
     handleToggleBadge,
     handleSaveBadges,
+    handleOpenVacationDialog,
+    handleSaveVacation,
     generateRandomAvatar
   } = useTeamManager();
 
@@ -71,7 +77,12 @@ const Team: React.FC = () => {
       
       {/* Admin Only: Absence Statistics */}
       {isAdmin && (
-        <AbsenceStatsTable users={users} userAbsenceStats={userAbsenceStats} />
+        <AbsenceStatsTable 
+          users={users} 
+          events={calendarEvents}
+          isAdmin={isAdmin}
+          onEditAllowance={handleOpenVacationDialog}
+        />
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -85,7 +96,7 @@ const Team: React.FC = () => {
             onDelete={handleDeleteUser}
             onAvatarChange={handleOpenAvatarDialog}
             onManageBadges={handleOpenBadgeDialog}
-            userStats={userAbsenceStats.find(stats => stats.userId === user.id) || { absence: 0, sick: 0 }}
+            onManageVacation={isAdmin ? handleOpenVacationDialog : undefined}
           />
         ))}
       </div>
@@ -129,6 +140,16 @@ const Team: React.FC = () => {
           onCancel={() => setIsBadgeDialogOpen(false)}
           onSave={handleSaveBadges}
         />
+      </Dialog>
+      
+      <Dialog open={isVacationDialogOpen} onOpenChange={setIsVacationDialogOpen}>
+        {userForVacation && (
+          <VacationAllowanceDialog
+            user={userForVacation}
+            onClose={() => setIsVacationDialogOpen(false)}
+            onSave={handleSaveVacation}
+          />
+        )}
       </Dialog>
     </AppLayout>
   );

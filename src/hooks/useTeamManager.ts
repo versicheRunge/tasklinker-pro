@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '../types/case';
+import { CalendarEvent } from '../types/calendar';
 import { useUser } from '../contexts/UserContext';
-import { toast } from "../hooks/use-toast";
+import { toast } from "./use-toast";
 import { UserBadge } from '../contexts/UserTypes';
 
 export const useTeamManager = () => {
@@ -47,67 +47,49 @@ export const useTeamManager = () => {
   const [userToChangeAvatar, setUserToChangeAvatar] = useState<User | null>(null);
   const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false);
   const [userForBadges, setUserForBadges] = useState<User | null>(null);
-  const [userAbsenceStats, setUserAbsenceStats] = useState<{userId: string, absence: number, sick: number}[]>([]);
+  const [isVacationDialogOpen, setIsVacationDialogOpen] = useState(false);
+  const [userForVacation, setUserForVacation] = useState<User | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
-  // Calculate absence statistics for admin view
   useEffect(() => {
-    if (!isAdmin) return;
-    
-    // Get events from calendar
     const storedEvents = localStorage.getItem('calendarEvents');
-    if (!storedEvents) return;
-    
-    try {
-      const events = JSON.parse(storedEvents);
-      const stats = users.map(user => {
-        // Count absence days
-        const absenceDays = events
-          .filter((event: any) => 
-            event.type === 'absence' && 
-            event.userId === user.id
-          )
-          .reduce((total: number, event: any) => {
-            if (!event.endDate) return total + 1;
-            
-            // Calculate days between dates for multi-day events
-            const start = new Date(event.date);
-            const end = new Date(event.endDate);
-            const diffTime = Math.abs(end.getTime() - start.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            
-            return total + diffDays;
-          }, 0);
-        
-        // Count sick days
-        const sickDays = events
-          .filter((event: any) => 
-            event.type === 'sick' && 
-            event.userId === user.id
-          )
-          .reduce((total: number, event: any) => {
-            if (!event.endDate) return total + 1;
-            
-            // Calculate days between dates for multi-day events
-            const start = new Date(event.date);
-            const end = new Date(event.endDate);
-            const diffTime = Math.abs(end.getTime() - start.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            
-            return total + diffDays;
-          }, 0);
-        
-        return {
-          userId: user.id,
-          absence: absenceDays,
-          sick: sickDays
-        };
-      });
-      
-      setUserAbsenceStats(stats);
-    } catch (e) {
-      console.error('Error calculating absence stats:', e);
+    if (storedEvents) {
+      try {
+        const parsedEvents = JSON.parse(storedEvents);
+        const eventsWithDates = parsedEvents.map((event: any) => ({
+          ...event,
+          date: new Date(event.date),
+          endDate: event.endDate ? new Date(event.endDate) : undefined
+        }));
+        setCalendarEvents(eventsWithDates);
+      } catch (e) {
+        console.error('Error parsing stored events:', e);
+      }
     }
-  }, [users, isAdmin]);
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'calendarEvents' && e.newValue) {
+        try {
+          const parsedEvents = JSON.parse(e.newValue);
+          const eventsWithDates = parsedEvents.map((event: any) => ({
+            ...event,
+            date: new Date(event.date),
+            endDate: event.endDate ? new Date(event.endDate) : undefined
+          }));
+          setCalendarEvents(eventsWithDates);
+        } catch (e) {
+          console.error('Error parsing stored events:', e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('teamUsers', JSON.stringify(users));
@@ -235,10 +217,8 @@ export const useTeamManager = () => {
     const badgeIndex = updatedBadges.findIndex(badge => badge.id === badgeId);
     
     if (badgeIndex >= 0) {
-      // Remove badge
       updatedBadges.splice(badgeIndex, 1);
     } else {
-      // Add badge
       const selectedBadge = getAvailableBadges().find(badge => badge.id === badgeId);
       if (selectedBadge) {
         updatedBadges.push(selectedBadge);
@@ -263,6 +243,20 @@ export const useTeamManager = () => {
     });
   };
 
+  const handleOpenVacationDialog = (user: User) => {
+    setUserForVacation(user);
+    setIsVacationDialogOpen(true);
+  };
+
+  const handleSaveVacation = () => {
+    setIsVacationDialogOpen(false);
+    
+    toast({
+      title: "Urlaubsanspruch aktualisiert",
+      description: "Der Urlaubsanspruch wurde erfolgreich aktualisiert."
+    });
+  };
+
   const generateRandomAvatar = () => {
     const gender = Math.random() > 0.5 ? 'men' : 'women';
     const number = Math.floor(Math.random() * 100);
@@ -270,7 +264,6 @@ export const useTeamManager = () => {
     setAvatarUrl(url);
   };
 
-  // Get available badges from localStorage
   const getAvailableBadges = () => {
     const storedBadges = localStorage.getItem('userBadges');
     if (storedBadges) {
@@ -283,7 +276,6 @@ export const useTeamManager = () => {
     return [];
   };
 
-  // Categories of badges
   const badgeCategories = [
     { id: 'achievement', name: 'Leistung' },
     { id: 'skill', name: 'Kompetenz' },
@@ -296,7 +288,7 @@ export const useTeamManager = () => {
     users,
     currentUser,
     isAdmin,
-    userAbsenceStats,
+    calendarEvents,
     isDialogOpen,
     setIsDialogOpen,
     isEditingDialogOpen,
@@ -313,6 +305,9 @@ export const useTeamManager = () => {
     isBadgeDialogOpen,
     setIsBadgeDialogOpen,
     userForBadges,
+    isVacationDialogOpen,
+    setIsVacationDialogOpen,
+    userForVacation,
     badgeCategories,
     availableBadges: getAvailableBadges(),
     handleAddUser,
@@ -324,6 +319,8 @@ export const useTeamManager = () => {
     handleOpenBadgeDialog,
     handleToggleBadge,
     handleSaveBadges,
+    handleOpenVacationDialog,
+    handleSaveVacation,
     generateRandomAvatar
   };
 };

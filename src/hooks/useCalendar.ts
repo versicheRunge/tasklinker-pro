@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CalendarEvent, AdminViewType } from '../types/calendar';
-import { getGermanHolidays, eventExists } from '../utils/calendarUtils';
+import { getGermanHolidays, eventExists, calculateWorkingDays } from '../utils/calendarUtils';
 import { useUser } from '../contexts/UserContext';
 import { toast } from "./use-toast";
 
@@ -111,11 +111,23 @@ export const useCalendar = () => {
       }
     }
     
+    // Calculate working days for absence events
+    let workingDaysCount;
+    if (newEvent.type === 'absence' && newEvent.endDate) {
+      // Get holidays for working days calculation
+      const currentYear = new Date().getFullYear();
+      const holidays = [...getGermanHolidays(currentYear), ...getGermanHolidays(currentYear + 1)];
+      
+      // Calculate working days
+      workingDaysCount = calculateWorkingDays(newEvent.date, newEvent.endDate, holidays);
+    }
+    
     const event: CalendarEvent = {
       id: `event-${Date.now()}`,
       ...newEvent,
       userId,
-      createdBy: currentUser?.id
+      createdBy: currentUser?.id,
+      workingDaysCount
     };
     
     setEvents(prev => [...prev, event]);
@@ -123,7 +135,9 @@ export const useCalendar = () => {
     
     toast({
       title: "Termin hinzugefügt",
-      description: "Der Termin wurde erfolgreich im Kalender eingetragen."
+      description: newEvent.type === 'absence' 
+        ? `Der Urlaub wurde erfolgreich eingetragen (${workingDaysCount} Arbeitstage).`
+        : "Der Termin wurde erfolgreich im Kalender eingetragen."
     });
     
     // Reset new event form

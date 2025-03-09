@@ -71,6 +71,11 @@ export const EventItem: React.FC<EventItemProps> = ({
               {formatDate(event.date)} - {formatDate(event.endDate)}
             </p>
           )}
+          {event.type === 'absence' && event.workingDaysCount !== undefined && (
+            <p className="text-xs mt-1">
+              <span className="text-blue-500 font-medium">{event.workingDaysCount} Arbeitstage</span>
+            </p>
+          )}
           {(event.type === 'absence' || event.type === 'sick') && event.userId && (
             <p className="text-xs text-muted-foreground mt-1">
               Mitarbeiter: {users.find(u => u.id === event.userId)?.name || 'Unbekannt'}

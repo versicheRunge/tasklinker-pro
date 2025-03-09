@@ -74,6 +74,11 @@ export const AdminFilteredEvents: React.FC<AdminFilteredEventsProps> = ({
                     {formatDate(event.date)}
                     {event.endDate && ` - ${formatDate(event.endDate)}`}
                   </p>
+                  {event.type === 'absence' && event.workingDaysCount !== undefined && (
+                    <p className="text-xs font-medium text-blue-500 mt-1">
+                      {event.workingDaysCount} Arbeitstage
+                    </p>
+                  )}
                 </div>
               </div>
               

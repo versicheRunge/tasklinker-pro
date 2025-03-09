@@ -1,7 +1,6 @@
-
-import { format, addDays, isWithinInterval, isValid } from 'date-fns';
+import { format, addDays, isWithinInterval, isValid, isWeekend, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CalendarEvent } from '../types/calendar';
+import { CalendarEvent, VacationAllowance } from '../types/calendar';
 import { User } from '../types/case';
 
 // Helper to get correct Easter date
@@ -26,22 +25,17 @@ export const getEasterSunday = (year: number): Date => {
 
 // German holidays for the current year with correct calculations
 export const getGermanHolidays = (year: number): CalendarEvent[] => {
-  // Calculate Easter Sunday
   const easterSunday = getEasterSunday(year);
   
-  // Calculate Good Friday (2 days before Easter Sunday)
   const goodFriday = new Date(easterSunday);
   goodFriday.setDate(easterSunday.getDate() - 2);
   
-  // Calculate Easter Monday (1 day after Easter Sunday)
   const easterMonday = new Date(easterSunday);
   easterMonday.setDate(easterSunday.getDate() + 1);
   
-  // Calculate Ascension Day (39 days after Easter Sunday)
   const ascensionDay = new Date(easterSunday);
   ascensionDay.setDate(easterSunday.getDate() + 39);
   
-  // Calculate Whit Monday (50 days after Easter Sunday)
   const whitMonday = new Date(easterSunday);
   whitMonday.setDate(easterSunday.getDate() + 50);
   
@@ -91,14 +85,12 @@ export const getEventsForDate = (date: Date, events: CalendarEvent[]): CalendarE
   if (!isValid(date)) return [];
   
   return events.filter(event => {
-    // Check for single-day events
     const isSameDay = (date1: Date, date2: Date) => {
       return date1.getDate() === date2.getDate() &&
         date1.getMonth() === date2.getMonth() &&
         date1.getFullYear() === date2.getFullYear();
     };
     
-    // Check if the date falls within a multi-day event
     const isWithinEvent = event.endDate ? 
       isWithinInterval(date, { 
         start: new Date(event.date), 
@@ -138,31 +130,26 @@ export const eventExists = (
   endDate?: Date
 ): boolean => {
   return events.some(event => {
-    // Skip if not the same type or user
     if (event.type !== type || event.userId !== userId) return false;
     
-    // Check for single-day overlap
     const isSameDay = (date1: Date, date2: Date) => {
       return date1.getDate() === date2.getDate() &&
         date1.getMonth() === date2.getMonth() &&
         date1.getFullYear() === date2.getFullYear();
     };
     
-    // Single day events
     if (!endDate && !event.endDate) {
       return isSameDay(event.date, date);
     }
     
-    // Multi-day events
     if (endDate && event.endDate) {
       return (
-        (date <= event.endDate && endDate >= event.date) || // Overlapping periods
-        isSameDay(event.date, date) || // Same start date
-        isSameDay(event.endDate, endDate) // Same end date
+        (date <= event.endDate && endDate >= event.date) || 
+        isSameDay(event.date, date) || 
+        isSameDay(event.endDate, endDate)
       );
     }
     
-    // One is single day, one is multi-day
     if (endDate && !event.endDate) {
       return date <= event.date && endDate >= event.date;
     }
@@ -173,4 +160,108 @@ export const eventExists = (
     
     return false;
   });
+};
+
+// Check if a date is a holiday
+export const isHoliday = (date: Date, holidays: CalendarEvent[]): boolean => {
+  return holidays.some(holiday => {
+    const holidayDate = new Date(holiday.date);
+    return date.getDate() === holidayDate.getDate() &&
+           date.getMonth() === holidayDate.getMonth() &&
+           date.getFullYear() === holidayDate.getFullYear();
+  });
+};
+
+// Calculate working days between two dates (excluding weekends and holidays)
+export const calculateWorkingDays = (startDate: Date, endDate: Date, holidays: CalendarEvent[]): number => {
+  if (!startDate || !endDate) return 0;
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let workingDays = 0;
+  
+  if (start > end) return 0;
+  
+  const currentDate = new Date(start);
+  while (currentDate <= end) {
+    if (!isWeekend(currentDate) && !isHoliday(currentDate, holidays)) {
+      workingDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return workingDays;
+};
+
+// Get vacation allowance for a user and year
+export const getVacationAllowance = (userId: string, year: number): number => {
+  const storedAllowances = localStorage.getItem('vacationAllowances');
+  if (!storedAllowances) return 0;
+  
+  try {
+    const allowances: VacationAllowance[] = JSON.parse(storedAllowances);
+    const userAllowance = allowances.find(
+      allowance => allowance.userId === userId && allowance.year === year
+    );
+    
+    return userAllowance ? userAllowance.totalDays : 0;
+  } catch (e) {
+    console.error('Error parsing vacation allowances:', e);
+    return 0;
+  }
+};
+
+// Save vacation allowance for a user and year
+export const saveVacationAllowance = (userId: string, year: number, totalDays: number): void => {
+  const storedAllowances = localStorage.getItem('vacationAllowances');
+  let allowances: VacationAllowance[] = [];
+  
+  if (storedAllowances) {
+    try {
+      allowances = JSON.parse(storedAllowances);
+    } catch (e) {
+      console.error('Error parsing vacation allowances:', e);
+    }
+  }
+  
+  const existingIndex = allowances.findIndex(
+    allowance => allowance.userId === userId && allowance.year === year
+  );
+  
+  if (existingIndex >= 0) {
+    allowances[existingIndex].totalDays = totalDays;
+  } else {
+    allowances.push({ userId, year, totalDays });
+  }
+  
+  localStorage.setItem('vacationAllowances', JSON.stringify(allowances));
+};
+
+// Calculate used vacation days for a user in a year
+export const calculateUsedVacationDays = (
+  userId: string, 
+  year: number, 
+  events: CalendarEvent[]
+): number => {
+  const userVacationEvents = events.filter(event => 
+    event.type === 'absence' && 
+    event.userId === userId &&
+    new Date(event.date).getFullYear() === year
+  );
+  
+  return userVacationEvents.reduce((total, event) => {
+    return total + (event.workingDaysCount || 0);
+  }, 0);
+};
+
+// Calculate remaining vacation days
+export const calculateRemainingVacationDays = (
+  userId: string, 
+  year: number, 
+  events: CalendarEvent[]
+): number => {
+  const totalAllowance = getVacationAllowance(userId, year);
+  const usedDays = calculateUsedVacationDays(userId, year, events);
+  
+  return Math.max(0, totalAllowance - usedDays);
 };
