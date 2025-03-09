@@ -538,7 +538,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     
     // Add case info
     doc.setFontSize(12);
-    doc.text(`Vorgangsnummer: ${caseItem.id}`, 14, 30);
+    doc.text(`Vorgangsnummer: ${caseItem.id.replace('case', 'Vorgang')}`, 14, 30);
     doc.text(`Titel: ${caseItem.title}`, 14, 37);
     doc.text(`Kunde: ${customerName}`, 14, 44);
     doc.text(`Status: ${statusLabel[caseItem.status]}`, 14, 51);
@@ -556,7 +556,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     
     let yPos = 95 + descriptionLines.length * 7;
     
-    // Add checklist
+    // Add checklist with proper checkbox symbols
     if (caseItem.checklist && caseItem.checklist.length > 0) {
       doc.setFontSize(14);
       doc.text('Checkliste', 14, yPos);
@@ -564,8 +564,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       
       doc.setFontSize(12);
       caseItem.checklist.forEach((item, index) => {
-        const status = item.completed ? '✓' : '□';
-        doc.text(`${status} ${item.text}`, 14, yPos);
+        const checkboxSymbol = item.completed ? '☑' : '☐';
+        doc.text(`${checkboxSymbol} ${item.text}`, 14, yPos);
         yPos += 7;
         
         if (item.description) {
@@ -576,11 +576,11 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           doc.setFontSize(12);
         }
         
-        // Add sub-items
+        // Add sub-items with proper checkbox symbols
         if (item.subItems && item.subItems.length > 0) {
           item.subItems.forEach(subItem => {
-            const subStatus = subItem.completed ? '✓' : '□';
-            doc.text(`   ${subStatus} ${subItem.text}`, 20, yPos);
+            const subCheckboxSymbol = subItem.completed ? '☑' : '☐';
+            doc.text(`   ${subCheckboxSymbol} ${subItem.text}`, 20, yPos);
             yPos += 7;
           });
         }

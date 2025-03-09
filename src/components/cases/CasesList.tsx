@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { CaseCard } from './CaseCard';
 import { CaseItem, CaseStatus, CaseType } from '../../types/case';
-import { Archive, Download, Trash } from 'lucide-react';
+import { Archive, Download, Trash, Filter } from 'lucide-react';
 import { toast } from "../../hooks/use-toast";
 import { useUser } from '../../contexts/UserContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 interface CasesListProps {
   cases: CaseItem[];
@@ -16,13 +17,21 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CaseType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const { isAdmin } = useUser();
+  const { isAdmin, currentUser } = useUser();
+  const [activeTab, setActiveTab] = useState<'all' | 'mine'>('mine');
 
   // Filter out archived cases
   const filteredCases = cases.filter(c => !c.archived);
   
-  const activeCases = filteredCases.filter(c => c.status !== 'completed');
-  const completedCases = filteredCases.filter(c => c.status === 'completed');
+  // Filter cases belonging to current user
+  const myCases = currentUser ? 
+    filteredCases.filter(c => c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id)) : 
+    [];
+  
+  const casesToUse = activeTab === 'mine' ? myCases : filteredCases;
+  
+  const activeCases = casesToUse.filter(c => c.status !== 'completed');
+  const completedCases = casesToUse.filter(c => c.status === 'completed');
 
   // Sort active cases by creation date (newest first)
   const sortedActiveCases = [...activeCases].sort((a, b) => 
@@ -34,7 +43,8 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
     const matchesType = typeFilter === 'all' || caseItem.type === typeFilter;
     const matchesSearch = 
       caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      caseItem.description.toLowerCase().includes(searchTerm.toLowerCase());
+      caseItem.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (caseItem.customerName && caseItem.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return matchesStatus && matchesType && (searchTerm === '' || matchesSearch);
   });
@@ -43,7 +53,8 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
     const matchesType = typeFilter === 'all' || caseItem.type === typeFilter;
     const matchesSearch = 
       caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      caseItem.description.toLowerCase().includes(searchTerm.toLowerCase());
+      caseItem.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (caseItem.customerName && caseItem.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
     
     return matchesType && (searchTerm === '' || matchesSearch);
   });
@@ -93,6 +104,15 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
 
   return (
     <div className="space-y-8">
+      {currentUser && (
+        <Tabs defaultValue="mine" onValueChange={(value) => setActiveTab(value as 'all' | 'mine')}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="mine">Meine Vorgänge</TabsTrigger>
+            <TabsTrigger value="all">Alle Vorgänge</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+      
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1">
           <input
@@ -132,7 +152,9 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
       </div>
       
       <div>
-        <h2 className="text-xl font-semibold mb-4">Aktive Vorgänge</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          {activeTab === 'mine' ? 'Meine aktiven Vorgänge' : 'Aktive Vorgänge'}
+        </h2>
         {filteredActiveCases.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredActiveCases.map(caseItem => (
@@ -141,7 +163,11 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
           </div>
         ) : (
           <div className="text-center py-12 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">Keine aktiven Vorgänge gefunden</p>
+            <p className="text-muted-foreground">
+              {activeTab === 'mine' 
+                ? 'Keine aktiven Vorgänge gefunden, die Ihnen zugewiesen sind' 
+                : 'Keine aktiven Vorgänge gefunden'}
+            </p>
           </div>
         )}
       </div>
@@ -149,7 +175,9 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
       {showCompletedSection && completedCases.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Abgeschlossene Vorgänge</h2>
+            <h2 className="text-xl font-semibold">
+              {activeTab === 'mine' ? 'Meine abgeschlossenen Vorgänge' : 'Abgeschlossene Vorgänge'}
+            </h2>
             
             <div className="flex gap-2">
               <button 

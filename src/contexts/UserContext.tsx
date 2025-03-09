@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
 import { User, Notification } from '../types/case';
@@ -246,6 +245,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     addNotification(notification);
+    
+    console.log(`Notification sent to user ${mentionedUser.name} for mention in case ${caseId}`);
   };
   
   const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);

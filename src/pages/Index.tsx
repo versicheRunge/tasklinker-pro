@@ -1,24 +1,48 @@
 
-import React from 'react';
-import { FileText, Users, CheckSquare, ClipboardCheck, Archive } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Users, CheckSquare, ClipboardCheck, Archive, MessageSquare } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { StatCard } from '../components/dashboard/StatCard';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { CaseCard } from '../components/cases/CaseCard';
-import { dashboardStats, cases } from '../data/mockData';
+import { dashboardStats } from '../data/mockData';
 import { useUser } from '../contexts/UserContext';
 import { toast } from "../hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
-import { CaseStatus } from '../types/case';
+import { CaseStatus, CaseItem } from '../types/case';
+import { Button } from '../components/ui/button';
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
-  const newCases = cases.filter(c => c.status === 'new' && !c.archived);
-  const inProgressCases = cases.filter(c => c.status === 'in_progress' && !c.archived);
-  const waitingCases = cases.filter(c => c.status === 'waiting' && !c.archived);
-  const completedCases = cases.filter(c => c.status === 'completed' && !c.archived);
-  const activeCases = cases.filter(c => c.status !== 'completed' && !c.archived);
-  const { isAdmin } = useUser();
+  const { isAdmin, currentUser } = useUser();
+  const [allCases, setAllCases] = useState<CaseItem[]>([]);
+  
+  // Load cases from localStorage
+  useEffect(() => {
+    const storedCases = localStorage.getItem('cases');
+    if (storedCases) {
+      setAllCases(JSON.parse(storedCases));
+    }
+  }, []);
+  
+  // Filter cases for the current user
+  const myCases = allCases.filter(c => 
+    (currentUser && (c.assignee.id === currentUser.id || (c.creator && c.creator.id === currentUser.id))) && 
+    !c.archived
+  );
+  
+  const myNewCases = myCases.filter(c => c.status === 'new');
+  const myInProgressCases = myCases.filter(c => c.status === 'in_progress');
+  const myWaitingCases = myCases.filter(c => c.status === 'waiting');
+  const myCompletedCases = myCases.filter(c => c.status === 'completed');
+  const myActiveCases = myCases.filter(c => c.status !== 'completed');
+  
+  // All cases (for all users)
+  const newCases = allCases.filter(c => c.status === 'new' && !c.archived);
+  const inProgressCases = allCases.filter(c => c.status === 'in_progress' && !c.archived);
+  const waitingCases = allCases.filter(c => c.status === 'waiting' && !c.archived);
+  const completedCases = allCases.filter(c => c.status === 'completed' && !c.archived);
+  const activeCases = allCases.filter(c => c.status !== 'completed' && !c.archived);
   
   const handleStatCardClick = (status?: CaseStatus) => {
     navigate('/cases');
@@ -70,6 +94,29 @@ const Index: React.FC = () => {
         </div>
       </div>
       
+      {currentUser && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-medium">Meine Vorgänge</h2>
+            <Button variant="outline" onClick={() => navigate('/cases')}>
+              Alle anzeigen
+            </Button>
+          </div>
+          
+          {myActiveCases.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myActiveCases.slice(0, 6).map(caseItem => (
+                <CaseCard key={caseItem.id} caseItem={caseItem} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 bg-muted/20 rounded-lg">
+              <p className="text-muted-foreground">Keine aktiven Vorgänge für Sie</p>
+            </div>
+          )}
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2">
           <div className="bg-card rounded-xl border border-border p-6 h-full animate-scale-in">
@@ -82,7 +129,7 @@ const Index: React.FC = () => {
             
             {newCases.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {newCases.map(caseItem => (
+                {newCases.slice(0, 4).map(caseItem => (
                   <CaseCard key={caseItem.id} caseItem={caseItem} />
                 ))}
               </div>
