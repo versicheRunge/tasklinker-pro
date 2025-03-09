@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
@@ -17,6 +17,8 @@ export const LoginScreen: React.FC = () => {
   const handleUserSelect = (user: UserType) => {
     setSelectedUser(user);
     setError('');
+    // Set default password when selecting a user
+    setPassword('password123');
   };
   
   const handleLogin = (e: React.FormEvent) => {
@@ -27,12 +29,17 @@ export const LoginScreen: React.FC = () => {
       return;
     }
     
+    console.log('Attempting login for user:', selectedUser.name);
+    console.log('With password:', password);
+    
     // Validate the password
     if (!validatePassword(selectedUser.id, password)) {
+      console.log('Password validation failed');
       setError('Falsches Passwort');
       return;
     }
     
+    console.log('Password validation succeeded');
     setCurrentUser(selectedUser);
     toast({
       title: "Anmeldung erfolgreich",
@@ -46,6 +53,12 @@ export const LoginScreen: React.FC = () => {
     setPassword('');
     setError('');
   };
+  
+  // Check if we have any stored user data in localStorage
+  useEffect(() => {
+    const storedUsers = localStorage.getItem('users');
+    console.log('Stored users found:', storedUsers ? 'yes' : 'no');
+  }, []);
   
   return (
     <div className="w-full max-w-md bg-card rounded-xl shadow-lg p-6 border border-border">
@@ -94,6 +107,7 @@ export const LoginScreen: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Passwort eingeben"
+                  autoFocus
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
               </div>

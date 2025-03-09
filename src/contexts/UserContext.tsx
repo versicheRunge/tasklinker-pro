@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { users as initialUsers } from '../data/mockData';
 import { User, Notification } from '../types/case';
@@ -73,20 +72,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no logged in user
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
-  // Load current user from localStorage on mount
   useEffect(() => {
     const savedUserId = localStorage.getItem('currentUserId');
     if (savedUserId) {
       const user = allUsers.find(u => u.id === savedUserId);
       if (user) {
-        // Create a copy without the password field for the currentUser
         const { password, ...userWithoutPassword } = user;
         setCurrentUser(userWithoutPassword);
       }
     }
   }, [allUsers]);
   
-  // Save current user ID to localStorage
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUserId', currentUser.id);
@@ -95,12 +91,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
   
-  // Save users to localStorage when they change
   useEffect(() => {
     localStorage.setItem('users', JSON.stringify(allUsers));
   }, [allUsers]);
   
-  // Check for notifications on mount and when currentUser changes
   useEffect(() => {
     if (currentUser) {
       const storedNotifications = localStorage.getItem('notifications');
@@ -128,9 +122,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.map(user => user.id === id ? { ...user, ...userData } : user)
     );
     
-    // Update current user if it's the one being updated
     if (currentUser?.id === id) {
-      // Don't expose password in currentUser
       const { password, ...updatedUserData } = userData as any;
       setCurrentUser(prev => prev ? { ...prev, ...updatedUserData } : prev);
     }
@@ -141,8 +133,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const validatePassword = (userId: string, password: string) => {
+    console.log('Validating password for user ID:', userId);
+    console.log('Provided password:', password);
     const user = allUsers.find(u => u.id === userId);
-    return user ? user.password === password : false;
+    console.log('User found:', user ? 'yes' : 'no');
+    if (user) {
+      console.log('Stored password:', user.password);
+      return user.password === password;
+    }
+    return false;
   };
   
   const changePassword = (userId: string, currentPassword: string, newPassword: string) => {
@@ -172,14 +171,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedNotifications = localStorage.getItem('notifications') || '{}';
     const allNotifications = JSON.parse(storedNotifications);
     
-    // Add notification to the target user's notifications
     const userId = notificationData.targetUserId || currentUser.id;
     const userNotifications = allNotifications[userId] || [];
     allNotifications[userId] = [newNotification, ...userNotifications];
     
     localStorage.setItem('notifications', JSON.stringify(allNotifications));
     
-    // Update current user's notifications if needed
     if (userId === currentUser.id) {
       setNotifications(prev => [newNotification, ...prev]);
     }
@@ -231,7 +228,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addNotification(notification);
   };
   
-  // Create a version of users without passwords for use in the app
   const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
   
   return (
