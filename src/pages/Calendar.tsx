@@ -107,8 +107,8 @@ const CalendarPage: React.FC = () => {
               />
             ) : (
               <div className="space-y-4">
-                {getEventsForDate().length > 0 ? (
-                  getEventsForDate().map((event) => (
+                {getEventsForDate(date).length > 0 ? (
+                  getEventsForDate(date).map((event) => (
                     <EventItem 
                       key={event.id}
                       event={event}
@@ -135,7 +135,14 @@ const CalendarPage: React.FC = () => {
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
-          onSave={handleAddEvent}
+          onSave={() => {
+            // Add unique ID before saving to fix the id property issue
+            const eventWithId = {
+              ...newEvent,
+              id: `event-${Date.now()}`
+            };
+            return handleAddEvent(eventWithId);
+          }}
           users={users}
           currentUserId={currentUser?.id}
           isAdmin={isAdmin}

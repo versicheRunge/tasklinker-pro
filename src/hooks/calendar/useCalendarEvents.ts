@@ -54,7 +54,7 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
   }, [events]);
 
   // Handle adding a new event
-  const handleAddEvent = (newEvent: Omit<CalendarEvent, 'id'>) => {
+  const handleAddEvent = (newEvent: CalendarEvent): boolean => {
     if (!newEvent.title.trim()) {
       toast({
         title: "Fehler",
@@ -93,7 +93,6 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
     }
     
     const event: CalendarEvent = {
-      id: `event-${Date.now()}`,
       ...newEvent,
       userId,
       createdBy: currentUser?.id,
@@ -113,7 +112,7 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
   };
   
   // Handle deleting an event
-  const handleDeleteEvent = (id: string) => {
+  const handleDeleteEvent = (id: string): boolean => {
     // Check if user has permission to delete this event
     const eventToDelete = events.find(event => event.id === id);
     
