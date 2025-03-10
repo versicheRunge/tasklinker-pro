@@ -4,7 +4,7 @@ import { User } from '../../types/case';
 import { useUser } from '../../contexts/UserContext';
 import { UserBadge } from '../../contexts/UserTypes';
 import { toast } from "../use-toast";
-import { generateDefaultBadges } from '../../components/team/BadgeTemplatesManager';
+import { generateDefaultBadges } from '../../components/team/badge/defaultBadges';
 
 export const useBadgeOperations = () => {
   const { updateUser } = useUser();

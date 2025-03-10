@@ -1,3 +1,4 @@
+
 import { UserBadge } from '../../../contexts/UserTypes';
 
 export const generateDefaultBadges = (): UserBadge[] => {
