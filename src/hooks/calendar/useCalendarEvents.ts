@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { CalendarEvent } from '../../types/calendar';
 import { getGermanHolidays, eventExists, calculateWorkingDays } from '../../utils/calendarUtils';
