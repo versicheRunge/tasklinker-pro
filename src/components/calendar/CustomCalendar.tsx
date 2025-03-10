@@ -27,8 +27,8 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
     return holidayDates.has(date.toDateString());
   };
   
-  // Function to add custom styles to calendar days
-  const dayClassNames = (date: Date) => {
+  // Function to determine the class name for a day
+  const getDayClassName = (date: Date) => {
     let className = '';
     
     // Style for weekends
@@ -65,9 +65,16 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
         selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
       }}
       modifiers={{
-        day: (date) => ({
-          className: dayClassNames(date)
-        })
+        weekend: (date) => isWeekend(date),
+        holiday: (date) => isHoliday(date),
+        hasEvents: (date) => events.some(event => 
+          isEqual(new Date(event.date).setHours(0, 0, 0, 0), date.setHours(0, 0, 0, 0))
+        )
+      }}
+      modifiersStyles={{
+        weekend: { backgroundColor: '#EBF5FF' }, // light blue for weekends
+        holiday: { backgroundColor: '#FEF2F2' }, // light red for holidays
+        hasEvents: { fontWeight: 'bold' }
       }}
     />
   );

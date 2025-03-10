@@ -109,7 +109,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newUser = {
       ...userData,
       id: `user-${Date.now()}`,
-      password: 'password123'
+      password: generateSecurePassword() // Generate a secure password instead of using a default
     };
     setAllUsers(prev => [...prev, newUser as UserWithPassword]);
   };
@@ -156,6 +156,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// Generate a secure password
+const generateSecurePassword = () => {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    password += charset[randomIndex];
+  }
+  return password;
+};
+
 // Helper function moved from the main component
 function getInitialUsers() {
   const storedUsers = localStorage.getItem('users');
@@ -165,7 +177,7 @@ function getInitialUsers() {
       
       const validatedUsers = parsedUsers.map((user: any) => {
         if (!user.password) {
-          return { ...user, password: 'password123' };
+          return { ...user, password: generateSecurePassword() };
         }
         return user;
       });
@@ -182,7 +194,7 @@ function getInitialUsers() {
     userRole: index === 0 ? 'admin' : 'staff',
     department: user.department || 'Allgemein',
     phone: user.phone || '',
-    password: 'password123',
+    password: generateSecurePassword(),
     stats: user.stats || {
       casesHandled: 0,
       completed: 0,

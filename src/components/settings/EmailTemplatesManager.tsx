@@ -1,7 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { 
+  ArrowUp, ArrowDown, Plus, Pencil, Trash2, X, Check, ArrowUpDown, Search 
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
 import { toast } from "../../hooks/use-toast";
 
 interface EmailTemplate {
@@ -10,16 +14,28 @@ interface EmailTemplate {
   subject: string;
   body: string;
   category: string;
+  order: number;
 }
 
 export const EmailTemplatesManager: React.FC = () => {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<EmailTemplate | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  
+  const [newTemplate, setNewTemplate] = useState({
+    id: '',
+    name: '',
+    subject: '',
+    body: '',
+    category: 'damage',
+    order: 0
+  });
+
+  // Categories for email templates
   const categories = [
+    { id: 'all', name: 'Alle Kategorien' },
     { id: 'damage', name: 'Schadensmeldung' },
     { id: 'evb', name: 'eVB-Anfrage' },
     { id: 'contract_change', name: 'Vertragsänderung' },
@@ -28,37 +44,57 @@ export const EmailTemplatesManager: React.FC = () => {
     { id: 'other', name: 'Sonstiges' }
   ];
 
-  const [newTemplate, setNewTemplate] = useState<Omit<EmailTemplate, 'id'>>({
-    name: '',
-    subject: '',
-    body: '',
-    category: 'other'
-  });
+  // Placeholder variables for templates
+  const placeholders = [
+    "{{customerName}} - Name des Kunden",
+    "{{caseNumber}} - Vorgangsnummer",
+    "{{caseTitle}} - Vorgangstitel",
+    "{{userName}} - Ihr Name",
+    "{{userEmail}} - Ihre E-Mail-Adresse",
+    "{{userPhone}} - Ihre Telefonnummer",
+    "{{date}} - Aktuelles Datum"
+  ];
 
   // Load templates from localStorage
   useEffect(() => {
-    const storedTemplates = localStorage.getItem('emailTemplates');
-    if (storedTemplates) {
-      try {
-        setTemplates(JSON.parse(storedTemplates));
-      } catch (e) {
-        console.error('Error parsing email templates:', e);
-        setTemplates([]);
+    const loadTemplates = () => {
+      const storedTemplates = localStorage.getItem('emailTemplates');
+      if (storedTemplates) {
+        try {
+          setTemplates(JSON.parse(storedTemplates));
+        } catch (e) {
+          console.error('Error parsing templates:', e);
+          setTemplates([]);
+        }
+      } else {
+        // Initialize with default templates if none exist
+        const defaultTemplates = generateDefaultTemplates();
+        localStorage.setItem('emailTemplates', JSON.stringify(defaultTemplates));
+        setTemplates(defaultTemplates);
       }
-    } else {
-      // Initialize with default templates
-      const defaultTemplates = generateDefaultTemplates();
-      localStorage.setItem('emailTemplates', JSON.stringify(defaultTemplates));
-      setTemplates(defaultTemplates);
-    }
+    };
+
+    loadTemplates();
   }, []);
 
-  // Save templates whenever they change
+  // Save templates to localStorage whenever they change
   useEffect(() => {
     if (templates.length > 0) {
       localStorage.setItem('emailTemplates', JSON.stringify(templates));
     }
   }, [templates]);
+
+  // Filter templates based on category and search term
+  const filteredTemplates = templates
+    .filter(template => {
+      const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
+      const matchesSearch = 
+        template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        template.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        template.body.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSearch;
+    })
+    .sort((a, b) => a.order - b.order);
 
   const handleEditTemplate = (template: EmailTemplate) => {
     setCurrentTemplate({ ...template });
@@ -66,17 +102,15 @@ export const EmailTemplatesManager: React.FC = () => {
   };
 
   const handleSaveEdit = () => {
-    if (!currentTemplate) return;
-    
-    if (!currentTemplate.name.trim() || !currentTemplate.subject.trim() || !currentTemplate.body.trim()) {
+    if (!currentTemplate || !currentTemplate.name.trim() || !currentTemplate.subject.trim()) {
       toast({
         title: "Fehler",
-        description: "Alle Felder müssen ausgefüllt sein.",
+        description: "Alle erforderlichen Felder müssen ausgefüllt sein.",
         variant: "destructive"
       });
       return;
     }
-    
+
     const updatedTemplates = templates.map(template => 
       template.id === currentTemplate.id ? currentTemplate : template
     );
@@ -92,8 +126,7 @@ export const EmailTemplatesManager: React.FC = () => {
   };
 
   const handleDeleteTemplate = (id: string) => {
-    const updatedTemplates = templates.filter(template => template.id !== id);
-    setTemplates(updatedTemplates);
+    setTemplates(prev => prev.filter(template => template.id !== id));
     
     toast({
       title: "Vorlage gelöscht",
@@ -102,28 +135,36 @@ export const EmailTemplatesManager: React.FC = () => {
   };
 
   const handleCreateTemplate = () => {
-    if (!newTemplate.name.trim() || !newTemplate.subject.trim() || !newTemplate.body.trim()) {
+    if (!newTemplate.name.trim() || !newTemplate.subject.trim()) {
       toast({
         title: "Fehler",
-        description: "Alle Felder müssen ausgefüllt sein.",
+        description: "Alle erforderlichen Felder müssen ausgefüllt sein.",
         variant: "destructive"
       });
       return;
     }
-    
-    const newId = `template-${Date.now()}`;
+
+    // Calculate next order value
+    const nextOrder = templates.length > 0 
+      ? Math.max(...templates.map(t => t.order)) + 1 
+      : 0;
+
+    const templateId = `template-${Date.now()}`;
     const createdTemplate = {
       ...newTemplate,
-      id: newId
+      id: templateId,
+      order: nextOrder
     };
     
-    setTemplates([...templates, createdTemplate]);
+    setTemplates(prev => [...prev, createdTemplate]);
     setIsCreateDialogOpen(false);
     setNewTemplate({
+      id: '',
       name: '',
       subject: '',
       body: '',
-      category: 'other'
+      category: 'damage',
+      order: 0
     });
     
     toast({
@@ -132,102 +173,102 @@ export const EmailTemplatesManager: React.FC = () => {
     });
   };
 
-  const moveTemplate = (id: string, direction: 'up' | 'down') => {
-    const index = templates.findIndex(template => template.id === id);
-    if (index === -1) return;
+  const handleMoveTemplate = (id: string, direction: 'up' | 'down') => {
+    const templateIndex = templates.findIndex(t => t.id === id);
+    if (templateIndex === -1) return;
     
-    // Can't move up if already at the top
-    if (direction === 'up' && index === 0) return;
-    
-    // Can't move down if already at the bottom
-    if (direction === 'down' && index === templates.length - 1) return;
-    
+    const currentTemplate = templates[templateIndex];
     const newTemplates = [...templates];
-    const template = newTemplates[index];
     
-    if (direction === 'up') {
-      newTemplates[index] = newTemplates[index - 1];
-      newTemplates[index - 1] = template;
+    if (direction === 'up' && templateIndex > 0) {
+      // Swap order values with the template above
+      const prevTemplate = newTemplates[templateIndex - 1];
+      const tempOrder = currentTemplate.order;
+      newTemplates[templateIndex].order = prevTemplate.order;
+      newTemplates[templateIndex - 1].order = tempOrder;
+    } else if (direction === 'down' && templateIndex < templates.length - 1) {
+      // Swap order values with the template below
+      const nextTemplate = newTemplates[templateIndex + 1];
+      const tempOrder = currentTemplate.order;
+      newTemplates[templateIndex].order = nextTemplate.order;
+      newTemplates[templateIndex + 1].order = tempOrder;
     } else {
-      newTemplates[index] = newTemplates[index + 1];
-      newTemplates[index + 1] = template;
+      return; // No change needed
     }
     
-    setTemplates(newTemplates);
+    // Sort templates by their new order values
+    setTemplates(newTemplates.sort((a, b) => a.order - b.order));
+    
+    toast({
+      title: "Reihenfolge geändert",
+      description: "Die Reihenfolge der Vorlagen wurde aktualisiert."
+    });
   };
-
-  const getPlaceholderInfo = () => (
-    <div className="bg-muted/50 p-4 rounded-md mt-4 text-sm">
-      <h4 className="font-medium mb-2">Verfügbare Platzhalter:</h4>
-      <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-        <li>{'{{customerName}}'} - Name des Kunden</li>
-        <li>{'{{caseNumber}}'} - Vorgangsnummer</li>
-        <li>{'{{caseTitle}}'} - Titel des Vorgangs</li>
-        <li>{'{{userName}}'} - Name des Mitarbeiters</li>
-        <li>{'{{userEmail}}'} - E-Mail des Mitarbeiters</li>
-        <li>{'{{userPhone}}'} - Telefonnummer des Mitarbeiters</li>
-        <li>{'{{date}}'} - Aktuelles Datum</li>
-      </ul>
-    </div>
-  );
-
-  const filteredTemplates = templates.filter(template => {
-    return selectedCategory === 'all' || template.category === selectedCategory;
-  });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-3 justify-between mb-6">
-        <div className="flex-1">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Vorlagen durchsuchen..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex gap-2">
           <select
             className="px-3 py-2 rounded-md border border-input bg-background text-sm"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            <option value="all">Alle Kategorien</option>
             {categories.map(category => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
             ))}
           </select>
+          
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Neue Vorlage</span>
+          </button>
         </div>
-        
-        <button
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          onClick={() => setIsCreateDialogOpen(true)}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Neue Vorlage</span>
-        </button>
       </div>
       
       <div className="space-y-3">
         {filteredTemplates.length > 0 ? (
-          filteredTemplates.map(template => (
-            <div key={template.id} className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors">
+          filteredTemplates.map((template, index) => (
+            <div 
+              key={template.id} 
+              className="p-4 border border-border rounded-lg bg-card"
+            >
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">{template.name}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     {categories.find(c => c.id === template.category)?.name || 'Kategorie'}
                   </p>
-                  <p className="text-sm font-medium mt-2">
-                    Betreff: {template.subject}
-                  </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                   <button
                     className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-                    onClick={() => moveTemplate(template.id, 'up')}
-                    title="Nach oben"
+                    onClick={() => handleMoveTemplate(template.id, 'up')}
+                    disabled={index === 0}
+                    title="Nach oben verschieben"
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
                   <button
                     className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-                    onClick={() => moveTemplate(template.id, 'down')}
-                    title="Nach unten"
+                    onClick={() => handleMoveTemplate(template.id, 'down')}
+                    disabled={index === filteredTemplates.length - 1}
+                    title="Nach unten verschieben"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
@@ -247,56 +288,64 @@ export const EmailTemplatesManager: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <div className="mt-3 text-sm text-muted-foreground">
-                <div className="line-clamp-3 whitespace-pre-wrap">
-                  {template.body}
-                </div>
+              
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-sm font-medium">Betreff:</p>
+                <p className="text-sm">{template.subject}</p>
+              </div>
+              
+              <div className="mt-2">
+                <p className="text-sm font-medium">Text:</p>
+                <p className="text-sm line-clamp-3">{template.body}</p>
               </div>
             </div>
           ))
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            Keine E-Mail-Vorlagen gefunden.
+            Keine Vorlagen gefunden.
           </div>
         )}
       </div>
       
       {/* Edit Template Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>E-Mail-Vorlage bearbeiten</DialogTitle>
+            <DialogTitle>Vorlage bearbeiten</DialogTitle>
           </DialogHeader>
           {currentTemplate && (
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="template-name">
-                  Name
-                </label>
-                <Input
-                  id="template-name"
-                  value={currentTemplate.name}
-                  onChange={(e) => setCurrentTemplate({...currentTemplate, name: e.target.value})}
-                  placeholder="Name der Vorlage"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="template-name">
+                    Name
+                  </label>
+                  <Input
+                    id="template-name"
+                    value={currentTemplate.name}
+                    onChange={(e) => setCurrentTemplate({...currentTemplate, name: e.target.value})}
+                    placeholder="Name der Vorlage"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="template-category">
+                    Kategorie
+                  </label>
+                  <select
+                    id="template-category"
+                    className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                    value={currentTemplate.category}
+                    onChange={(e) => setCurrentTemplate({...currentTemplate, category: e.target.value})}
+                  >
+                    {categories.filter(c => c.id !== 'all').map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="template-category">
-                  Kategorie
-                </label>
-                <select
-                  id="template-category"
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                  value={currentTemplate.category}
-                  onChange={(e) => setCurrentTemplate({...currentTemplate, category: e.target.value})}
-                >
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="template-subject">
                   Betreff
@@ -308,21 +357,33 @@ export const EmailTemplatesManager: React.FC = () => {
                   placeholder="Betreff der E-Mail"
                 />
               </div>
+              
               <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="template-body">
-                  Inhalt
-                </label>
+                <div className="flex justify-between">
+                  <label className="text-sm font-medium" htmlFor="template-body">
+                    Text
+                  </label>
+                </div>
                 <textarea
                   id="template-body"
-                  className="w-full px-3 py-2 border border-input rounded-md"
-                  rows={10}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background resize-y min-h-[150px]"
+                  rows={8}
                   value={currentTemplate.body}
                   onChange={(e) => setCurrentTemplate({...currentTemplate, body: e.target.value})}
-                  placeholder="Inhalt der E-Mail"
+                  placeholder="Text der E-Mail-Vorlage"
                 />
               </div>
               
-              {getPlaceholderInfo()}
+              <div className="pt-3 border-t border-border">
+                <h4 className="text-sm font-medium mb-2">Platzhalter:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {placeholders.map((placeholder, i) => (
+                    <div key={i} className="text-xs bg-muted px-2 py-1 rounded-md">
+                      {placeholder}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -344,39 +405,42 @@ export const EmailTemplatesManager: React.FC = () => {
       
       {/* Create Template Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Neue E-Mail-Vorlage erstellen</DialogTitle>
+            <DialogTitle>Neue Vorlage erstellen</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="new-template-name">
-                Name
-              </label>
-              <Input
-                id="new-template-name"
-                value={newTemplate.name}
-                onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
-                placeholder="Name der Vorlage"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="new-template-name">
+                  Name
+                </label>
+                <Input
+                  id="new-template-name"
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                  placeholder="Name der Vorlage"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="new-template-category">
+                  Kategorie
+                </label>
+                <select
+                  id="new-template-category"
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                  value={newTemplate.category}
+                  onChange={(e) => setNewTemplate({...newTemplate, category: e.target.value})}
+                >
+                  {categories.filter(c => c.id !== 'all').map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="new-template-category">
-                Kategorie
-              </label>
-              <select
-                id="new-template-category"
-                className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                value={newTemplate.category}
-                onChange={(e) => setNewTemplate({...newTemplate, category: e.target.value})}
-              >
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="new-template-subject">
                 Betreff
@@ -388,21 +452,31 @@ export const EmailTemplatesManager: React.FC = () => {
                 placeholder="Betreff der E-Mail"
               />
             </div>
+            
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="new-template-body">
-                Inhalt
+                Text
               </label>
               <textarea
                 id="new-template-body"
-                className="w-full px-3 py-2 border border-input rounded-md"
-                rows={10}
+                className="w-full px-3 py-2 rounded-md border border-input bg-background resize-y min-h-[150px]"
+                rows={8}
                 value={newTemplate.body}
                 onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
-                placeholder="Inhalt der E-Mail"
+                placeholder="Text der E-Mail-Vorlage"
               />
             </div>
             
-            {getPlaceholderInfo()}
+            <div className="pt-3 border-t border-border">
+              <h4 className="text-sm font-medium mb-2">Platzhalter:</h4>
+              <div className="flex flex-wrap gap-2">
+                {placeholders.map((placeholder, i) => (
+                  <div key={i} className="text-xs bg-muted px-2 py-1 rounded-md">
+                    {placeholder}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <button
@@ -431,89 +505,41 @@ const generateDefaultTemplates = (): EmailTemplate[] => {
       id: 'template-1',
       name: 'Schadensmeldung Bestätigung',
       subject: 'Bestätigung Ihrer Schadensmeldung',
-      body: `Sehr geehrte/r {{customerName}},
-
-vielen Dank für Ihre Schadensmeldung. Wir haben Ihren Vorgang unter der Nummer {{caseNumber}} erfasst.
-
-Wir werden uns schnellstmöglich mit der Bearbeitung Ihres Anliegens befassen. Bei Rückfragen stehe ich Ihnen gerne zur Verfügung.
-
-Mit freundlichen Grüßen,
-{{userName}}
-{{userEmail}}
-{{userPhone}}`,
-      category: 'damage'
+      body: `Sehr geehrte(r) {{customerName}},\n\nvielen Dank für Ihre Schadensmeldung (Vorgangsnummer: {{caseNumber}}).\n\nWir haben Ihre Meldung erhalten und bearbeiten diese schnellstmöglich. Ein Mitarbeiter wird sich in Kürze mit Ihnen in Verbindung setzen, um weitere Details zu besprechen.\n\nBei Rückfragen erreichen Sie mich gerne unter:\nTel: {{userPhone}}\nE-Mail: {{userEmail}}\n\nMit freundlichen Grüßen\n{{userName}}`,
+      category: 'damage',
+      order: 0
     },
     {
       id: 'template-2',
       name: 'eVB-Anfrage Bestätigung',
-      subject: 'Ihre eVB-Anfrage',
-      body: `Sehr geehrte/r {{customerName}},
-
-vielen Dank für Ihre Anfrage zur elektronischen Versicherungsbestätigung (eVB). Wir haben Ihren Vorgang unter der Nummer {{caseNumber}} erfasst.
-
-Im Anhang finden Sie die gewünschte eVB. Bitte beachten Sie, dass diese maximal 6 Monate gültig ist.
-
-Bei weiteren Fragen stehe ich Ihnen gerne zur Verfügung.
-
-Mit freundlichen Grüßen,
-{{userName}}
-{{userEmail}}
-{{userPhone}}`,
-      category: 'evb'
+      subject: 'Ihre Anfrage zur elektronischen Versicherungsbestätigung',
+      body: `Sehr geehrte(r) {{customerName}},\n\nvielen Dank für Ihre Anfrage bezüglich einer elektronischen Versicherungsbestätigung (eVB).\n\nWir bearbeiten Ihre Anfrage unter der Vorgangsnummer {{caseNumber}} und werden Ihnen die eVB schnellstmöglich zukommen lassen.\n\nBei Rückfragen stehe ich Ihnen gerne zur Verfügung:\nTel: {{userPhone}}\nE-Mail: {{userEmail}}\n\nMit freundlichen Grüßen\n{{userName}}`,
+      category: 'evb',
+      order: 1
     },
     {
       id: 'template-3',
       name: 'Vertragsänderung Bestätigung',
       subject: 'Bestätigung Ihrer Vertragsänderung',
-      body: `Sehr geehrte/r {{customerName}},
-
-hiermit bestätigen wir die Änderung Ihres Vertrags gemäß Ihrer Anfrage vom {{date}}. Die Änderungen werden zum gewünschten Termin wirksam.
-
-Die aktualisierte Versicherungspolice erhalten Sie in den nächsten Tagen per Post.
-
-Bei Fragen zu Ihrem Vertrag stehe ich Ihnen gerne zur Verfügung.
-
-Mit freundlichen Grüßen,
-{{userName}}
-{{userEmail}}
-{{userPhone}}`,
-      category: 'contract_change'
+      body: `Sehr geehrte(r) {{customerName}},\n\nvielen Dank für Ihren Auftrag zur Änderung Ihres Vertrages.\n\nWir haben Ihre Anfrage unter der Vorgangsnummer {{caseNumber}} erfasst und werden die gewünschten Änderungen vornehmen. Sie erhalten in Kürze eine Bestätigung mit allen Details.\n\nBei Rückfragen kontaktieren Sie mich gerne unter:\nTel: {{userPhone}}\nE-Mail: {{userEmail}}\n\nMit freundlichen Grüßen\n{{userName}}`,
+      category: 'contract_change',
+      order: 2
     },
     {
       id: 'template-4',
-      name: 'Allgemeine Anfrage Antwort',
-      subject: 'Ihre Anfrage: {{caseTitle}}',
-      body: `Sehr geehrte/r {{customerName}},
-
-vielen Dank für Ihre Anfrage. Wir haben diese unter der Vorgangsnummer {{caseNumber}} erfasst.
-
-[Hier individuelle Antwort einfügen]
-
-Ich hoffe, diese Information hilft Ihnen weiter. Sollten Sie weitere Fragen haben, kontaktieren Sie mich gerne.
-
-Mit freundlichen Grüßen,
-{{userName}}
-{{userEmail}}
-{{userPhone}}`,
-      category: 'inquiry'
+      name: 'Allgemeine Kundenanfrage',
+      subject: 'Ihre Anfrage vom {{date}}',
+      body: `Sehr geehrte(r) {{customerName}},\n\nvielen Dank für Ihre Anfrage, die wir unter der Nummer {{caseNumber}} bearbeiten.\n\nWir werden uns in Kürze mit einer Antwort bei Ihnen melden. Sollten weitere Informationen benötigt werden, kontaktieren wir Sie umgehend.\n\nBei weiteren Fragen erreichen Sie mich unter:\nTel: {{userPhone}}\nE-Mail: {{userEmail}}\n\nMit freundlichen Grüßen\n{{userName}}`,
+      category: 'inquiry',
+      order: 3
     },
     {
       id: 'template-5',
-      name: 'Rückrufbitte',
-      subject: 'Rückrufbitte zu Ihrem Anliegen',
-      body: `Sehr geehrte/r {{customerName}},
-
-ich habe versucht, Sie telefonisch zu erreichen, konnte Sie jedoch leider nicht erreichen.
-
-Bitte rufen Sie mich bezüglich Ihres Anliegens ({{caseTitle}}) zurück oder teilen Sie mir mit, wann ich Sie am besten erreichen kann.
-
-Vielen Dank für Ihre Unterstützung.
-
-Mit freundlichen Grüßen,
-{{userName}}
-{{userEmail}}
-{{userPhone}}`,
-      category: 'other'
+      name: 'Abschlussbestätigung',
+      subject: 'Bestätigung Ihres Versicherungsabschlusses',
+      body: `Sehr geehrte(r) {{customerName}},\n\nvielen Dank für Ihr Vertrauen. Wir freuen uns, Ihnen mitteilen zu können, dass Ihr Versicherungsabschluss erfolgreich bearbeitet wurde.\n\nIn den kommenden Tagen erhalten Sie Ihre Versicherungspolice per Post. Eine digitale Kopie wird Ihnen ebenfalls per E-Mail zugesandt.\n\nBei Fragen zu Ihrem Vertrag kontaktieren Sie mich gerne:\nTel: {{userPhone}}\nE-Mail: {{userEmail}}\n\nMit freundlichen Grüßen\n{{userName}}`,
+      category: 'confirmation',
+      order: 4
     }
   ];
 };

@@ -61,7 +61,7 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
         description: "Bitte geben Sie einen Titel für den Termin ein.",
         variant: "destructive"
       });
-      return;
+      return false;
     }
     
     // For absence/sick events, ensure userId is set
@@ -77,7 +77,7 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
           description: `Dieser ${newEvent.type === 'absence' ? 'Urlaub' : 'Krankheitstag'} ist bereits eingetragen.`,
           variant: "destructive"
         });
-        return;
+        return false;
       }
     }
     
@@ -124,6 +124,18 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
       toast({
         title: "Keine Berechtigung",
         description: "Sie können nur Ihre eigenen Termine löschen.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Non-admin users cannot delete their vacation entries
+    if (!isAdmin && 
+        (eventToDelete.type === 'absence' || eventToDelete.type === 'sick') && 
+        eventToDelete.userId === currentUser?.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Urlaub und Krankheitstage können nur vom Administrator gelöscht werden.",
         variant: "destructive"
       });
       return false;

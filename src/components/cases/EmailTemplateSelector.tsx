@@ -19,7 +19,7 @@ interface EmailTemplateSelectorProps {
   currentUser: User | null;
 }
 
-export const EmailTemplateSelector: React.FC<EmailTemplateSelectorProps> = ({
+const EmailTemplateSelector: React.FC<EmailTemplateSelectorProps> = ({
   caseItem,
   currentUser
 }) => {

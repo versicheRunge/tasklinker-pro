@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "../ui/dropdown-menu";
-import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 
 interface TeamMemberCardProps {
   user: User;
@@ -43,6 +42,18 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
   };
   
   const color = getUserColor();
+
+  const handleEmailClick = (email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.location.href = `mailto:${email}`;
+  };
+
+  const handlePhoneClick = (phone: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Format phone number for WhatsApp by removing spaces, dashes, etc.
+    const formattedPhone = phone.replace(/\s+/g, '').replace(/-/g, '').replace(/\(/g, '').replace(/\)/g, '');
+    window.open(`https://wa.me/${formattedPhone}`, '_blank');
+  };
   
   return (
     <div className="bg-card rounded-xl overflow-hidden border border-border">
@@ -116,7 +127,13 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
           {user.email && (
             <div className="flex items-center text-sm">
               <span className="w-20 text-muted-foreground">Email:</span>
-              <span className="truncate">{user.email}</span>
+              <a 
+                href={`mailto:${user.email}`}
+                className="truncate text-primary hover:underline"
+                onClick={(e) => handleEmailClick(user.email || '', e)}
+              >
+                {user.email}
+              </a>
             </div>
           )}
           
@@ -130,7 +147,13 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
           {user.phone && (
             <div className="flex items-center text-sm">
               <span className="w-20 text-muted-foreground">Telefon:</span>
-              <span>{user.phone}</span>
+              <a 
+                href={`#`}
+                className="text-primary hover:underline"
+                onClick={(e) => handlePhoneClick(user.phone || '', e)}
+              >
+                {user.phone}
+              </a>
             </div>
           )}
           

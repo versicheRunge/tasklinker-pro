@@ -107,8 +107,8 @@ const CalendarPage: React.FC = () => {
               />
             ) : (
               <div className="space-y-4">
-                {getEventsForDate(date).length > 0 ? (
-                  getEventsForDate(date).map((event) => (
+                {getEventsForDate().length > 0 ? (
+                  getEventsForDate().map((event) => (
                     <EventItem 
                       key={event.id}
                       event={event}
@@ -135,15 +135,7 @@ const CalendarPage: React.FC = () => {
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
-          onSave={(event) => {
-            // Generate ID for the event here instead of in the hook
-            const eventWithId = {
-              ...event,
-              id: `event-${Date.now()}`
-            };
-            handleAddEvent(eventWithId);
-            return true;
-          }}
+          onSave={handleAddEvent}
           users={users}
           currentUserId={currentUser?.id}
           isAdmin={isAdmin}
