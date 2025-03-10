@@ -3,6 +3,7 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { Badge } from './badge';
 import * as LucideIcons from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface CustomBadgeProps {
   icon: string;
@@ -54,7 +55,9 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
     : variant;
 
   // Check if icon is a Lucide icon name
-  const IconComponent = icon in LucideIcons ? LucideIcons[icon as keyof typeof LucideIcons] : null;
+  const hasLucideIcon = icon in LucideIcons;
+  // TypeScript safe way to get the icon component
+  const IconComponent = hasLucideIcon ? LucideIcons[icon as keyof typeof LucideIcons] as LucideIcon : null;
 
   return (
     <Badge 
@@ -70,7 +73,7 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
     >
       <span className={cn("inline-block", iconSizeClasses[size])}>
         {IconComponent ? (
-          React.createElement(IconComponent, { className: "h-4 w-4" })
+          <IconComponent className="h-4 w-4" />
         ) : (
           icon
         )}
