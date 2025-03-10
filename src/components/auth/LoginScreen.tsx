@@ -18,14 +18,13 @@ export const LoginScreen: React.FC = () => {
   const handleUserSelect = (user: UserType) => {
     setSelectedUser(user);
     setError('');
-    // Set default password when selecting a user
-    setPassword('password123');
+    // Set empty password when selecting a user
+    setPassword('');
     
     // Focus on password field after a short delay (to allow render to complete)
     setTimeout(() => {
       if (passwordInputRef.current) {
         passwordInputRef.current.focus();
-        passwordInputRef.current.select();
       }
     }, 50);
   };
@@ -39,7 +38,6 @@ export const LoginScreen: React.FC = () => {
     }
     
     console.log('Attempting login for user:', selectedUser.name);
-    console.log('With password:', password);
     
     // Validate the password
     const isValid = validatePassword(selectedUser.id, password);

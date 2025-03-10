@@ -33,6 +33,12 @@ export const useCalendar = () => {
   
   // Add event wrapper that handles dialog closing and form reset
   const addEvent = (event: CalendarEvent): boolean => {
+    // Ensure the event has an ID
+    if (!event.id) {
+      console.error('Event is missing ID');
+      return false;
+    }
+    
     const success = handleAddEvent(event);
     if (success) {
       setIsEventDialogOpen(false);

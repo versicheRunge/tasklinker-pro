@@ -28,33 +28,6 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
     return holidayDates.has(date.toDateString());
   };
   
-  // Function to determine the class name for a day
-  const getDayClassName = (date: Date) => {
-    let className = '';
-    
-    // Style for weekends
-    if (isWeekend(date)) {
-      className += 'bg-blue-50 hover:bg-blue-100 ';
-    }
-    
-    // Style for holidays
-    if (isHoliday(date)) {
-      className += 'bg-red-50 hover:bg-red-100 ';
-    }
-    
-    // Get events for this date
-    const hasEvents = events.some(event => 
-      isEqual(new Date(event.date).setHours(0, 0, 0, 0), date.setHours(0, 0, 0, 0))
-    );
-    
-    // Style for dates with events
-    if (hasEvents) {
-      className += 'font-bold ';
-    }
-    
-    return className;
-  };
-  
   return (
     <Calendar
       locale={de}
