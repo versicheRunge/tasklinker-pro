@@ -136,10 +136,10 @@ const CalendarPage: React.FC = () => {
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
           onSave={() => {
-            // Add unique ID before saving to fix the id property issue
+            // Add unique ID before saving
             const eventWithId = {
               ...newEvent,
-              id: `event-${Date.now()}`
+              id: `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
             };
             return handleAddEvent(eventWithId);
           }}
