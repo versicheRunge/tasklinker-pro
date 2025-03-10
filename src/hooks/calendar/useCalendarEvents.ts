@@ -55,6 +55,16 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
 
   // Handle adding a new event
   const handleAddEvent = (newEvent: CalendarEvent): boolean => {
+    // Validate that the event has an ID
+    if (!newEvent.id) {
+      toast({
+        title: "Fehler",
+        description: "Event ID fehlt. Bitte versuchen Sie es erneut.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     if (!newEvent.title.trim()) {
       toast({
         title: "Fehler",
