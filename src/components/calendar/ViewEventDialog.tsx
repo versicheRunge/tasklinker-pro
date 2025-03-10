@@ -33,6 +33,17 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
     return USER_COLORS[userIndex % USER_COLORS.length].primary;
   };
 
+  // Check if user can delete this event
+  const canDelete = (
+    // Admin can delete anything except holidays
+    (isAdmin && event.type !== 'holiday') || 
+    // Regular users can delete their own events but not absence or sick events
+    (event.createdBy === currentUserId && 
+     event.type !== 'holiday' && 
+     event.type !== 'absence' && 
+     event.type !== 'sick')
+  );
+
   return (
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
@@ -73,6 +84,20 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
             </div>
           </div>
         )}
+        
+        {(event.type === 'absence' || event.type === 'sick') && event.workingDaysCount !== undefined && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium mb-1">Dauer</h3>
+            <p className="text-sm">
+              <span className="text-primary font-medium">{event.workingDaysCount} Arbeitstage</span>
+              {event.endDate && (
+                <span className="text-muted-foreground ml-2">
+                  ({Math.floor((new Date(event.endDate).getTime() - new Date(event.date).getTime()) / (1000 * 60 * 60 * 24)) + 1} Kalendertage)
+                </span>
+              )}
+            </p>
+          </div>
+        )}
       </div>
       <DialogFooter>
         <button
@@ -81,8 +106,7 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
         >
           Schließen
         </button>
-        {((isAdmin && event.type !== 'holiday') || 
-          (event.createdBy === currentUserId && event.type !== 'holiday')) && (
+        {canDelete && (
           <button
             className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
             onClick={() => onDelete(event.id)}

@@ -464,6 +464,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               });
             }}
             onArchiveCase={handleArchiveCase}
+            caseItem={caseItem}
+            currentUser={currentUser}
           />
         </div>
       </div>

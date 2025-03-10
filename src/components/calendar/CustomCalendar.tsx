@@ -1,9 +1,8 @@
 
 import React from 'react';
-import { Calendar } from '../ui/calendar';
-import { de } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { isWeekend, isEqual } from 'date-fns';
 import { CalendarEvent } from '../../types/calendar';
-import { USER_COLORS } from '../../contexts/UserTypes';
 
 interface CustomCalendarProps {
   date: Date;
@@ -11,84 +10,66 @@ interface CustomCalendarProps {
   events: CalendarEvent[];
 }
 
-export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChange, events }) => {
-  // Custom day rendering for the calendar
-  const renderDay = (day: Date) => {
-    const getEventsForDate = (date: Date) => {
-      return events.filter(event => {
-        // Check for single-day events
-        const isSameDay = (date1: Date, date2: Date) => {
-          return date1.getDate() === date2.getDate() &&
-            date1.getMonth() === date2.getMonth() &&
-            date1.getFullYear() === date2.getFullYear();
-        };
-        
-        // Check if the date falls within a multi-day event
-        const isWithinEvent = event.endDate ? 
-          event.date <= date && event.endDate >= date : false;
-        
-        return isSameDay(event.date, date) || isWithinEvent;
-      });
-    };
-
-    const dayEvents = getEventsForDate(day);
-
-    return (
-      <div className="relative w-full h-full">
-        <div className="absolute top-0 left-0 right-0 p-0.5">
-          {dayEvents.length > 0 && (
-            <div className="flex flex-wrap gap-0.5">
-              {dayEvents.slice(0, 3).map((event, index) => {
-                let dotColor = 'bg-primary';
-                
-                if (event.type === 'holiday') {
-                  dotColor = 'bg-red-500';
-                } else if (event.type === 'absence' && event.userId) {
-                  const userIndex = events
-                    .filter(e => e.userId === event.userId)
-                    .findIndex(e => e.id === event.id);
-                  dotColor = USER_COLORS[userIndex % USER_COLORS.length].primary;
-                } else if (event.type === 'sick') {
-                  dotColor = 'bg-pink-500';
-                } else if (event.type === 'birthday') {
-                  dotColor = 'bg-green-500';
-                } else if (event.type === 'training') {
-                  dotColor = 'bg-amber-500';
-                }
-                
-                return (
-                  <div 
-                    key={index} 
-                    className={`w-2 h-2 rounded-full ${dotColor}`}
-                    title={`${event.title} (${event.type})`}
-                  />
-                );
-              })}
-              {dayEvents.length > 3 && (
-                <div 
-                  className="w-2 h-2 rounded-full bg-gray-400" 
-                  title={`${dayEvents.length - 3} weitere Termine`}
-                />
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center justify-center h-full">
-          {day.getDate()}
-        </div>
-      </div>
-    );
+export const CustomCalendar: React.FC<CustomCalendarProps> = ({ 
+  date, 
+  onDateChange,
+  events
+}) => {
+  // Find holiday events
+  const holidayEvents = events.filter(event => event.type === 'holiday');
+  
+  // Create a Set of date strings for holidays for faster lookup
+  const holidayDates = new Set(
+    holidayEvents.map(event => new Date(event.date).toDateString())
+  );
+  
+  const isHoliday = (date: Date): boolean => {
+    return holidayDates.has(date.toDateString());
   };
-
+  
+  // Function to add custom styles to calendar days
+  const dayClassNames = (date: Date) => {
+    let className = '';
+    
+    // Style for weekends
+    if (isWeekend(date)) {
+      className += 'bg-blue-50 hover:bg-blue-100 ';
+    }
+    
+    // Style for holidays
+    if (isHoliday(date)) {
+      className += 'bg-red-50 hover:bg-red-100 ';
+    }
+    
+    // Get events for this date
+    const hasEvents = events.some(event => 
+      isEqual(new Date(event.date).setHours(0, 0, 0, 0), date.setHours(0, 0, 0, 0))
+    );
+    
+    // Style for dates with events
+    if (hasEvents) {
+      className += 'font-bold ';
+    }
+    
+    return className;
+  };
+  
   return (
     <Calendar
       mode="single"
       selected={date}
       onSelect={onDateChange}
-      className="w-full"
-      locale={de}
-      components={{
-        DayContent: ({ date }) => renderDay(date)
+      className="rounded-md border"
+      modifiersClassNames={{
+        today: 'bg-primary/10 text-primary font-medium',
+        // Highlight selected date
+        selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+      }}
+      modifiersFn={{
+        // Add custom styling for each day
+        day: date => ({
+          className: dayClassNames(date)
+        })
       }}
     />
   );

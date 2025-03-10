@@ -1,41 +1,47 @@
 
 import React from 'react';
-import { Download, Save, Archive, RefreshCw } from 'lucide-react';
-import { Button } from '../../ui/button';
+import { FilePdf, ArchiveIcon, Mail } from 'lucide-react';
+import { CaseItem, User } from '../../../types/case';
+import EmailTemplateSelector from '../EmailTemplateSelector';
 
 interface CaseActionsProps {
   onGeneratePDF: () => void;
   onArchiveCase: () => void;
+  caseItem: CaseItem;
+  currentUser: User | null;
 }
 
 export const CaseActions: React.FC<CaseActionsProps> = ({
   onGeneratePDF,
   onArchiveCase,
+  caseItem,
+  currentUser
 }) => {
   return (
-    <div className="space-y-3 sticky top-4">
-      <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="font-medium">Aktionen</h3>
-        </div>
+    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+      <h2 className="text-lg font-medium mb-4">Aktionen</h2>
+      
+      <div className="space-y-3">
+        <button
+          className="flex items-center gap-2 w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          onClick={onGeneratePDF}
+        >
+          <FilePdf className="w-4 h-4" />
+          <span>PDF exportieren</span>
+        </button>
         
-        <div className="p-4 space-y-2">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start text-left"
-            onClick={onGeneratePDF}
-          >
-            <Download className="mr-2" /> PDF exportieren
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full justify-start text-left"
-            onClick={onArchiveCase}
-          >
-            <Archive className="mr-2" /> Vorgang archivieren
-          </Button>
-        </div>
+        <EmailTemplateSelector 
+          caseItem={caseItem}
+          currentUser={currentUser}
+        />
+        
+        <button
+          className="flex items-center gap-2 w-full px-4 py-2 border border-destructive text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+          onClick={onArchiveCase}
+        >
+          <ArchiveIcon className="w-4 h-4" />
+          <span>Vorgang archivieren</span>
+        </button>
       </div>
     </div>
   );
