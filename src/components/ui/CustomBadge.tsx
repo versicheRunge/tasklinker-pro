@@ -54,7 +54,7 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
     : variant;
 
   // Check if icon is a Lucide icon name
-  const LucideIcon = icon in LucideIcons ? LucideIcons[icon as keyof typeof LucideIcons] : null;
+  const IconComponent = icon in LucideIcons ? LucideIcons[icon as keyof typeof LucideIcons] : null;
 
   return (
     <Badge 
@@ -69,7 +69,11 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
       onClick={onClick}
     >
       <span className={cn("inline-block", iconSizeClasses[size])}>
-        {LucideIcon ? <LucideIcon className="h-4 w-4" /> : icon}
+        {IconComponent ? (
+          React.createElement(IconComponent, { className: "h-4 w-4" })
+        ) : (
+          icon
+        )}
       </span>
       <span>{label}</span>
     </Badge>

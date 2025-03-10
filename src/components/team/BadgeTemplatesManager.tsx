@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Trophy, Search } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
-import { Input } from "../ui/input";
-import { CustomBadge } from '../ui/CustomBadge';
-import { UserBadge } from '../../contexts/UserTypes';
 import { toast } from "../../hooks/use-toast";
+import { UserBadge } from '../../contexts/UserTypes';
+import BadgeToolbar from './badge/BadgeToolbar';
+import BadgeList from './badge/BadgeList';
+import BadgeDialogs from './badge/BadgeDialogs';
 
 interface BadgeTemplatesManagerProps {
   badgeCategories: { id: string; name: string }[];
@@ -27,6 +26,11 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
     icon: '🏆',
     category: 'achievement'
   });
+
+  const categoryCountMap = templates.reduce((acc, badge) => {
+    acc[badge.category] = (acc[badge.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   useEffect(() => {
     loadTemplates();
@@ -74,11 +78,6 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
       onBadgesUpdated();
     }
   }, [templates, onBadgesUpdated]);
-
-  useEffect(() => {
-    console.log(`Current templates count: ${templates.length}`);
-    console.log(`Filtered badges count: ${filteredBadges.length}`);
-  }, [templates, searchTerm, selectedCategory]);
 
   const handleEditBadge = (badge: UserBadge) => {
     setCurrentBadge({ ...badge });
@@ -150,253 +149,41 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
     });
   };
 
-  const filteredBadges = templates.filter(badge => {
-    const matchesSearch = badge.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           badge.icon.includes(searchTerm);
-    const matchesCategory = selectedCategory === 'all' || badge.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-3 justify-between mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Auszeichnungen suchen..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex gap-2">
-          <select
-            className="px-3 py-2 rounded-md border border-input bg-background text-sm"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="all">Alle Kategorien ({templates.length})</option>
-            {badgeCategories.map(category => {
-              const count = templates.filter(badge => badge.category === category.id).length;
-              return (
-                <option key={category.id} value={category.id}>
-                  {category.name} ({count})
-                </option>
-              );
-            })}
-          </select>
-          
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            onClick={() => setIsCreateDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Neue Auszeichnung</span>
-          </button>
-        </div>
-      </div>
+      <BadgeToolbar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        badgeCategories={badgeCategories}
+        badgeCount={templates.length}
+        categoryCountMap={categoryCountMap}
+        onCreateClick={() => setIsCreateDialogOpen(true)}
+      />
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {filteredBadges.length > 0 ? (
-          filteredBadges.map(badge => (
-            <div key={badge.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{badge.icon}</span>
-                <div>
-                  <h3 className="font-medium">{badge.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {badgeCategories.find(c => c.id === badge.category)?.name || 'Kategorie'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-                  onClick={() => handleEditBadge(badge)}
-                  title="Bearbeiten"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-muted transition-colors"
-                  onClick={() => handleDeleteBadge(badge.id)}
-                  title="Löschen"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center p-8 border border-dashed border-border rounded-lg">
-            <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-            <h3 className="font-medium text-lg mb-1">Keine Auszeichnungen gefunden</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || selectedCategory !== 'all' 
-                ? "Keine Auszeichnungen entsprechen Ihren Filterkriterien." 
-                : "Erstellen Sie neue Auszeichnungen mit dem Button 'Neue Auszeichnung'."}
-            </p>
-          </div>
-        )}
-      </div>
+      <BadgeList
+        badges={templates}
+        searchTerm={searchTerm}
+        selectedCategory={selectedCategory}
+        badgeCategories={badgeCategories}
+        onEdit={handleEditBadge}
+        onDelete={handleDeleteBadge}
+      />
       
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Auszeichnung bearbeiten</DialogTitle>
-          </DialogHeader>
-          {currentBadge && (
-            <div className="space-y-4 py-4">
-              <div className="flex justify-center mb-4">
-                <div className="text-6xl">{currentBadge.icon}</div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="badge-icon">
-                  Emoji
-                </label>
-                <Input
-                  id="badge-icon"
-                  value={currentBadge.icon}
-                  onChange={(e) => setCurrentBadge({...currentBadge, icon: e.target.value})}
-                  placeholder="🏆"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Emoji einfügen oder kopieren (z.B. 🏆, 🎯, 🌟)
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="badge-name">
-                  Name
-                </label>
-                <Input
-                  id="badge-name"
-                  value={currentBadge.name}
-                  onChange={(e) => setCurrentBadge({...currentBadge, name: e.target.value})}
-                  placeholder="Name der Auszeichnung"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="badge-category">
-                  Kategorie
-                </label>
-                <select
-                  id="badge-category"
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                  value={currentBadge.category}
-                  onChange={(e) => setCurrentBadge({...currentBadge, category: e.target.value})}
-                >
-                  {badgeCategories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mt-6">
-                <h4 className="text-sm font-medium mb-2">Vorschau:</h4>
-                <div className="flex items-center gap-2 p-2 border border-border rounded-md">
-                  <span className="text-xl">{currentBadge.icon}</span>
-                  <span>{currentBadge.name}</span>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors"
-              onClick={() => setIsEditDialogOpen(false)}
-            >
-              Abbrechen
-            </button>
-            <button
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              onClick={handleSaveEdit}
-            >
-              Speichern
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Neue Auszeichnung erstellen</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-center mb-4">
-              <div className="text-6xl">{newBadge.icon}</div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="new-badge-icon">
-                Emoji
-              </label>
-              <Input
-                id="new-badge-icon"
-                value={newBadge.icon}
-                onChange={(e) => setNewBadge({...newBadge, icon: e.target.value})}
-                placeholder="🏆"
-              />
-              <p className="text-xs text-muted-foreground">
-                Emoji einfügen oder kopieren (z.B. 🏆, 🎯, 🌟)
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="new-badge-name">
-                Name
-              </label>
-              <Input
-                id="new-badge-name"
-                value={newBadge.name}
-                onChange={(e) => setNewBadge({...newBadge, name: e.target.value})}
-                placeholder="Name der Auszeichnung"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="new-badge-category">
-                Kategorie
-              </label>
-              <select
-                id="new-badge-category"
-                className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                value={newBadge.category}
-                onChange={(e) => setNewBadge({...newBadge, category: e.target.value})}
-              >
-                {badgeCategories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mt-6">
-              <h4 className="text-sm font-medium mb-2">Vorschau:</h4>
-              <div className="flex items-center gap-2 p-2 border border-border rounded-md">
-                <CustomBadge 
-                  icon={newBadge.icon} 
-                  label={newBadge.name}
-                  variant="outline"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <button
-              className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors"
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              Abbrechen
-            </button>
-            <button
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              onClick={handleCreateBadge}
-            >
-              Erstellen
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BadgeDialogs
+        isEditDialogOpen={isEditDialogOpen}
+        setIsEditDialogOpen={setIsEditDialogOpen}
+        isCreateDialogOpen={isCreateDialogOpen}
+        setIsCreateDialogOpen={setIsCreateDialogOpen}
+        currentBadge={currentBadge}
+        setCurrentBadge={setCurrentBadge}
+        newBadge={newBadge}
+        setNewBadge={setNewBadge}
+        badgeCategories={badgeCategories}
+        onSaveEdit={handleSaveEdit}
+        onCreateBadge={handleCreateBadge}
+      />
     </div>
   );
 };
