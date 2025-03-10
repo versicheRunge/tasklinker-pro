@@ -1,5 +1,5 @@
 
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useEffect } from 'react';
 import { User } from '../types/case';
 
 interface UserWithPassword extends User {
@@ -10,6 +10,20 @@ export function useUserUtilities(
   allUsers: UserWithPassword[],
   setAllUsers: Dispatch<SetStateAction<UserWithPassword[]>>
 ) {
+  // Effect to ensure all users have the correct default password
+  useEffect(() => {
+    const anyUserNeedsPasswordFix = allUsers.some(user => user.password !== 'password123');
+    
+    if (anyUserNeedsPasswordFix) {
+      console.log('Fixing passwords for all users to match the standard password');
+      setAllUsers(currentUsers => 
+        currentUsers.map(user => ({
+          ...user,
+          password: 'password123'
+        }))
+      );
+    }
+  }, []);
   
   const validatePassword = (userId: string, password: string) => {
     console.log('Validating password for user ID:', userId);

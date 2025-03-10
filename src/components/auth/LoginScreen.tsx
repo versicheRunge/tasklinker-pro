@@ -6,6 +6,7 @@ import { useUser } from '../../contexts/UserContext';
 import { User as UserType } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { toast } from '../../hooks/use-toast';
+import { Input } from '../ui/input';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
