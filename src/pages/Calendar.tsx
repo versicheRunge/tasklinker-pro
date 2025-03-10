@@ -47,7 +47,7 @@ const CalendarPage: React.FC = () => {
   const handleSaveEvent = (): boolean => {
     // Create a complete event object with ID
     const completeEvent: CalendarEvent = {
-      ...newEvent,
+      ...newEvent as Omit<CalendarEvent, 'id'>,
       id: generateUniqueId()
     };
     

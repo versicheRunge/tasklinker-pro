@@ -6,7 +6,7 @@ export const useEventDialogs = () => {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [isViewEventDialogOpen, setIsViewEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  // Define newEvent type without id since it will be added when saving
+  // Define newEvent type explicitly as Omit<CalendarEvent, 'id'>
   const [newEvent, setNewEvent] = useState<Omit<CalendarEvent, 'id'>>({
     title: '',
     date: new Date(),
