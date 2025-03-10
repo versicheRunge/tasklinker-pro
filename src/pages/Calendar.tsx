@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -12,6 +13,7 @@ import { AdminFilteredEvents } from '../components/calendar/AdminFilteredEvents'
 import { AddEventDialog } from '../components/calendar/AddEventDialog';
 import { ViewEventDialog } from '../components/calendar/ViewEventDialog';
 import { CustomCalendar } from '../components/calendar/CustomCalendar';
+import { CalendarEvent } from '../types/calendar';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
@@ -39,6 +41,17 @@ const CalendarPage: React.FC = () => {
   // Function to generate a unique ID
   const generateUniqueId = () => {
     return `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  };
+
+  // Function to handle saving a new event with ID
+  const handleSaveEvent = (): boolean => {
+    // Create a complete event object with ID
+    const completeEvent: CalendarEvent = {
+      ...newEvent,
+      id: generateUniqueId()
+    };
+    
+    return handleAddEvent(completeEvent);
   };
 
   return (
@@ -139,14 +152,7 @@ const CalendarPage: React.FC = () => {
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
-          onSave={() => {
-            // Create a complete event object with ID
-            const eventWithId = {
-              ...newEvent,
-              id: generateUniqueId()
-            };
-            return handleAddEvent(eventWithId);
-          }}
+          onSave={handleSaveEvent}
           users={users}
           currentUserId={currentUser?.id}
           isAdmin={isAdmin}
