@@ -37,6 +37,11 @@ const CalendarPage: React.FC = () => {
     getEventsForDate
   } = useCalendar();
 
+  // Function to generate a unique ID
+  const generateUniqueId = () => {
+    return `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  };
+
   return (
     <AppLayout>
       <div className="flex flex-col md:flex-row gap-8">
@@ -136,10 +141,10 @@ const CalendarPage: React.FC = () => {
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
           onSave={() => {
-            // Add unique ID before saving
+            // Create a complete event object with ID
             const eventWithId = {
               ...newEvent,
-              id: `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+              id: generateUniqueId()
             };
             return handleAddEvent(eventWithId);
           }}
