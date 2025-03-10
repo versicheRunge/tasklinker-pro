@@ -109,7 +109,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newUser = {
       ...userData,
       id: `user-${Date.now()}`,
-      password: generateSecurePassword() // Generate a secure password instead of using a default
+      password: 'password123' // Use a default password for new users
     };
     setAllUsers(prev => [...prev, newUser as UserWithPassword]);
   };
@@ -156,19 +156,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Generate a secure password
-const generateSecurePassword = () => {
-  const length = 12;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset[randomIndex];
-  }
-  return password;
-};
-
-// Helper function moved from the main component
+// Modified to use a consistent password for easier testing
 function getInitialUsers() {
   const storedUsers = localStorage.getItem('users');
   if (storedUsers) {
@@ -177,7 +165,7 @@ function getInitialUsers() {
       
       const validatedUsers = parsedUsers.map((user: any) => {
         if (!user.password) {
-          return { ...user, password: generateSecurePassword() };
+          return { ...user, password: 'password123' };
         }
         return user;
       });
@@ -188,13 +176,14 @@ function getInitialUsers() {
     }
   }
   
+  // Set default passwords for initial users
   return initialUsers.map((user, index) => ({
     ...user,
     ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
     userRole: index === 0 ? 'admin' : 'staff',
     department: user.department || 'Allgemein',
     phone: user.phone || '',
-    password: generateSecurePassword(),
+    password: 'password123', // Use a simple password for all mock users
     stats: user.stats || {
       casesHandled: 0,
       completed: 0,

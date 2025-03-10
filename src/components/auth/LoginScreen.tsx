@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock } from 'lucide-react';
+import { User, Lock, Info, Eye, EyeOff } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { User as UserType } from '../../types/case';
 import { CustomAvatar } from '../ui/CustomAvatar';
@@ -13,13 +13,14 @@ export const LoginScreen: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   
   const handleUserSelect = (user: UserType) => {
     setSelectedUser(user);
     setError('');
-    // Set empty password when selecting a user
-    setPassword('');
+    // Set default password when selecting a user for easier testing
+    setPassword('password123');
     
     // Focus on password field after a short delay (to allow render to complete)
     setTimeout(() => {
@@ -70,6 +71,10 @@ export const LoginScreen: React.FC = () => {
     console.log('Stored users found:', storedUsers ? 'yes' : 'no');
   }, []);
   
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
     <div className="w-full max-w-md bg-card rounded-xl shadow-lg p-6 border border-border">
       <div className="text-center mb-6">
@@ -112,15 +117,29 @@ export const LoginScreen: React.FC = () => {
               <div className="relative">
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-10 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Passwort eingeben"
                   autoFocus
                   ref={passwordInputRef}
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-2.5"
+                >
+                  {showPassword ? 
+                    <EyeOff className="h-5 w-5 text-muted-foreground" /> : 
+                    <Eye className="h-5 w-5 text-muted-foreground" />
+                  }
+                </button>
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground flex items-center gap-1">
+                <Info className="h-4 w-4" />
+                <span>Hinweis: Standardpasswort ist "password123"</span>
               </div>
             </div>
             
