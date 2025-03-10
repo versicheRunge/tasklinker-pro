@@ -21,12 +21,18 @@ const BadgeList: React.FC<BadgeListProps> = ({
   onEdit,
   onDelete
 }) => {
+  // Debugging Ausgabe
+  console.log(`BadgeList received ${badges.length} badges`);
+  console.log(`Filter: Category=${selectedCategory}, SearchTerm=${searchTerm}`);
+  
   const filteredBadges = badges.filter(badge => {
     const matchesSearch = badge.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            badge.icon.includes(searchTerm);
     const matchesCategory = selectedCategory === 'all' || badge.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  console.log(`After filtering: ${filteredBadges.length} badges remain`);
 
   if (filteredBadges.length === 0) {
     return (

@@ -3,7 +3,7 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { Badge } from './badge';
 import * as LucideIcons from 'lucide-react';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Award } from 'lucide-react';
 
 interface CustomBadgeProps {
   icon: string;
@@ -54,10 +54,21 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
     ? categoryVariantMap[variant as keyof typeof categoryVariantMap] 
     : variant;
 
-  // Check if icon is a Lucide icon name
-  const hasLucideIcon = icon in LucideIcons;
-  // TypeScript safe way to get the icon component
-  const IconComponent = hasLucideIcon ? LucideIcons[icon as keyof typeof LucideIcons] as LucideIcon : null;
+  // Check if icon is a Lucide icon name (either directly or with 'lucide:' prefix)
+  const iconName = icon.startsWith('lucide:') ? icon.substring(7) : icon;
+  const hasLucideIcon = iconName in LucideIcons;
+  
+  // Render the badge content
+  const renderIconContent = () => {
+    if (hasLucideIcon) {
+      // Get the icon component safely
+      const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons] as LucideIcon;
+      return <IconComponent className="h-4 w-4" />;
+    }
+    
+    // Fallback to text/emoji if not a Lucide icon
+    return icon;
+  };
 
   return (
     <Badge 
@@ -72,11 +83,7 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
       onClick={onClick}
     >
       <span className={cn("inline-block", iconSizeClasses[size])}>
-        {IconComponent ? (
-          <IconComponent className="h-4 w-4" />
-        ) : (
-          icon
-        )}
+        {renderIconContent()}
       </span>
       <span>{label}</span>
     </Badge>

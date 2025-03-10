@@ -33,6 +33,10 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
   }, {} as Record<string, number>);
 
   useEffect(() => {
+    console.log("Checking for badges in localStorage...");
+    const storedBadges = localStorage.getItem('userBadges');
+    console.log("Stored badges:", storedBadges ? JSON.parse(storedBadges).length : 0);
+    
     loadTemplates();
     
     const handleFocus = () => loadTemplates();
@@ -51,8 +55,9 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
         if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
           console.log(`Loaded ${parsedBadges.length} badges from storage`);
           setTemplates(parsedBadges);
+          onBadgesUpdated();
         } else {
-          console.log('No badges found in storage, initializing defaults');
+          console.log('No badges found in storage or empty array, initializing defaults');
           initializeDefaultBadges();
         }
       } else {
@@ -67,6 +72,7 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
 
   const initializeDefaultBadges = () => {
     const defaultBadges = generateDefaultBadges();
+    console.log(`Generated ${defaultBadges.length} default badges`);
     localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
     setTemplates(defaultBadges);
     onBadgesUpdated();
@@ -74,10 +80,18 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
 
   useEffect(() => {
     if (templates.length > 0) {
+      console.log(`Saving ${templates.length} badges to localStorage`);
       localStorage.setItem('userBadges', JSON.stringify(templates));
       onBadgesUpdated();
     }
   }, [templates, onBadgesUpdated]);
+
+  useEffect(() => {
+    if (templates.length > 0 && templates.length < 10) {
+      console.log(`Only ${templates.length} badges found, reinitializing defaults...`);
+      initializeDefaultBadges();
+    }
+  }, [templates]);
 
   const handleEditBadge = (badge: UserBadge) => {
     setCurrentBadge({ ...badge });

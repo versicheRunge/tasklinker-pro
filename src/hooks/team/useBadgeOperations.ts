@@ -32,13 +32,27 @@ export const useBadgeOperations = () => {
   }, []);
 
   const loadAvailableBadges = () => {
-    const badges = getAvailableBadges();
-    console.log(`Loaded ${badges.length} badges into badge operations`);
-    setAvailableBadges(badges);
-    
-    // If no badges are available, initialize with default badges
-    if (badges.length === 0) {
-      console.log("No badges found, initializing defaults");
+    try {
+      const storedBadges = localStorage.getItem('userBadges');
+      if (storedBadges) {
+        const parsedBadges = JSON.parse(storedBadges);
+        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
+          console.log(`Loaded ${parsedBadges.length} badges into badge operations`);
+          setAvailableBadges(parsedBadges);
+          return;
+        }
+      }
+      
+      // If we reach here, either there were no badges in localStorage 
+      // or there was an error or the array was empty
+      console.log("No valid badges found, initializing defaults");
+      const defaultBadges = generateDefaultBadges();
+      console.log(`Generated ${defaultBadges.length} default badges`);
+      localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
+      setAvailableBadges(defaultBadges);
+    } catch (e) {
+      console.error('Error loading badges:', e);
+      // Fall back to defaults
       const defaultBadges = generateDefaultBadges();
       localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
       setAvailableBadges(defaultBadges);
@@ -86,21 +100,21 @@ export const useBadgeOperations = () => {
   };
 
   const getAvailableBadges = (): UserBadge[] => {
+    // Enhanced version with better error handling
     try {
       const storedBadges = localStorage.getItem('userBadges');
       if (storedBadges) {
         const parsedBadges = JSON.parse(storedBadges);
-        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
+        if (Array.isArray(parsedBadges) && parsedBadges.length > 10) {
           return parsedBadges;
         } else {
-          console.warn("Retrieved badges are empty or not an array, using defaults");
+          console.warn("Retrieved badges are empty or too few, using defaults");
           return generateDefaultBadges();
         }
       }
     } catch (e) {
       console.error('Error loading badges:', e);
     }
-    // If we reach here, either there were no badges in localStorage or there was an error
     return generateDefaultBadges();
   };
 
