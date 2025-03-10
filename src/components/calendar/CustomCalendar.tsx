@@ -2,6 +2,7 @@
 import React from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { isWeekend, isEqual } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { CalendarEvent } from '../../types/calendar';
 
 interface CustomCalendarProps {
@@ -56,6 +57,7 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
   
   return (
     <Calendar
+      locale={de}
       mode="single"
       selected={date}
       onSelect={onDateChange}

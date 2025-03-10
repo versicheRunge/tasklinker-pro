@@ -3,6 +3,7 @@ import React from 'react';
 import { MoreHorizontal, Edit, Trash2, Camera, Award, CalendarClock } from 'lucide-react';
 import { USER_COLORS } from '../../contexts/UserTypes';
 import { User } from '../../types/case';
+import { CustomBadge } from '../ui/CustomBadge';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -177,11 +178,15 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
           
           {user.badges && user.badges.length > 0 && (
             <div className="pt-2 mt-3 border-t border-border">
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="flex flex-wrap gap-2 mt-1">
                 {user.badges.map((badge, index) => (
-                  <span key={index} title={badge.name} className="inline-block">
-                    {badge.icon}
-                  </span>
+                  <CustomBadge 
+                    key={index} 
+                    icon={badge.icon} 
+                    label={badge.name}
+                    size="sm"
+                    variant="outline"
+                  />
                 ))}
               </div>
             </div>

@@ -30,27 +30,38 @@ export const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
     category: 'achievement'
   });
 
-  // Load badge templates from localStorage
+  // Load badge templates from localStorage or initialize with defaults
   useEffect(() => {
     const loadTemplates = () => {
       const storedBadges = localStorage.getItem('userBadges');
       if (storedBadges) {
         try {
-          setTemplates(JSON.parse(storedBadges));
+          const parsedBadges = JSON.parse(storedBadges);
+          // Check if we have badges or need to initialize
+          if (parsedBadges && parsedBadges.length > 0) {
+            setTemplates(parsedBadges);
+          } else {
+            initializeDefaultBadges();
+          }
         } catch (e) {
           console.error('Error parsing badges:', e);
-          setTemplates([]);
+          initializeDefaultBadges();
         }
       } else {
-        // Initialize with default badges if none exist
-        const defaultBadges = generateDefaultBadges();
-        localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
-        setTemplates(defaultBadges);
+        initializeDefaultBadges();
       }
     };
 
     loadTemplates();
   }, []);
+
+  // Initialize default badges and store them
+  const initializeDefaultBadges = () => {
+    const defaultBadges = generateDefaultBadges();
+    localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
+    setTemplates(defaultBadges);
+    onBadgesUpdated();
+  };
 
   // Save templates to localStorage whenever they change
   useEffect(() => {
@@ -340,8 +351,11 @@ export const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
             <div className="mt-6">
               <h4 className="text-sm font-medium mb-2">Vorschau:</h4>
               <div className="flex items-center gap-2 p-2 border border-border rounded-md">
-                <span className="text-xl">{newBadge.icon}</span>
-                <span>{newBadge.name}</span>
+                <CustomBadge 
+                  icon={newBadge.icon} 
+                  label={newBadge.name}
+                  variant="outline"
+                />
               </div>
             </div>
           </div>

@@ -124,9 +124,6 @@ export const LoginScreen: React.FC = () => {
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Standard-Passwort: password123
-              </p>
             </div>
             
             {error && (
