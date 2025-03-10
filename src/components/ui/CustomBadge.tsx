@@ -12,6 +12,7 @@ interface CustomBadgeProps {
             'achievement' | 'skill' | 'tenure' | 'certification' | 'special';
   onClick?: () => void;
   selected?: boolean;
+  className?: string; // Added className prop for more flexible styling
 }
 
 export const CustomBadge: React.FC<CustomBadgeProps> = ({
@@ -20,7 +21,8 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
   size = 'md',
   variant = 'default',
   onClick,
-  selected = false
+  selected = false,
+  className
 }) => {
   // Size classes
   const sizeClasses = {
@@ -57,7 +59,8 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
         "flex items-center cursor-default font-normal", 
         sizeClasses[size],
         onClick && "cursor-pointer hover:opacity-80",
-        selected && "ring-2 ring-primary ring-offset-1"
+        selected && "ring-2 ring-primary ring-offset-1",
+        className
       )}
       onClick={onClick}
     >

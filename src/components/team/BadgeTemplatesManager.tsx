@@ -12,7 +12,7 @@ interface BadgeTemplatesManagerProps {
   onBadgesUpdated: () => void;
 }
 
-export const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
+const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
   badgeCategories,
   onBadgesUpdated
 }) => {
@@ -30,27 +30,37 @@ export const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
   });
 
   useEffect(() => {
-    const loadTemplates = () => {
+    loadTemplates();
+    
+    const handleFocus = () => loadTemplates();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const loadTemplates = () => {
+    try {
       const storedBadges = localStorage.getItem('userBadges');
       if (storedBadges) {
-        try {
-          const parsedBadges = JSON.parse(storedBadges);
-          if (parsedBadges && parsedBadges.length > 0) {
-            setTemplates(parsedBadges);
-          } else {
-            initializeDefaultBadges();
-          }
-        } catch (e) {
-          console.error('Error parsing badges:', e);
+        const parsedBadges = JSON.parse(storedBadges);
+        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
+          console.log(`Loaded ${parsedBadges.length} badges from storage`);
+          setTemplates(parsedBadges);
+        } else {
+          console.log('No badges found in storage, initializing defaults');
           initializeDefaultBadges();
         }
       } else {
+        console.log('No badges in storage, initializing defaults');
         initializeDefaultBadges();
       }
-    };
-
-    loadTemplates();
-  }, []);
+    } catch (e) {
+      console.error('Error parsing badges:', e);
+      initializeDefaultBadges();
+    }
+  };
 
   const initializeDefaultBadges = () => {
     const defaultBadges = generateDefaultBadges();

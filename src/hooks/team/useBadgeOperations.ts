@@ -11,12 +11,12 @@ export const useBadgeOperations = () => {
   const [userForBadges, setUserForBadges] = useState<User | null>(null);
   const [availableBadges, setAvailableBadges] = useState<UserBadge[]>([]);
 
-  // Aktualisiere verfügbare Badges beim Mount
+  // Load available badges when component mounts
   useEffect(() => {
     const badges = getAvailableBadges();
     setAvailableBadges(badges);
     
-    // Wenn keine Badges vorhanden sind, initialisiere sie
+    // If no badges are available, initialize with default badges
     if (badges.length === 0) {
       const defaultBadges = generateDefaultBadges();
       localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
@@ -27,7 +27,7 @@ export const useBadgeOperations = () => {
   const handleOpenBadgeDialog = (user: User) => {
     setUserForBadges(user);
     setIsBadgeDialogOpen(true);
-    // Badges neu laden, falls sie aktualisiert wurden
+    // Reload badges in case they were updated
     setAvailableBadges(getAvailableBadges());
   };
 
@@ -64,17 +64,19 @@ export const useBadgeOperations = () => {
     });
   };
 
-  const getAvailableBadges = () => {
-    const storedBadges = localStorage.getItem('userBadges');
-    if (storedBadges) {
-      try {
+  const getAvailableBadges = (): UserBadge[] => {
+    try {
+      const storedBadges = localStorage.getItem('userBadges');
+      if (storedBadges) {
         const parsedBadges = JSON.parse(storedBadges);
-        return parsedBadges && parsedBadges.length > 0 ? parsedBadges : generateDefaultBadges();
-      } catch (e) {
-        console.error('Error parsing badges:', e);
-        return generateDefaultBadges();
+        return Array.isArray(parsedBadges) && parsedBadges.length > 0 
+          ? parsedBadges 
+          : generateDefaultBadges();
       }
+    } catch (e) {
+      console.error('Error loading badges:', e);
     }
+    // If we reach here, either there were no badges in localStorage or there was an error
     return generateDefaultBadges();
   };
 
