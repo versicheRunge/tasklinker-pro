@@ -29,6 +29,17 @@ const badgeVariants = cva(
           "border-transparent bg-green-500 text-white hover:bg-green-600",
         "priority-none": 
           "border-transparent bg-gray-400 text-white hover:bg-gray-500",
+        // Badge category colors
+        "achievement": 
+          "border-transparent bg-purple-500 text-white hover:bg-purple-600",
+        "skill": 
+          "border-transparent bg-blue-500 text-white hover:bg-blue-600",
+        "tenure": 
+          "border-transparent bg-teal-500 text-white hover:bg-teal-600",
+        "certification": 
+          "border-transparent bg-indigo-500 text-white hover:bg-indigo-600",
+        "special": 
+          "border-transparent bg-rose-500 text-white hover:bg-rose-600",
       },
     },
     defaultVariants: {
