@@ -5,6 +5,7 @@ import { useEventDialogs } from './calendar/useEventDialogs';
 import { useAdminView } from './calendar/useAdminView';
 import { getEventsForDate as getEventsForSpecificDate } from '../utils/calendarUtils';
 import { useUser } from '../contexts/UserContext';
+import { CalendarEvent } from '../types/calendar';
 
 export const useCalendar = () => {
   const { users, currentUser, isAdmin } = useUser();
@@ -31,21 +32,23 @@ export const useCalendar = () => {
   const { adminView, setAdminView, getFilteredEvents } = useAdminView(events);
   
   // Add event wrapper that handles dialog closing and form reset
-  const addEvent = () => {
-    const success = handleAddEvent(newEvent);
+  const addEvent = (event: CalendarEvent): boolean => {
+    const success = handleAddEvent(event);
     if (success) {
       setIsEventDialogOpen(false);
       resetNewEvent(date);
     }
+    return success;
   };
   
   // Delete event wrapper that also handles dialog closing
-  const deleteEvent = (id: string) => {
+  const deleteEvent = (id: string): boolean => {
     const success = handleDeleteEvent(id);
     if (success) {
       setIsViewEventDialogOpen(false);
       setSelectedEvent(null);
     }
+    return success;
   };
   
   // Handle date change wrapper that also updates new event date
