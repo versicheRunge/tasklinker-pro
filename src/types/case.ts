@@ -1,3 +1,4 @@
+
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
 export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
 export type CasePriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -74,6 +75,7 @@ export interface CaseItem {
   documents?: Document[];
   archived?: boolean; // Add archived flag
   customerName?: string; // Added for PDF export filename
+  customerEmail?: string; // Added for email functionality
   
   // Neue Felder für erweiterte Funktionalität
   dueDate?: string; // Zu erledigen bis (optional)

@@ -117,8 +117,8 @@ const Settings: React.FC = () => {
       
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
         <MasterPasswordPrompt
-          onSubmit={handlePasswordChange}
-          onCancel={() => setIsPasswordDialogOpen(false)}
+          handleSubmit={handlePasswordChange}
+          handleCancel={() => setIsPasswordDialogOpen(false)}
           mode="change"
         />
       </Dialog>

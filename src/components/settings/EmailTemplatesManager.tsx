@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
@@ -161,13 +160,13 @@ export const EmailTemplatesManager: React.FC = () => {
     <div className="bg-muted/50 p-4 rounded-md mt-4 text-sm">
       <h4 className="font-medium mb-2">Verfügbare Platzhalter:</h4>
       <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-        <li>{{customerName}} - Name des Kunden</li>
-        <li>{{caseNumber}} - Vorgangsnummer</li>
-        <li>{{caseTitle}} - Titel des Vorgangs</li>
-        <li>{{userName}} - Name des Mitarbeiters</li>
-        <li>{{userEmail}} - E-Mail des Mitarbeiters</li>
-        <li>{{userPhone}} - Telefonnummer des Mitarbeiters</li>
-        <li>{{date}} - Aktuelles Datum</li>
+        <li>{'{{customerName}}'} - Name des Kunden</li>
+        <li>{'{{caseNumber}}'} - Vorgangsnummer</li>
+        <li>{'{{caseTitle}}'} - Titel des Vorgangs</li>
+        <li>{'{{userName}}'} - Name des Mitarbeiters</li>
+        <li>{'{{userEmail}}'} - E-Mail des Mitarbeiters</li>
+        <li>{'{{userPhone}}'} - Telefonnummer des Mitarbeiters</li>
+        <li>{'{{date}}'} - Aktuelles Datum</li>
       </ul>
     </div>
   );

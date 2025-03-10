@@ -130,20 +130,26 @@ const CalendarPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Dialog to add a new event */}
       <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
         <AddEventDialog 
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
-          onSave={handleAddEvent}
+          onSave={(event) => {
+            // Generate ID for the event here instead of in the hook
+            const eventWithId = {
+              ...event,
+              id: `event-${Date.now()}`
+            };
+            handleAddEvent(eventWithId);
+            return true;
+          }}
           users={users}
           currentUserId={currentUser?.id}
           isAdmin={isAdmin}
         />
       </Dialog>
       
-      {/* Dialog to view event details */}
       <Dialog open={isViewEventDialogOpen} onOpenChange={setIsViewEventDialogOpen}>
         {selectedEvent && (
           <ViewEventDialog 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FilePdf, ArchiveIcon, Mail } from 'lucide-react';
+import { FileText, ArchiveIcon, Mail } from 'lucide-react';
 import { CaseItem, User } from '../../../types/case';
 import EmailTemplateSelector from '../EmailTemplateSelector';
 
@@ -26,7 +26,7 @@ export const CaseActions: React.FC<CaseActionsProps> = ({
           className="flex items-center gap-2 w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           onClick={onGeneratePDF}
         >
-          <FilePdf className="w-4 h-4" />
+          <FileText className="w-4 h-4" />
           <span>PDF exportieren</span>
         </button>
         

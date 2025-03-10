@@ -59,15 +59,13 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
       mode="single"
       selected={date}
       onSelect={onDateChange}
-      className="rounded-md border"
+      className="rounded-md border pointer-events-auto"
       modifiersClassNames={{
         today: 'bg-primary/10 text-primary font-medium',
-        // Highlight selected date
         selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
       }}
-      modifiersFn={{
-        // Add custom styling for each day
-        day: date => ({
+      modifiers={{
+        day: (date) => ({
           className: dayClassNames(date)
         })
       }}
