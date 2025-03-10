@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Check, ArrowUpDown, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Trophy, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { CustomBadge } from '../ui/CustomBadge';
 import { UserBadge } from '../../contexts/UserTypes';
-import { Badge } from '../ui/badge';
 import { toast } from "../../hooks/use-toast";
 
 interface BadgeTemplatesManagerProps {
@@ -75,6 +74,11 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
       onBadgesUpdated();
     }
   }, [templates, onBadgesUpdated]);
+
+  useEffect(() => {
+    console.log(`Current templates count: ${templates.length}`);
+    console.log(`Filtered badges count: ${filteredBadges.length}`);
+  }, [templates, searchTerm, selectedCategory]);
 
   const handleEditBadge = (badge: UserBadge) => {
     setCurrentBadge({ ...badge });
@@ -172,12 +176,15 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            <option value="all">Alle Kategorien</option>
-            {badgeCategories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+            <option value="all">Alle Kategorien ({templates.length})</option>
+            {badgeCategories.map(category => {
+              const count = templates.filter(badge => badge.category === category.id).length;
+              return (
+                <option key={category.id} value={category.id}>
+                  {category.name} ({count})
+                </option>
+              );
+            })}
           </select>
           
           <button
@@ -191,35 +198,47 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {filteredBadges.map(badge => (
-          <div key={badge.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{badge.icon}</span>
-              <div>
-                <h3 className="font-medium">{badge.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {badgeCategories.find(c => c.id === badge.category)?.name || 'Kategorie'}
-                </p>
+        {filteredBadges.length > 0 ? (
+          filteredBadges.map(badge => (
+            <div key={badge.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{badge.icon}</span>
+                <div>
+                  <h3 className="font-medium">{badge.name}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {badgeCategories.find(c => c.id === badge.category)?.name || 'Kategorie'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+                  onClick={() => handleEditBadge(badge)}
+                  title="Bearbeiten"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-muted transition-colors"
+                  onClick={() => handleDeleteBadge(badge.id)}
+                  title="Löschen"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
-            <div className="flex gap-1">
-              <button
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-                onClick={() => handleEditBadge(badge)}
-                title="Bearbeiten"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-muted transition-colors"
-                onClick={() => handleDeleteBadge(badge.id)}
-                title="Löschen"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+          ))
+        ) : (
+          <div className="col-span-full text-center p-8 border border-dashed border-border rounded-lg">
+            <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+            <h3 className="font-medium text-lg mb-1">Keine Auszeichnungen gefunden</h3>
+            <p className="text-muted-foreground">
+              {searchTerm || selectedCategory !== 'all' 
+                ? "Keine Auszeichnungen entsprechen Ihren Filterkriterien." 
+                : "Erstellen Sie neue Auszeichnungen mit dem Button 'Neue Auszeichnung'."}
+            </p>
           </div>
-        ))}
+        )}
       </div>
       
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -382,7 +401,7 @@ const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
   );
 };
 
-const generateDefaultBadges = (): UserBadge[] => {
+export const generateDefaultBadges = (): UserBadge[] => {
   return [
     { id: 'badge-1', name: 'Top Performer', icon: '🏆', category: 'achievement' },
     { id: 'badge-2', name: 'Überstunden-Held', icon: '⏱️', category: 'achievement' },

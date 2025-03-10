@@ -4,6 +4,7 @@ import { User } from '../../types/case';
 import { useUser } from '../../contexts/UserContext';
 import { UserBadge } from '../../contexts/UserTypes';
 import { toast } from "../use-toast";
+import { generateDefaultBadges } from '../../components/team/BadgeTemplatesManager';
 
 export const useBadgeOperations = () => {
   const { updateUser } = useUser();
@@ -13,22 +14,42 @@ export const useBadgeOperations = () => {
 
   // Load available badges when component mounts
   useEffect(() => {
+    console.log("Initializing badge operations...");
+    loadAvailableBadges();
+    
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'userBadges') {
+        console.log("userBadges changed in storage, reloading...");
+        loadAvailableBadges();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const loadAvailableBadges = () => {
     const badges = getAvailableBadges();
+    console.log(`Loaded ${badges.length} badges into badge operations`);
     setAvailableBadges(badges);
     
     // If no badges are available, initialize with default badges
     if (badges.length === 0) {
+      console.log("No badges found, initializing defaults");
       const defaultBadges = generateDefaultBadges();
       localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
       setAvailableBadges(defaultBadges);
     }
-  }, []);
+  };
 
   const handleOpenBadgeDialog = (user: User) => {
     setUserForBadges(user);
     setIsBadgeDialogOpen(true);
     // Reload badges in case they were updated
-    setAvailableBadges(getAvailableBadges());
+    loadAvailableBadges();
   };
 
   const handleToggleBadge = (badgeId: string) => {
@@ -69,9 +90,12 @@ export const useBadgeOperations = () => {
       const storedBadges = localStorage.getItem('userBadges');
       if (storedBadges) {
         const parsedBadges = JSON.parse(storedBadges);
-        return Array.isArray(parsedBadges) && parsedBadges.length > 0 
-          ? parsedBadges 
-          : generateDefaultBadges();
+        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
+          return parsedBadges;
+        } else {
+          console.warn("Retrieved badges are empty or not an array, using defaults");
+          return generateDefaultBadges();
+        }
       }
     } catch (e) {
       console.error('Error loading badges:', e);
@@ -87,106 +111,6 @@ export const useBadgeOperations = () => {
     { id: 'certification', name: 'Zertifizierung' },
     { id: 'special', name: 'Besondere Auszeichnung' }
   ];
-
-  // Function to generate default badges
-  const generateDefaultBadges = (): UserBadge[] => {
-    return [
-      // Original Achievement badges
-      { id: 'badge-1', name: 'Top Performer', icon: '🏆', category: 'achievement' },
-      { id: 'badge-2', name: 'Überstunden-Held', icon: '⏱️', category: 'achievement' },
-      { id: 'badge-3', name: 'Innovator', icon: '💡', category: 'achievement' },
-      { id: 'badge-4', name: 'Team-Player', icon: '🤝', category: 'achievement' },
-      { id: 'badge-5', name: 'Kundenservice-Ass', icon: '🌟', category: 'achievement' },
-      { id: 'badge-6', name: 'Problemlöser', icon: '🧩', category: 'achievement' },
-      { id: 'badge-7', name: 'Effizienz-Champion', icon: '⚡', category: 'achievement' },
-      { id: 'badge-8', name: 'Qualitäts-Garant', icon: '✓', category: 'achievement' },
-      { id: 'badge-9', name: 'Sonderaufgaben-Meister', icon: '🎯', category: 'achievement' },
-      { id: 'badge-10', name: 'Vertriebs-Champion', icon: '📈', category: 'achievement' },
-      
-      // Original Skill badges
-      { id: 'badge-11', name: 'Excel-Profi', icon: '📊', category: 'skill' },
-      { id: 'badge-12', name: 'Präsentationstalent', icon: '🎤', category: 'skill' },
-      { id: 'badge-13', name: 'Verhandlungsexperte', icon: '🤔', category: 'skill' },
-      { id: 'badge-14', name: 'Projektmanagement-Profi', icon: '📋', category: 'skill' },
-      { id: 'badge-15', name: 'IT-Experte', icon: '💻', category: 'skill' },
-      { id: 'badge-16', name: 'Kommunikationstalent', icon: '💬', category: 'skill' },
-      { id: 'badge-17', name: 'Designtalent', icon: '🎨', category: 'skill' },
-      { id: 'badge-18', name: 'Fremdsprachenprofi', icon: '🌍', category: 'skill' },
-      { id: 'badge-19', name: 'Recherche-Spezialist', icon: '🔍', category: 'skill' },
-      { id: 'badge-20', name: 'Strategieexperte', icon: '♟️', category: 'skill' },
-      
-      // Original Tenure badges
-      { id: 'badge-21', name: '1 Jahr Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-22', name: '5 Jahre Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-23', name: '10 Jahre Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-24', name: '15 Jahre Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-25', name: '20 Jahre Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-26', name: '25 Jahre Betriebszugehörigkeit', icon: '🎂', category: 'tenure' },
-      { id: 'badge-27', name: 'Gründungsmitglied', icon: '🏛️', category: 'tenure' },
-      { id: 'badge-28', name: 'Senior-Status', icon: '👑', category: 'tenure' },
-      { id: 'badge-29', name: 'Mentor', icon: '👨‍🏫', category: 'tenure' },
-      { id: 'badge-30', name: 'Veteranenstatus', icon: '🦸', category: 'tenure' },
-      
-      // Original Certification badges
-      { id: 'badge-31', name: 'Business-Zertifizierung', icon: '📜', category: 'certification' },
-      { id: 'badge-32', name: 'Technische Zertifizierung', icon: '🔧', category: 'certification' },
-      { id: 'badge-33', name: 'Management-Zertifizierung', icon: '👔', category: 'certification' },
-      { id: 'badge-34', name: 'Spezialistenzertifizierung', icon: '🎓', category: 'certification' },
-      { id: 'badge-35', name: 'Sicherheitsschulung', icon: '🔒', category: 'certification' },
-      { id: 'badge-36', name: 'Datenschutzexperte', icon: '🛡️', category: 'certification' },
-      { id: 'badge-37', name: 'Versicherungsfachwirt', icon: '📝', category: 'certification' },
-      { id: 'badge-38', name: 'Vertriebstraining', icon: '🤝', category: 'certification' },
-      { id: 'badge-39', name: 'Führungskräftetraining', icon: '🏅', category: 'certification' },
-      { id: 'badge-40', name: 'Compliance-Schulung', icon: '⚖️', category: 'certification' },
-      
-      // Original Special badges
-      { id: 'badge-41', name: 'Ideengeber', icon: '💭', category: 'special' },
-      { id: 'badge-42', name: 'Soziales Engagement', icon: '❤️', category: 'special' },
-      { id: 'badge-43', name: 'Umweltbewusstsein', icon: '🌱', category: 'special' },
-      { id: 'badge-44', name: 'Beste Teamarbeit', icon: '👥', category: 'special' },
-      { id: 'badge-45', name: 'Besondere Leistung', icon: '🌠', category: 'special' },
-      { id: 'badge-46', name: 'Führungskompetenz', icon: '🚩', category: 'special' },
-      { id: 'badge-47', name: 'Außergewöhnlicher Einsatz', icon: '🔥', category: 'special' },
-      { id: 'badge-48', name: 'Bestes Feedback', icon: '👍', category: 'special' },
-      { id: 'badge-49', name: 'Innovationspreis', icon: '🚀', category: 'special' },
-      { id: 'badge-50', name: 'Mitarbeiter des Jahres', icon: '👑', category: 'special' },
-
-      // New Achievement badges
-      { id: 'badge-51', name: 'Produktivitätschampion', icon: '⚙️', category: 'achievement' },
-      { id: 'badge-52', name: 'Umsatzrekord', icon: '💰', category: 'achievement' },
-      { id: 'badge-53', name: 'Kundenakquise-Experte', icon: '🤵', category: 'achievement' },
-      { id: 'badge-54', name: 'Kundenbindungsmeister', icon: '🔄', category: 'achievement' },
-      { id: 'badge-55', name: 'Kostenoptimierer', icon: '📉', category: 'achievement' },
-      
-      // New Skill badges
-      { id: 'badge-56', name: 'Datenanalyse-Experte', icon: '📊', category: 'skill' },
-      { id: 'badge-57', name: 'Content-Creation', icon: '✍️', category: 'skill' },
-      { id: 'badge-58', name: 'Change-Management', icon: '🔄', category: 'skill' },
-      { id: 'badge-59', name: 'Agile-Coach', icon: '🏃', category: 'skill' },
-      { id: 'badge-60', name: 'UX-Design', icon: '🖌️', category: 'skill' },
-
-      // New Tenure badges
-      { id: 'badge-61', name: '30 Jahre Betriebszugehörigkeit', icon: '🎖️', category: 'tenure' },
-      { id: 'badge-62', name: 'Firmenerbe', icon: '🏛️', category: 'tenure' },
-      { id: 'badge-63', name: 'Treuer Begleiter', icon: '🔗', category: 'tenure' },
-      
-      // New Certification badges
-      { id: 'badge-64', name: 'ISO-Zertifizierung', icon: '📋', category: 'certification' },
-      { id: 'badge-65', name: 'Digital Marketing', icon: '📱', category: 'certification' },
-      { id: 'badge-66', name: 'Projektmanagement', icon: '📅', category: 'certification' },
-      { id: 'badge-67', name: 'Software-Entwicklung', icon: '👨‍💻', category: 'certification' },
-      { id: 'badge-68', name: 'Leadership-Training', icon: '👩‍💼', category: 'certification' },
-      
-      // New Special badges
-      { id: 'badge-69', name: 'Krisenmanager', icon: '🧯', category: 'special' },
-      { id: 'badge-70', name: 'Inklusions-Champion', icon: '♿', category: 'special' },
-      { id: 'badge-71', name: 'Diversitätsbeauftragter', icon: '🌈', category: 'special' },
-      { id: 'badge-72', name: 'Querdenker', icon: '🧠', category: 'special' },
-      { id: 'badge-73', name: 'Change-Maker', icon: '🦋', category: 'special' },
-      { id: 'badge-74', name: 'Digitaler Pionier', icon: '🔌', category: 'special' },
-      { id: 'badge-75', name: 'Nachhaltigkeits-Botschafter', icon: '🌿', category: 'special' }
-    ];
-  };
 
   return {
     isBadgeDialogOpen,

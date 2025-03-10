@@ -2,6 +2,7 @@
 import React from 'react';
 import { cn } from "@/lib/utils";
 import { Badge } from './badge';
+import * as LucideIcons from 'lucide-react';
 
 interface CustomBadgeProps {
   icon: string;
@@ -12,7 +13,7 @@ interface CustomBadgeProps {
             'achievement' | 'skill' | 'tenure' | 'certification' | 'special';
   onClick?: () => void;
   selected?: boolean;
-  className?: string; // Added className prop for more flexible styling
+  className?: string;
 }
 
 export const CustomBadge: React.FC<CustomBadgeProps> = ({
@@ -52,6 +53,9 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
     ? categoryVariantMap[variant as keyof typeof categoryVariantMap] 
     : variant;
 
+  // Check if icon is a Lucide icon name
+  const LucideIcon = icon in LucideIcons ? LucideIcons[icon as keyof typeof LucideIcons] : null;
+
   return (
     <Badge 
       variant={visualVariant as any}
@@ -64,7 +68,9 @@ export const CustomBadge: React.FC<CustomBadgeProps> = ({
       )}
       onClick={onClick}
     >
-      <span className={cn("inline-block", iconSizeClasses[size])}>{icon}</span>
+      <span className={cn("inline-block", iconSizeClasses[size])}>
+        {LucideIcon ? <LucideIcon className="h-4 w-4" /> : icon}
+      </span>
       <span>{label}</span>
     </Badge>
   );
