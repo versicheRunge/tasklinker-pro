@@ -25,7 +25,11 @@ export const MasterPasswordPrompt: React.FC<MasterPasswordPromptProps> = ({
     e.preventDefault();
     
     if (mode === 'access') {
-      validateAccess(password);
+      const isValid = validateAccess(password);
+      if (isValid) {
+        // Reload the page to trigger re-authentication check
+        window.location.reload();
+      }
     } else if (mode === 'change') {
       // Validate passwords match for password change
       if (newPassword !== confirmPassword) {
