@@ -1,7 +1,28 @@
 
 export type CaseStatus = 'new' | 'in_progress' | 'waiting' | 'completed';
-export type CaseType = 'damage' | 'evb' | 'contract_change' | 'inquiry' | 'other' | string;
+export type CaseType =
+  | 'kfz' | 'phv' | 'hr' | 'wgb' | 'bu' | 'risiko' | 'altersvorsorge'
+  | 'kranken' | 'unfall' | 'rechtsschutz' | 'tier' | 'reise'
+  | 'gewerbe' | 'landwirtschaft' | 'sonstiges';
 export type CasePriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export const CASE_TYPE_LABELS: Record<CaseType, string> = {
+  kfz:            'KFZ-Versicherung',
+  phv:            'Private Haftpflicht',
+  hr:             'Hausrat',
+  wgb:            'Wohngebäude',
+  bu:             'Berufsunfähigkeit',
+  risiko:         'Risikolebensversicherung',
+  altersvorsorge: 'Altersvorsorge',
+  kranken:        'Krankenversicherung',
+  unfall:         'Unfallversicherung',
+  rechtsschutz:   'Rechtsschutz',
+  tier:           'Tier',
+  reise:          'Reiseversicherung',
+  gewerbe:        'Gewerbe',
+  landwirtschaft: 'Landwirtschaft',
+  sonstiges:      'Sonstiges',
+};
 
 import { UserBadge } from '../contexts/UserTypes';
 
@@ -47,7 +68,7 @@ export interface Document {
 
 export interface CaseActivity {
   id: string;
-  type: 'comment' | 'status' | 'document' | 'checklist' | 'assignment' | 'other';
+  type: 'comment' | 'status' | 'document' | 'checklist' | 'assignment' | 'phone' | 'note' | 'other';
   content: string;
   timestamp: string;
   user: User;
@@ -81,7 +102,8 @@ export interface CaseItem {
   dueDate?: string; // Zu erledigen bis (optional)
   followUpDate?: string; // Wiedervorlage am (optional)
   priority?: CasePriority; // Priorität der Aufgabe (optional)
-  reminderSent?: boolean; // Flag ob bereits eine Erinnerung gesendet wurde
+  reminderSent?: boolean;
+  waitingReason?: string;
 }
 
 // Templates for checklists

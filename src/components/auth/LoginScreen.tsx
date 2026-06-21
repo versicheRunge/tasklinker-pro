@@ -1,173 +1,99 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, Info, Eye, EyeOff } from 'lucide-react';
-import { useUser } from '../../contexts/UserContext';
-import { User as UserType } from '../../types/case';
-import { CustomAvatar } from '../ui/CustomAvatar';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from '../../hooks/use-toast';
-import { Input } from '../ui/input';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { users, setCurrentUser, validatePassword } = useUser();
-  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
-  
-  const handleUserSelect = (user: UserType) => {
-    setSelectedUser(user);
-    setError('');
-    // Set default password when selecting a user for easier testing
-    setPassword('password123');
-    
-    // Focus on password field after a short delay (to allow render to complete)
-    setTimeout(() => {
-      if (passwordInputRef.current) {
-        passwordInputRef.current.focus();
-      }
-    }, 50);
-  };
-  
-  const handleLogin = (e: React.FormEvent) => {
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedUser) {
-      setError('Bitte wählen Sie einen Benutzer aus');
+    setError('');
+    setIsLoading(true);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      setError('E-Mail oder Passwort falsch.');
+      setIsLoading(false);
       return;
     }
-    
-    console.log('Attempting login for user:', selectedUser.name);
-    
-    // Validate the password
-    const isValid = validatePassword(selectedUser.id, password);
-    console.log('Password validation result:', isValid ? 'success' : 'failed');
-    
-    if (!isValid) {
-      console.log('Password validation failed');
-      setError('Falsches Passwort');
-      return;
-    }
-    
-    console.log('Password validation succeeded');
-    setCurrentUser(selectedUser);
-    toast({
-      title: "Anmeldung erfolgreich",
-      description: `Willkommen zurück, ${selectedUser.name}!`,
-    });
+
+    toast({ title: 'Anmeldung erfolgreich', description: 'Willkommen zurück!' });
     navigate('/');
   };
-  
-  const goBack = () => {
-    setSelectedUser(null);
-    setPassword('');
-    setError('');
-  };
-  
-  // Check if we have any stored user data in localStorage
-  useEffect(() => {
-    const storedUsers = localStorage.getItem('users');
-    console.log('Stored users found:', storedUsers ? 'yes' : 'no');
-  }, []);
-  
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-  
+
   return (
-    <div className="w-full max-w-md bg-card rounded-xl shadow-lg p-6 border border-border">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold mb-2">Vorgangsmanagement</h1>
-        <p className="text-muted-foreground">Melden Sie sich an, um fortzufahren</p>
+    <div className="w-full max-w-md bg-card rounded-xl shadow-lg p-8 border border-border">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold mb-1">TaskLinker Pro</h1>
+        <p className="text-muted-foreground text-sm">Bitte melden Sie sich an</p>
       </div>
-      
-      {!selectedUser ? (
+
+      <form onSubmit={handleLogin} className="space-y-4">
         <div>
-          <h2 className="text-lg font-medium mb-4">Benutzer auswählen</h2>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {users.map(user => (
-              <button
-                key={user.id}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors"
-                onClick={() => handleUserSelect(user)}
-              >
-                <CustomAvatar name={user.name} imageSrc={user.avatar} size="md" />
-                <div className="text-left">
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-sm text-muted-foreground">{user.role}</p>
-                </div>
-              </button>
-            ))}
+          <label htmlFor="email" className="block text-sm font-medium mb-1">E-Mail</label>
+          <div className="relative">
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+              placeholder="name@agentur.de"
+              autoFocus
+              required
+            />
+            <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
           </div>
         </div>
-      ) : (
-        <form onSubmit={handleLogin}>
-          <div className="flex items-center justify-center mb-6">
-            <CustomAvatar name={selectedUser.name} imageSrc={selectedUser.avatar} size="lg" />
+
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium mb-1">Passwort</label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+              placeholder="Passwort eingeben"
+              required
+            />
+            <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-2.5"
+            >
+              {showPassword
+                ? <EyeOff className="h-5 w-5 text-muted-foreground" />
+                : <Eye className="h-5 w-5 text-muted-foreground" />}
+            </button>
           </div>
-          <h2 className="text-lg font-medium mb-2 text-center">{selectedUser.name}</h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">{selectedUser.role}</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-1">
-                Passwort
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Passwort eingeben"
-                  autoFocus
-                  ref={passwordInputRef}
-                />
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-2.5"
-                >
-                  {showPassword ? 
-                    <EyeOff className="h-5 w-5 text-muted-foreground" /> : 
-                    <Eye className="h-5 w-5 text-muted-foreground" />
-                  }
-                </button>
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground flex items-center gap-1">
-                <Info className="h-4 w-4" />
-                <span>Hinweis: Standardpasswort ist "password123"</span>
-              </div>
-            </div>
-            
-            {error && (
-              <div className="text-destructive text-sm p-2 bg-destructive/10 rounded-md">
-                {error}
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex-1 px-4 py-2 border border-input rounded-md hover:bg-muted transition-colors"
-              >
-                Zurück
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Anmelden
-              </button>
-            </div>
+        </div>
+
+        {error && (
+          <div className="text-destructive text-sm p-2 bg-destructive/10 rounded-md">
+            {error}
           </div>
-        </form>
-      )}
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? 'Anmelden...' : 'Anmelden'}
+        </button>
+      </form>
     </div>
   );
 };

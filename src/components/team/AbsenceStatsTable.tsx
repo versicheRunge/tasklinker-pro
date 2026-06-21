@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../../types/case';
 import { Edit } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
-import { getVacationAllowance, calculateUsedVacationDays, calculateRemainingVacationDays } from '../../utils/calendarUtils';
+import { calculateUsedVacationDays, calculateRemainingVacationDays } from '../../utils/calendarUtils';
+import { supabase } from '../../lib/supabase';
 
 interface AbsenceStatsTableProps {
   users: User[];
@@ -12,45 +13,33 @@ interface AbsenceStatsTableProps {
   onEditAllowance: (user: User) => void;
 }
 
-export const AbsenceStatsTable: React.FC<AbsenceStatsTableProps> = ({ 
-  users, 
-  events,
-  isAdmin,
-  onEditAllowance
-}) => {
+export const AbsenceStatsTable: React.FC<AbsenceStatsTableProps> = ({ users, events, isAdmin, onEditAllowance }) => {
   const currentYear = new Date().getFullYear();
+  const [allowances, setAllowances] = useState<Record<string, number>>({});
 
-  // Calculate statistics for a user
+  useEffect(() => {
+    if (users.length === 0) return;
+    supabase.from('vacation_allowances').select('user_id,total_days').eq('year', currentYear).then(({ data }) => {
+      if (data) {
+        const map: Record<string, number> = {};
+        data.forEach((row: any) => { map[row.user_id] = row.total_days; });
+        setAllowances(map);
+      }
+    });
+  }, [users, currentYear]);
+
   const getUserStats = (userId: string) => {
-    // Count all sick days (including both working and non-working days)
-    const sickEvents = events.filter(event => 
-      event.type === 'sick' && 
-      event.userId === userId &&
-      new Date(event.date).getFullYear() === currentYear
-    );
-    
-    const sickDays = sickEvents.reduce((total, event) => {
-      if (!event.endDate) return total + 1;
-      
-      // Calculate days between dates for multi-day events
-      const start = new Date(event.date);
-      const end = new Date(event.endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      return total + diffDays;
+    const sickEvents = events.filter(e => e.type === 'sick' && e.userId === userId && new Date(e.date).getFullYear() === currentYear);
+    const sickDays = sickEvents.reduce((total, e) => {
+      if (!e.endDate) return total + 1;
+      const diff = Math.ceil(Math.abs(new Date(e.endDate).getTime() - new Date(e.date).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return total + diff;
     }, 0);
-    
-    // Get used and remaining vacation days (only working days)
-    const totalAllowance = getVacationAllowance(userId, currentYear);
-    const usedVacationDays = calculateUsedVacationDays(userId, currentYear, events);
-    const remainingVacationDays = calculateRemainingVacationDays(userId, currentYear, events);
-    
     return {
       sickDays,
-      totalAllowance,
-      usedVacationDays,
-      remainingVacationDays
+      totalAllowance: allowances[userId] ?? 0,
+      usedVacationDays: calculateUsedVacationDays(userId, currentYear, events),
+      remainingVacationDays: calculateRemainingVacationDays(userId, currentYear, events),
     };
   };
 
@@ -76,11 +65,7 @@ export const AbsenceStatsTable: React.FC<AbsenceStatsTableProps> = ({
                 <tr key={user.id} className="border-b border-border hover:bg-muted/20">
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src={user.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'} 
-                        alt={user.name} 
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
+                      <img src={user.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
                       <div>
                         <p className="font-medium">{user.name}</p>
                         <p className="text-xs text-muted-foreground">{user.role}</p>
@@ -92,32 +77,20 @@ export const AbsenceStatsTable: React.FC<AbsenceStatsTableProps> = ({
                     <span className="text-xs text-muted-foreground block">Tage pro Jahr</span>
                   </td>
                   <td className="p-3 text-center">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="text-blue-500">🏖️</span>
-                      <span className="font-medium">{stats.usedVacationDays}</span>
-                    </span>
+                    <span className="inline-flex items-center gap-1"><span className="text-blue-500">🏖️</span><span className="font-medium">{stats.usedVacationDays}</span></span>
                     <span className="text-xs text-muted-foreground block">Arbeitstage</span>
                   </td>
                   <td className="p-3 text-center">
-                    <span className={`font-medium ${stats.remainingVacationDays < 5 ? 'text-amber-500' : ''} ${stats.remainingVacationDays === 0 ? 'text-red-500' : ''}`}>
-                      {stats.remainingVacationDays}
-                    </span>
+                    <span className={`font-medium ${stats.remainingVacationDays < 5 ? 'text-amber-500' : ''} ${stats.remainingVacationDays === 0 ? 'text-red-500' : ''}`}>{stats.remainingVacationDays}</span>
                     <span className="text-xs text-muted-foreground block">Verbleibend</span>
                   </td>
                   <td className="p-3 text-center">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="text-pink-500">🤒</span>
-                      <span className="font-medium">{stats.sickDays}</span>
-                    </span>
+                    <span className="inline-flex items-center gap-1"><span className="text-pink-500">🤒</span><span className="font-medium">{stats.sickDays}</span></span>
                     <span className="text-xs text-muted-foreground block">Kalendertage</span>
                   </td>
                   {isAdmin && (
                     <td className="p-3 text-center">
-                      <button 
-                        onClick={() => onEditAllowance(user)}
-                        className="p-1.5 bg-muted rounded-md hover:bg-muted/80 transition-colors"
-                        title="Urlaubsanspruch bearbeiten"
-                      >
+                      <button onClick={() => onEditAllowance(user)} className="p-1.5 bg-muted rounded-md hover:bg-muted/80 transition-colors" title="Urlaubsanspruch bearbeiten">
                         <Edit className="w-4 h-4" />
                       </button>
                     </td>

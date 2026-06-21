@@ -1,193 +1,165 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { users as initialUsers } from '../data/mockData';
+import { useAuth, Profile } from './AuthContext';
+import { supabase } from '../lib/supabase';
 import { User } from '../types/case';
-import { UserRole } from './UserTypes';
 import { Notification } from '../types/chat';
-import { useNotifications } from '../hooks/useNotifications';
-import { useUserUtilities } from '../hooks/useUserUtilities';
 
-interface UserWithPassword extends User {
-  password: string;
-}
+const profileToUser = (p: Profile): User => ({
+  id: p.id,
+  name: p.full_name,
+  email: p.email,
+  phone: p.phone,
+  role: p.role === 'admin' ? 'Administrator' : p.role === 'field' ? 'Außendienst' : 'Innendienst',
+  department: p.department,
+  avatar: p.avatar_url,
+  userRole: p.role === 'admin' ? 'admin' : 'staff',
+  stats: { casesHandled: 0, inProgress: 0, completed: 0 },
+});
 
 type UserContextType = {
   currentUser: User | null;
-  setCurrentUser: (user: User | null) => void;
   isAdmin: boolean;
   users: User[];
-  addUser: (user: Omit<User, 'id'>) => void;
-  updateUser: (id: string, userData: Partial<User>) => void;
-  deleteUser: (id: string) => void;
   notifications: Notification[];
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
   markNotificationsAsRead: (ids: string[]) => void;
   clearNotifications: () => void;
   mentionUser: (userId: string, caseId: string, message: string, type?: 'chat' | 'case' | 'system') => void;
+  addUser: (user: Omit<User, 'id'>) => void;
+  updateUser: (id: string, userData: Partial<User>) => void;
+  deleteUser: (id: string) => void;
   validatePassword: (userId: string, password: string) => boolean;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => boolean;
+  setCurrentUser: (user: User | null) => void;
 };
 
 const UserContext = createContext<UserContextType>({
   currentUser: null,
-  setCurrentUser: () => {},
   isAdmin: false,
   users: [],
-  addUser: () => {},
-  updateUser: () => {},
-  deleteUser: () => {},
   notifications: [],
   addNotification: () => {},
   markNotificationAsRead: () => {},
   markNotificationsAsRead: () => {},
   clearNotifications: () => {},
   mentionUser: () => {},
+  addUser: () => {},
+  updateUser: () => {},
+  deleteUser: () => {},
   validatePassword: () => false,
   changePassword: () => false,
+  setCurrentUser: () => {},
 });
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<UserWithPassword[]>(getInitialUsers());
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
-  const { 
-    notifications, 
-    addNotification, 
-    markNotificationAsRead, 
-    markNotificationsAsRead, 
-    clearNotifications,
-    mentionUser
-  } = useNotifications(currentUser);
-  
-  const {
-    validatePassword,
-    changePassword
-  } = useUserUtilities(allUsers, setAllUsers);
-  
-  // Initialize app settings
-  useEffect(() => {
-    // Set default app settings if not already in localStorage
-    if (!localStorage.getItem('appName')) {
-      localStorage.setItem('appName', 'TruTeam');
-    }
-    
-    if (!localStorage.getItem('appLogo')) {
-      localStorage.setItem('appLogo', 'TR');
-    }
-  }, []);
+  const { profile, isAdmin } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Load current user on mount
+  const currentUser = profile ? profileToUser(profile) : null;
+
   useEffect(() => {
-    const savedUserId = localStorage.getItem('currentUserId');
-    if (savedUserId) {
-      const user = allUsers.find(u => u.id === savedUserId);
-      if (user) {
-        const { password, ...userWithoutPassword } = user;
-        setCurrentUser(userWithoutPassword);
-      }
-    }
-  }, [allUsers]);
-  
+    if (!profile) return;
+    supabase.from('profiles').select('*').eq('is_active', true).then(({ data }) => {
+      if (data) setUsers((data as Profile[]).map(profileToUser));
+    });
+  }, [profile]);
+
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('currentUserId', currentUser.id);
-    } else {
-      localStorage.removeItem('currentUserId');
+    if (!profile) return;
+    supabase
+      .from('notifications')
+      .select('*')
+      .eq('target_user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setNotifications(data.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          timestamp: n.created_at,
+          read: n.read,
+          type: n.type,
+          caseId: n.case_id,
+          targetUserId: n.target_user_id,
+        })));
+      });
+  }, [profile]);
+
+  const addNotification = async (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    if (!n.targetUserId) return;
+    const { data } = await supabase.from('notifications').insert({
+      target_user_id: n.targetUserId,
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      case_id: n.caseId,
+      read: false,
+    }).select().single();
+    if (data && n.targetUserId === profile?.id) {
+      setNotifications(prev => [{
+        id: data.id, title: data.title, message: data.message,
+        timestamp: data.created_at, read: false, type: data.type,
+        caseId: data.case_id, targetUserId: data.target_user_id,
+      }, ...prev]);
     }
-  }, [currentUser]);
-  
-  useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(allUsers));
-  }, [allUsers]);
-  
-  const isAdmin = currentUser?.userRole === 'admin';
-  
-  const addUser = (userData: Omit<User, 'id'>) => {
-    const newUser = {
-      ...userData,
-      id: `user-${Date.now()}`,
-      password: 'password123' // Use a default password for new users
-    };
-    setAllUsers(prev => [...prev, newUser as UserWithPassword]);
   };
-  
-  const updateUser = (id: string, userData: Partial<User>) => {
-    setAllUsers(prev => 
-      prev.map(user => user.id === id ? { ...user, ...userData } : user)
-    );
-    
-    if (currentUser?.id === id) {
-      const { password, ...updatedUserData } = userData as any;
-      setCurrentUser(prev => prev ? { ...prev, ...updatedUserData } : prev);
-    }
+
+  const markNotificationAsRead = async (id: string) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
-  
-  const deleteUser = (id: string) => {
-    setAllUsers(prev => prev.filter(user => user.id !== id));
+
+  const markNotificationsAsRead = async (ids: string[]) => {
+    await supabase.from('notifications').update({ read: true }).in('id', ids);
+    setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, read: true } : n));
   };
-  
-  const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
-  
+
+  const clearNotifications = async () => {
+    if (!profile) return;
+    await supabase.from('notifications').delete().eq('target_user_id', profile.id);
+    setNotifications([]);
+  };
+
+  const mentionUser = (userId: string, caseId: string, message: string, type: 'chat' | 'case' | 'system' = 'case') => {
+    addNotification({ title: 'Sie wurden erwähnt', message, type, caseId, targetUserId: userId });
+  };
+
   return (
-    <UserContext.Provider 
-      value={{ 
-        currentUser, 
-        setCurrentUser, 
-        isAdmin, 
-        users: usersWithoutPasswords, 
-        addUser, 
-        updateUser, 
-        deleteUser,
-        notifications,
-        addNotification,
-        markNotificationAsRead,
-        markNotificationsAsRead,
-        clearNotifications,
-        mentionUser,
-        validatePassword,
-        changePassword
-      }}
-    >
+    <UserContext.Provider value={{
+      currentUser,
+      isAdmin,
+      users,
+      notifications,
+      addNotification,
+      markNotificationAsRead,
+      markNotificationsAsRead,
+      clearNotifications,
+      mentionUser,
+      addUser: () => {},
+      updateUser: async (id: string, userData: Partial<User>) => {
+        const update: Record<string, any> = {};
+        if (userData.name !== undefined)      update.full_name   = userData.name;
+        if (userData.phone !== undefined)     update.phone       = userData.phone;
+        if (userData.avatar !== undefined)    update.avatar_url  = userData.avatar;
+        if (userData.department !== undefined)update.department  = userData.department;
+        if (userData.badges !== undefined)    update.badges      = userData.badges;
+        if (Object.keys(update).length > 0) {
+          await supabase.from('profiles').update(update).eq('id', id);
+          const { data } = await supabase.from('profiles').select('*').eq('is_active', true);
+          if (data) setUsers((data as Profile[]).map(profileToUser));
+        }
+      },
+      deleteUser: () => {},
+      validatePassword: () => false,
+      changePassword: () => false,
+      setCurrentUser: () => {},
+    }}>
       {children}
     </UserContext.Provider>
   );
 };
-
-// Modified to use a consistent password for easier testing
-function getInitialUsers() {
-  const storedUsers = localStorage.getItem('users');
-  if (storedUsers) {
-    try {
-      const parsedUsers = JSON.parse(storedUsers);
-      
-      const validatedUsers = parsedUsers.map((user: any) => {
-        if (!user.password) {
-          return { ...user, password: 'password123' };
-        }
-        return user;
-      });
-      
-      return validatedUsers;
-    } catch (e) {
-      console.error('Error parsing stored users:', e);
-    }
-  }
-  
-  // Set default passwords for initial users
-  return initialUsers.map((user, index) => ({
-    ...user,
-    ...(user.email ? {} : { email: `${user.name.toLowerCase().replace(' ', '.')}@beispiel.de` }),
-    userRole: index === 0 ? 'admin' : 'staff',
-    department: user.department || 'Allgemein',
-    phone: user.phone || '',
-    password: 'password123', // Use a simple password for all mock users
-    stats: user.stats || {
-      casesHandled: 0,
-      completed: 0,
-      inProgress: 0
-    }
-  }));
-}

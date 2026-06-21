@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
 import { CaseCard } from './CaseCard';
-import { CaseItem, CaseStatus, CaseType } from '../../types/case';
-import { Archive, Download, Trash, Filter } from 'lucide-react';
+import { CaseItem, CaseStatus, CaseType, CASE_TYPE_LABELS } from '../../types/case';
+import { Archive, Download, CheckSquare, X } from 'lucide-react';
 import { toast } from "../../hooks/use-toast";
 import { useUser } from '../../contexts/UserContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { supabase } from '../../lib/supabase';
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from '../ui/button';
 import { generatePDF } from './detail/CaseHelpers';
 import { Checkbox } from '../ui/checkbox';
@@ -19,11 +20,13 @@ interface CasesListProps {
 export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCompletedSection = true }) => {
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CaseType | 'all'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const searchTerm = '';
   const { isAdmin, currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('mine');
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<string>('');
 
   // Filter out archived cases
   const filteredCases = cases.filter(c => !c.archived);
@@ -95,11 +98,7 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
 
   const typeOptions = [
     { value: 'all', label: 'Alle Typen' },
-    { value: 'damage', label: 'Schadenmeldung' },
-    { value: 'evb', label: 'eVB-Anfrage' },
-    { value: 'contract_change', label: 'Vertragsänderung' },
-    { value: 'inquiry', label: 'Kundenanfrage' },
-    { value: 'other', label: 'Sonstiges' }
+    ...Object.entries(CASE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
   ];
 
   const handleExportCompleted = () => {
@@ -174,13 +173,9 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
   };
   
   const toggleCaseSelection = (id: string) => {
-    setSelectedCases(prev => 
-      prev.includes(id) 
-        ? prev.filter(caseId => caseId !== id) 
-        : [...prev, id]
-    );
+    setSelectedCases(prev => prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]);
   };
-  
+
   const toggleSelectAll = () => {
     if (selectAll) {
       setSelectedCases([]);
@@ -188,6 +183,29 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
       setSelectedCases(filteredCompletedCases.map(c => c.id));
     }
     setSelectAll(!selectAll);
+  };
+
+  const toggleBulkMode = () => {
+    setBulkMode(v => !v);
+    setSelectedCases([]);
+    setBulkStatus('');
+  };
+
+  const handleBulkStatusChange = async () => {
+    if (!bulkStatus || selectedCases.length === 0) return;
+    await supabase.from('cases').update({ status: bulkStatus, updated_at: new Date().toISOString() }).in('id', selectedCases);
+    selectedCases.forEach(id => updateCase(id, { status: bulkStatus as CaseStatus }));
+    toast({ title: 'Status geändert', description: `${selectedCases.length} Vorgänge auf „${bulkStatus}" gesetzt.` });
+    setSelectedCases([]);
+    setBulkStatus('');
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedCases.length === 0) return;
+    await supabase.from('cases').update({ archived: true, updated_at: new Date().toISOString() }).in('id', selectedCases);
+    selectedCases.forEach(id => updateCase(id, { archived: true }));
+    toast({ title: 'Archiviert', description: `${selectedCases.length} Vorgänge archiviert.` });
+    setSelectedCases([]);
   };
 
   return (
@@ -201,43 +219,71 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
         </Tabs>
       )}
       
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Vorgänge durchsuchen..."
-            className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex flex-wrap gap-3">
-          <select
-            className="p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as CaseStatus | 'all')}
-          >
-            {statusOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          
-          <select
-            className="p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as CaseType | 'all')}
-          >
-            {typeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-wrap gap-3 items-center">
+        <select
+          className="p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as CaseStatus | 'all')}
+        >
+          {statusOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+
+        <select
+          className="p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-sm"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as CaseType | 'all')}
+        >
+          {typeOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={toggleBulkMode}
+          className={`ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors ${bulkMode ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted text-muted-foreground'}`}
+        >
+          <CheckSquare className="w-4 h-4" />
+          Mehrfachauswahl {bulkMode ? 'beenden' : ''}
+        </button>
       </div>
+
+      {/* Floating bulk action bar */}
+      {bulkMode && selectedCases.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border border-border rounded-2xl shadow-2xl px-5 py-3">
+          <span className="text-sm font-semibold">{selectedCases.length} ausgewählt</span>
+          <div className="h-5 w-px bg-border" />
+          <select
+            className="text-sm border border-input rounded-lg px-2 py-1 bg-background"
+            value={bulkStatus}
+            onChange={e => setBulkStatus(e.target.value)}
+          >
+            <option value="">Status setzen…</option>
+            <option value="new">Neu</option>
+            <option value="in_progress">In Bearbeitung</option>
+            <option value="waiting">Wartet</option>
+            <option value="completed">Erledigt</option>
+          </select>
+          <button
+            onClick={handleBulkStatusChange}
+            disabled={!bulkStatus}
+            className="text-sm px-3 py-1 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
+          >
+            Anwenden
+          </button>
+          <div className="h-5 w-px bg-border" />
+          <button
+            onClick={handleBulkArchive}
+            className="flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+          >
+            <Archive className="w-3.5 h-3.5" /> Archivieren
+          </button>
+          <button onClick={() => setSelectedCases([])} className="text-muted-foreground hover:text-foreground ml-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       
       <div>
         <h2 className="text-xl font-semibold mb-4">
@@ -246,7 +292,18 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
         {filteredActiveCases.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredActiveCases.map(caseItem => (
-              <CaseCard key={caseItem.id} caseItem={caseItem} />
+              bulkMode ? (
+                <div key={caseItem.id} className="relative">
+                  <div className="absolute top-3 left-3 z-10" onClick={e => { e.preventDefault(); e.stopPropagation(); toggleCaseSelection(caseItem.id); }}>
+                    <Checkbox checked={selectedCases.includes(caseItem.id)} />
+                  </div>
+                  <div className={selectedCases.includes(caseItem.id) ? 'ring-2 ring-primary rounded-xl' : ''}>
+                    <CaseCard caseItem={caseItem} onUpdate={updateCase} />
+                  </div>
+                </div>
+              ) : (
+                <CaseCard key={caseItem.id} caseItem={caseItem} onUpdate={updateCase} />
+              )
             ))}
           </div>
         ) : (
@@ -319,7 +376,7 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
                         onCheckedChange={() => toggleCaseSelection(caseItem.id)}
                       />
                     </div>
-                    <CaseCard caseItem={caseItem} />
+                    <CaseCard caseItem={caseItem} onUpdate={updateCase} />
                   </div>
                 ))}
               </div>

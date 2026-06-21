@@ -1,121 +1,41 @@
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { User } from '../../types/case';
 import { useUser } from '../../contexts/UserContext';
 import { UserBadge } from '../../contexts/UserTypes';
 import { toast } from "../use-toast";
 import { generateDefaultBadges } from '../../components/team/badge/defaultBadges';
 
+const AVAILABLE_BADGES = generateDefaultBadges();
+
 export const useBadgeOperations = () => {
   const { updateUser } = useUser();
   const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false);
   const [userForBadges, setUserForBadges] = useState<User | null>(null);
-  const [availableBadges, setAvailableBadges] = useState<UserBadge[]>([]);
-
-  // Load available badges when component mounts
-  useEffect(() => {
-    console.log("Initializing badge operations...");
-    loadAvailableBadges();
-    
-    // Listen for storage changes from other tabs
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'userBadges') {
-        console.log("userBadges changed in storage, reloading...");
-        loadAvailableBadges();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  const loadAvailableBadges = () => {
-    try {
-      const storedBadges = localStorage.getItem('userBadges');
-      if (storedBadges) {
-        const parsedBadges = JSON.parse(storedBadges);
-        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
-          console.log(`Loaded ${parsedBadges.length} badges into badge operations`);
-          setAvailableBadges(parsedBadges);
-          return;
-        }
-      }
-      
-      // If we reach here, either there were no badges in localStorage 
-      // or there was an error or the array was empty
-      console.log("No valid badges found, initializing defaults");
-      const defaultBadges = generateDefaultBadges();
-      console.log(`Generated ${defaultBadges.length} default badges`);
-      localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
-      setAvailableBadges(defaultBadges);
-    } catch (e) {
-      console.error('Error loading badges:', e);
-      // Fall back to defaults
-      const defaultBadges = generateDefaultBadges();
-      localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
-      setAvailableBadges(defaultBadges);
-    }
-  };
 
   const handleOpenBadgeDialog = (user: User) => {
-    setUserForBadges(user);
+    setUserForBadges({ ...user });
     setIsBadgeDialogOpen(true);
-    // Reload badges in case they were updated
-    loadAvailableBadges();
   };
 
   const handleToggleBadge = (badgeId: string) => {
     if (!userForBadges) return;
-    
-    const updatedBadges = userForBadges.badges || [];
-    const badgeIndex = updatedBadges.findIndex(badge => badge.id === badgeId);
-    
-    if (badgeIndex >= 0) {
-      updatedBadges.splice(badgeIndex, 1);
+    const current = userForBadges.badges ?? [];
+    const idx = current.findIndex(b => b.id === badgeId);
+    let updated: UserBadge[];
+    if (idx >= 0) {
+      updated = current.filter(b => b.id !== badgeId);
     } else {
-      const selectedBadge = availableBadges.find(badge => badge.id === badgeId);
-      if (selectedBadge) {
-        updatedBadges.push(selectedBadge);
-      }
+      const badge = AVAILABLE_BADGES.find(b => b.id === badgeId);
+      updated = badge ? [...current, badge] : current;
     }
-    
-    setUserForBadges({
-      ...userForBadges,
-      badges: updatedBadges
-    });
+    setUserForBadges({ ...userForBadges, badges: updated });
   };
 
   const handleSaveBadges = () => {
     if (!userForBadges) return;
-    
     updateUser(userForBadges.id, { badges: userForBadges.badges });
     setIsBadgeDialogOpen(false);
-    
-    toast({
-      title: "Auszeichnungen aktualisiert",
-      description: "Die Auszeichnungen wurden erfolgreich aktualisiert."
-    });
-  };
-
-  const getAvailableBadges = (): UserBadge[] => {
-    // Enhanced version with better error handling
-    try {
-      const storedBadges = localStorage.getItem('userBadges');
-      if (storedBadges) {
-        const parsedBadges = JSON.parse(storedBadges);
-        if (Array.isArray(parsedBadges) && parsedBadges.length > 10) {
-          return parsedBadges;
-        } else {
-          console.warn("Retrieved badges are empty or too few, using defaults");
-          return generateDefaultBadges();
-        }
-      }
-    } catch (e) {
-      console.error('Error loading badges:', e);
-    }
-    return generateDefaultBadges();
+    toast({ title: 'Auszeichnungen aktualisiert' });
   };
 
   const badgeCategories = [
@@ -123,17 +43,14 @@ export const useBadgeOperations = () => {
     { id: 'skill', name: 'Kompetenz' },
     { id: 'tenure', name: 'Zugehörigkeit' },
     { id: 'certification', name: 'Zertifizierung' },
-    { id: 'special', name: 'Besondere Auszeichnung' }
+    { id: 'special', name: 'Besondere Auszeichnung' },
   ];
 
   return {
-    isBadgeDialogOpen,
-    setIsBadgeDialogOpen,
+    isBadgeDialogOpen, setIsBadgeDialogOpen,
     userForBadges,
     badgeCategories,
-    availableBadges,
-    handleOpenBadgeDialog,
-    handleToggleBadge,
-    handleSaveBadges
+    availableBadges: AVAILABLE_BADGES,
+    handleOpenBadgeDialog, handleToggleBadge, handleSaveBadges,
   };
 };

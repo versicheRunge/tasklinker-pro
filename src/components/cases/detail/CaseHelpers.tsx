@@ -136,40 +136,12 @@ export const generatePDF = (caseItem: CaseItem, options: PdfOptions = {}) => {
 };
 
 export const sendNotification = (
-  userId: string, 
-  title: string, 
-  message: string, 
-  caseId: string
+  _userId: string,
+  _title: string,
+  _message: string,
+  _caseId: string
 ) => {
-  // In a real app, this would send to a backend service
-  // For now, we'll just store in localStorage
-  const notifications = JSON.parse(localStorage.getItem('notifications') || '{}');
-  
-  if (!notifications[userId]) {
-    notifications[userId] = [];
-  }
-  
-  notifications[userId].push({
-    id: `notif-${Date.now()}`,
-    title,
-    message,
-    timestamp: new Date().toISOString(),
-    read: false,
-    caseId
-  });
-  
-  localStorage.setItem('notifications', JSON.stringify(notifications));
+  // Notifications are handled via Supabase in UserContext.addNotification
 };
 
-export const checkAllCasesCompleted = () => {
-  const storedCases = localStorage.getItem('cases');
-  if (storedCases) {
-    const allCases = JSON.parse(storedCases) as CaseItem[];
-    const anyOpenCases = allCases.some(c => 
-      c.status !== 'completed' && !c.archived
-    );
-    
-    return !anyOpenCases;
-  }
-  return false;
-};
+export const checkAllCasesCompleted = () => false;

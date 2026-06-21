@@ -1,303 +1,100 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { cases } from '../data/mockData';
-import { BarChart3, FileBarChart, ArrowUpDown, TrendingUp, Users, Download, FileText } from 'lucide-react';
+import { BarChart3, FileBarChart, TrendingUp, Users, Download, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { toast } from "../hooks/use-toast";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { CASE_TYPE_LABELS } from '../types/case';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
+const STATUS_LABELS: Record<string, string> = {
+  new: 'Neu', in_progress: 'In Bearbeitung', waiting: 'Wartet auf Rückmeldung', completed: 'Abgeschlossen',
+};
+
 const Reports = () => {
-  const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const { users } = useUser();
-  const [lastUpdated, setLastUpdated] = useState<string>(format(new Date(), 'dd.MM.yyyy', { locale: de }));
-  
-  // Auto-update lastUpdated date
+  const { profile } = useAuth();
+  const [cases, setCases] = useState<any[]>([]);
+  const lastUpdated = format(new Date(), 'dd.MM.yyyy', { locale: de });
+
   useEffect(() => {
-    setLastUpdated(format(new Date(), 'dd.MM.yyyy', { locale: de }));
-  }, []);
+    if (!profile) return;
+    supabase.from('cases').select('id,title,status,type,assignee_id,created_at,updated_at,customer_name,priority')
+      .eq('archived', false).then(({ data }) => { if (data) setCases(data); });
+  }, [profile]);
 
-  // Count cases by type
-  const casesByType = cases.reduce((acc, curr) => {
-    acc[curr.type] = (acc[curr.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const casesByType = cases.reduce((acc, c) => { acc[c.type] = (acc[c.type] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const casesByStatus = cases.reduce((acc, c) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const casesByAssignee = cases.reduce((acc, c) => { acc[c.assignee_id] = (acc[c.assignee_id] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const completedByAssignee = cases.filter(c => c.status === 'completed').reduce((acc, c) => { acc[c.assignee_id] = (acc[c.assignee_id] || 0) + 1; return acc; }, {} as Record<string, number>);
 
-  // Count cases by status
-  const casesByStatus = cases.reduce((acc, curr) => {
-    acc[curr.status] = (acc[curr.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Count cases by assignee
-  const casesByAssignee = cases.reduce((acc, curr) => {
-    const assigneeId = curr.assignee.id;
-    acc[assigneeId] = (acc[assigneeId] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Count completed cases by assignee
-  const completedCasesByAssignee = cases
-    .filter(c => c.status === 'completed')
-    .reduce((acc, curr) => {
-      const assigneeId = curr.assignee.id;
-      acc[assigneeId] = (acc[assigneeId] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-  
-  // Calculate average resolution time by case type (mock data for demonstration)
-  const avgResolutionByType = {
-    'damage': '3.2 Tage',
-    'evb': '1.5 Tage',
-    'contract_change': '2.8 Tage',
-    'inquiry': '1.2 Tage',
-    'other': '2.0 Tage'
-  };
+  const translateType = (t: string) => (CASE_TYPE_LABELS as any)[t] ?? t;
+  const translateStatus = (s: string) => STATUS_LABELS[s] ?? s;
 
-  // Function to translate case types
-  const translateCaseType = (type: string): string => {
-    switch (type) {
-      case 'damage': return 'Schadenmeldung';
-      case 'evb': return 'eVB-Anfrage';
-      case 'contract_change': return 'Vertragsänderung';
-      case 'inquiry': return 'Kundenanfrage';
-      default: return 'Sonstiges';
-    }
-  };
+  const topMembers = Object.entries(casesByAssignee).map(([id, count]) => ({
+    id, name: users.find(u => u.id === id)?.name ?? 'Unbekannt',
+    count: count as number, completed: completedByAssignee[id] ?? 0,
+  })).sort((a, b) => b.count - a.count).slice(0, 3);
 
-  // Function to translate case status
-  const translateCaseStatus = (status: string): string => {
-    switch (status) {
-      case 'new': return 'Neu';
-      case 'in_progress': return 'In Bearbeitung';
-      case 'waiting': return 'Wartet auf Rückmeldung';
-      case 'completed': return 'Abgeschlossen';
-      default: return status;
-    }
-  };
+  const exportData = (fmt: 'json' | 'csv' | 'pdf') => {
+    const rows = cases.map(c => ({
+      id: c.id, titel: c.title, status: translateStatus(c.status), typ: translateType(c.type),
+      erstelltAm: new Date(c.created_at).toLocaleDateString('de-DE'),
+      zugewiesenAn: users.find(u => u.id === c.assignee_id)?.name ?? 'Unbekannt',
+    }));
 
-  const handleExportData = (format: 'json' | 'csv' | 'pdf') => {
-    if (format === 'json') {
-      const dataToExport = cases.map(c => ({
-        id: c.id,
-        titel: c.title,
-        status: translateCaseStatus(c.status),
-        typ: translateCaseType(c.type),
-        erstelltAm: c.createdAt,
-        letzteAktualisierung: c.lastUpdated,
-        zugewiesenAn: c.assignee.name
-      }));
-      
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
-      const filename = "vorgaenge_export.json";
-      
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", filename);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-    } 
-    else if (format === 'csv') {
-      // CSV erstellen
-      const headers = ['ID', 'Titel', 'Status', 'Typ', 'Erstellt am', 'Letzte Aktualisierung', 'Zugewiesen an'];
-      const rows = cases.map(c => [
-        c.id,
-        c.title,
-        translateCaseStatus(c.status),
-        translateCaseType(c.type),
-        new Date(c.createdAt).toLocaleDateString('de-DE'),
-        new Date(c.lastUpdated).toLocaleDateString('de-DE'),
-        c.assignee.name
-      ]);
-      
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
-      
-      const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-      const filename = "vorgaenge_export.csv";
-      
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", filename);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-    }
-    else if (format === 'pdf') {
-      // PDF erstellen mit jsPDF
+    if (fmt === 'json') {
+      const a = document.createElement('a');
+      a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(rows, null, 2));
+      a.download = 'vorgaenge_export.json'; document.body.appendChild(a); a.click(); a.remove();
+    } else if (fmt === 'csv') {
+      const headers = ['ID','Titel','Status','Typ','Erstellt am','Zugewiesen an'];
+      const csv = [headers, ...rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g,'""')}"`))].map(r => r.join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'vorgaenge_export.csv'; document.body.appendChild(a); a.click(); a.remove();
+    } else {
       const pdf = new jsPDF();
-      
-      // Titel
-      pdf.setFontSize(20);
-      pdf.text('Vorgänge - Exportbericht', 14, 22);
-      pdf.setFontSize(12);
-      pdf.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 14, 32);
-      
-      // Tabellendaten vorbereiten
-      const tableColumn = ['ID', 'Titel', 'Status', 'Typ', 'Erstellt am', 'Zugewiesen an'];
-      const tableRows = cases.map(c => [
-        c.id,
-        c.title,
-        translateCaseStatus(c.status),
-        translateCaseType(c.type),
-        new Date(c.createdAt).toLocaleDateString('de-DE'),
-        c.assignee.name
-      ]);
-      
-      // Tabelle erstellen
+      pdf.setFontSize(20); pdf.text('Vorgänge - Export', 14, 22);
+      pdf.setFontSize(12); pdf.text(`Erstellt: ${new Date().toLocaleDateString('de-DE')}`, 14, 32);
       autoTable(pdf, {
-        head: [tableColumn],
-        body: tableRows,
-        startY: 40,
-        styles: { 
-          fontSize: 9,
-          cellPadding: 3
-        },
-        headStyles: {
-          fillColor: [60, 60, 60],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold'
-        }
+        head: [['Titel','Status','Typ','Erstellt am','Zugewiesen an']],
+        body: rows.map(r => [r.titel, r.status, r.typ, r.erstelltAm, r.zugewiesenAn]),
+        startY: 40, styles: { fontSize: 9 }, headStyles: { fillColor: [60,60,60] },
       });
-      
-      // PDF speichern
       pdf.save('vorgaenge_export.pdf');
     }
-    
     setIsExportDialogOpen(false);
-    toast({
-      title: "Export erfolgreich",
-      description: `Die Daten wurden erfolgreich als ${format.toUpperCase()} exportiert.`,
-    });
+    toast({ title: 'Export erfolgreich', description: `Export als ${fmt.toUpperCase()} gestartet.` });
   };
 
-  const exportReportToPdf = (reportId: string) => {
+  const exportReport = (id: string) => {
     const pdf = new jsPDF();
-    let currentY = 20;
-    
-    // Report title based on ID
-    let title = "Bericht";
-    let reportData: any[] = [];
-    
-    switch(reportId) {
-      case 'categories':
-        title = "Vorgänge nach Kategorien";
-        reportData = Object.entries(casesByType).map(([type, count]) => 
-          [translateCaseType(type), count.toString()]);
-        break;
-      case 'performance':
-        title = "Performance-Analyse";
-        reportData = Object.entries(casesByStatus).map(([status, count]) =>
-          [translateCaseStatus(status), count.toString()]);
-        break;
-      case 'monthly':
-        title = "Monatliche Zusammenfassung";
-        reportData = [
-          ["Neu erstellte Vorgänge", cases.length.toString()],
-          ["Abgeschlossene Vorgänge", (casesByStatus['completed'] || 0).toString()],
-          ["Ausstehende Vorgänge", (cases.length - (casesByStatus['completed'] || 0)).toString()]
-        ];
-        break;
-      case 'comparison':
-        title = "Vergleichsanalyse - Bearbeitungszeiten";
-        reportData = Object.entries(avgResolutionByType).map(([type, time]) => 
-          [translateCaseType(type), time]);
-        break;
-      case 'team':
-        title = "Team-Performance";
-        reportData = Object.entries(casesByAssignee)
-          .map(([userId, count]) => {
-            const user = users.find(u => u.id === userId);
-            const completedCount = completedCasesByAssignee[userId] || 0;
-            const completionRate = count > 0 ? Math.round((completedCount / count) * 100) : 0;
-            
-            return [
-              user?.name || 'Unbekannt',
-              `${count} Vorgänge`,
-              `${completedCount} abgeschlossen`,
-              `${completionRate}% Abschlussrate`
-            ];
-          });
-        break;
+    const titles: Record<string, string> = {
+      categories: 'Vorgänge nach Sparten', performance: 'Performance-Analyse',
+      monthly: 'Zusammenfassung', team: 'Team-Performance',
+    };
+    const title = titles[id] ?? 'Bericht';
+    pdf.setFontSize(22); pdf.text(title, 14, 20);
+    pdf.setFontSize(12); pdf.text(`Erstellt: ${format(new Date(), 'dd.MM.yyyy', { locale: de })}`, 14, 30);
+    let data: string[][] = [], head: string[] = [];
+    if (id === 'categories') { head = ['Sparte','Anzahl']; data = Object.entries(casesByType).map(([t,c]) => [translateType(t), String(c)]); }
+    if (id === 'performance') { head = ['Status','Anzahl']; data = Object.entries(casesByStatus).map(([s,c]) => [translateStatus(s), String(c)]); }
+    if (id === 'monthly') { head = ['Metrik','Wert']; data = [['Gesamt',String(cases.length)],['Abgeschlossen',String(casesByStatus['completed']??0)],['Offen',String(cases.length-(casesByStatus['completed']??0))]]; }
+    if (id === 'team') {
+      head = ['Mitarbeiter','Vorgänge','Abgeschlossen','Rate'];
+      data = topMembers.map(m => [m.name, String(m.count), String(m.completed), `${m.count>0?Math.round((m.completed/m.count)*100):0}%`]);
     }
-    
-    // Title
-    pdf.setFontSize(22);
-    pdf.text(title, 14, currentY);
-    currentY += 10;
-    
-    // Date
-    pdf.setFontSize(12);
-    pdf.text(`Bericht erstellt am: ${format(new Date(), 'dd.MM.yyyy', { locale: de })}`, 14, currentY);
-    currentY += 15;
-    
-    // Table headers
-    let headers: string[] = [];
-    
-    switch(reportId) {
-      case 'categories':
-      case 'performance':
-        headers = ['Kategorie', 'Anzahl'];
-        break;
-      case 'monthly':
-        headers = ['Metrik', 'Wert'];
-        break;
-      case 'comparison':
-        headers = ['Vorgangstyp', 'Durchschnittliche Bearbeitungszeit'];
-        break;
-      case 'team':
-        headers = ['Mitarbeiter', 'Anzahl Vorgänge', 'Abgeschlossen', 'Abschlussrate'];
-        break;
-    }
-    
-    // Table data
-    autoTable(pdf, {
-      head: [headers],
-      body: reportData,
-      startY: currentY,
-      styles: { fontSize: 10, cellPadding: 5 },
-      headStyles: {
-        fillColor: [60, 60, 60],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      }
-    });
-    
-    // Save PDF
-    pdf.save(`${title.toLowerCase().replace(/\s+/g, '_')}_export.pdf`);
-    
-    toast({
-      title: "PDF Export erfolgreich",
-      description: `Der Bericht "${title}" wurde als PDF exportiert.`
-    });
-  };
-
-  const openReport = (reportId: string) => {
-    setSelectedReport(reportId);
-    
-    // PDF-Export for the selected report
-    exportReportToPdf(reportId);
-  };
-
-  // Get top 3 team members by case count
-  const getTopTeamMembers = () => {
-    return Object.entries(casesByAssignee)
-      .map(([userId, count]) => ({
-        userId,
-        name: users.find(u => u.id === userId)?.name || 'Unbekannt',
-        count,
-        completed: completedCasesByAssignee[userId] || 0
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+    autoTable(pdf, { head: [head], body: data, startY: 40, styles:{fontSize:10}, headStyles:{fillColor:[60,60,60]} });
+    pdf.save(`${title.toLowerCase().replace(/\s+/g,'_')}.pdf`);
+    toast({ title: 'PDF exportiert', description: title });
   };
 
   return (
@@ -305,198 +102,99 @@ const Reports = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">Berichte</h1>
-          <p className="text-muted-foreground">Übersicht aller statistischen Daten und Auswertungen.</p>
+          <p className="text-muted-foreground">Statistische Übersicht aller Vorgänge.</p>
         </div>
-        <button 
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          onClick={() => setIsExportDialogOpen(true)}
-        >
-          <Download className="w-4 h-4" />
-          <span>Daten exportieren</span>
+        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" onClick={() => setIsExportDialogOpen(true)}>
+          <Download className="w-4 h-4" /><span>Daten exportieren</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <div 
-          className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
-          onClick={() => openReport('categories')}
-        >
+        <div className="bg-card rounded-xl border p-6 hover:shadow-md transition-all cursor-pointer hover:-translate-y-1" onClick={() => exportReport('categories')}>
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-primary/10 p-3 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-primary" />
-            </div>
-            <h3 className="font-semibold text-lg">Vorgänge nach Kategorien</h3>
+            <div className="bg-primary/10 p-3 rounded-lg"><BarChart3 className="w-5 h-5 text-primary" /></div>
+            <h3 className="font-semibold text-lg">Vorgänge nach Sparten</h3>
           </div>
-          <div className="space-y-3 mb-4">
-            {Object.entries(casesByType).map(([type, count]) => (
-              <div key={type} className="flex justify-between items-center">
-                <span className="text-sm">{translateCaseType(type)}</span>
-                <span className="font-medium">{count}</span>
-              </div>
+          <div className="space-y-2 mb-4">
+            {Object.entries(casesByType).slice(0,6).map(([t,c]) => (
+              <div key={t} className="flex justify-between"><span className="text-sm">{translateType(t)}</span><span className="font-medium">{c}</span></div>
             ))}
+            {Object.keys(casesByType).length === 0 && <p className="text-sm text-muted-foreground">Keine Daten</p>}
           </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
-          </div>
+          <div className="flex justify-end"><span className="text-xs text-muted-foreground">Stand: {lastUpdated}</span></div>
         </div>
 
-        <div 
-          className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
-          onClick={() => openReport('performance')}
-        >
+        <div className="bg-card rounded-xl border p-6 hover:shadow-md transition-all cursor-pointer hover:-translate-y-1" onClick={() => exportReport('performance')}>
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-amber-100 p-3 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-amber-600" />
-            </div>
+            <div className="bg-amber-100 p-3 rounded-lg"><TrendingUp className="w-5 h-5 text-amber-600" /></div>
             <h3 className="font-semibold text-lg">Performance-Analyse</h3>
           </div>
-          <div className="space-y-3 mb-4">
-            {Object.entries(casesByStatus).map(([status, count]) => (
-              <div key={status} className="flex justify-between items-center">
-                <span className="text-sm">{translateCaseStatus(status)}</span>
-                <span className="font-medium">{count}</span>
-              </div>
+          <div className="space-y-2 mb-4">
+            {Object.entries(casesByStatus).map(([s,c]) => (
+              <div key={s} className="flex justify-between"><span className="text-sm">{translateStatus(s)}</span><span className="font-medium">{c}</span></div>
             ))}
+            {Object.keys(casesByStatus).length === 0 && <p className="text-sm text-muted-foreground">Keine Daten</p>}
           </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
-          </div>
+          <div className="flex justify-end"><span className="text-xs text-muted-foreground">Stand: {lastUpdated}</span></div>
         </div>
 
-        <div 
-          className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
-          onClick={() => openReport('monthly')}
-        >
+        <div className="bg-card rounded-xl border p-6 hover:shadow-md transition-all cursor-pointer hover:-translate-y-1" onClick={() => exportReport('monthly')}>
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <FileBarChart className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="font-semibold text-lg">Monatliche Zusammenfassung</h3>
+            <div className="bg-blue-100 p-3 rounded-lg"><FileBarChart className="w-5 h-5 text-blue-600" /></div>
+            <h3 className="font-semibold text-lg">Zusammenfassung</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Übersicht aller Aktivitäten des letzten Monats im Vergleich.</p>
-          <div className="p-3 bg-blue-50 rounded-lg mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-blue-700">Neu erstellte Vorgänge</span>
-              <span className="font-medium text-blue-700">{cases.length}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-blue-700">Abgeschlossene Vorgänge</span>
-              <span className="font-medium text-blue-700">{casesByStatus['completed'] || 0}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-blue-700">Ausstehende Vorgänge</span>
-              <span className="font-medium text-blue-700">{cases.length - (casesByStatus['completed'] || 0)}</span>
-            </div>
+          <div className="p-3 bg-blue-50 rounded-lg mb-4 space-y-2">
+            <div className="flex justify-between"><span className="text-sm text-blue-700">Gesamt</span><span className="font-medium text-blue-700">{cases.length}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-blue-700">Abgeschlossen</span><span className="font-medium text-blue-700">{casesByStatus['completed']??0}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-blue-700">Offen</span><span className="font-medium text-blue-700">{cases.length-(casesByStatus['completed']??0)}</span></div>
           </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
-          </div>
+          <div className="flex justify-end"><span className="text-xs text-muted-foreground">Stand: {lastUpdated}</span></div>
         </div>
 
-        <div 
-          className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
-          onClick={() => openReport('comparison')}
-        >
+        <div className="bg-card rounded-xl border p-6 hover:shadow-md transition-all cursor-pointer hover:-translate-y-1" onClick={() => exportReport('team')}>
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-green-100 p-3 rounded-lg">
-              <ArrowUpDown className="w-5 h-5 text-green-600" />
-            </div>
-            <h3 className="font-semibold text-lg">Vergleichsanalyse</h3>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">Vergleich von Bearbeitungszeiten nach Vorgangstypen.</p>
-          <div className="space-y-3 mb-4">
-            {Object.entries(avgResolutionByType).map(([type, time]) => (
-              <div key={type} className="flex justify-between items-center">
-                <span className="text-sm">{translateCaseType(type)}</span>
-                <span className="font-medium">{time}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
-          </div>
-        </div>
-
-        <div 
-          className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
-          onClick={() => openReport('team')}
-        >
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Users className="w-5 h-5 text-purple-600" />
-            </div>
+            <div className="bg-purple-100 p-3 rounded-lg"><Users className="w-5 h-5 text-purple-600" /></div>
             <h3 className="font-semibold text-lg">Team-Performance</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Performance-Analyse nach Team-Mitgliedern.</p>
           <div className="space-y-3 mb-4">
-            {getTopTeamMembers().map(member => (
-              <div key={member.userId} className="border-b pb-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">{member.name}</span>
-                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                    {member.count} Vorgänge
-                  </span>
+            {topMembers.map(m => (
+              <div key={m.id} className="border-b pb-2">
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">{m.name}</span>
+                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{m.count} Vorgänge</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div 
-                    className="bg-purple-600 h-1.5 rounded-full" 
-                    style={{ width: `${member.count > 0 ? (member.completed / member.count) * 100 : 0}%` }}
-                  ></div>
+                  <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${m.count>0?(m.completed/m.count)*100:0}%` }} />
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-xs text-muted-foreground">{member.completed} abgeschlossen</span>
-                  <span className="text-xs text-muted-foreground">
-                    {member.count > 0 ? Math.round((member.completed / member.count) * 100) : 0}% Abschlussrate
-                  </span>
+                  <span className="text-xs text-muted-foreground">{m.completed} abgeschlossen</span>
+                  <span className="text-xs text-muted-foreground">{m.count>0?Math.round((m.completed/m.count)*100):0}%</span>
                 </div>
               </div>
             ))}
+            {topMembers.length === 0 && <p className="text-sm text-muted-foreground">Keine Daten</p>}
           </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">Letzte Aktualisierung: {lastUpdated}</span>
-          </div>
+          <div className="flex justify-end"><span className="text-xs text-muted-foreground">Stand: {lastUpdated}</span></div>
         </div>
       </div>
 
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Daten exportieren</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Daten exportieren</DialogTitle></DialogHeader>
           <div className="py-4">
-            <p className="text-muted-foreground mb-4">Wählen Sie das Format für den Export der Daten:</p>
+            <p className="text-muted-foreground mb-4">Format auswählen:</p>
             <div className="grid grid-cols-3 gap-4">
-              <button
-                className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-colors"
-                onClick={() => handleExportData('json')}
-              >
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <FileBarChart className="w-6 h-6 text-primary" />
-                </div>
-                <span className="font-medium">JSON Format</span>
-                <span className="text-xs text-muted-foreground">Für Datenverarbeitung</span>
+              <button className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-primary/5 transition-colors" onClick={() => exportData('json')}>
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center"><FileBarChart className="w-6 h-6 text-primary" /></div>
+                <span className="font-medium">JSON</span><span className="text-xs text-muted-foreground">Datenverarbeitung</span>
               </button>
-              
-              <button
-                className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-green-50 hover:border-green-200 transition-colors"
-                onClick={() => handleExportData('csv')}
-              >
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <Download className="w-6 h-6 text-green-600" />
-                </div>
-                <span className="font-medium">CSV Format</span>
-                <span className="text-xs text-muted-foreground">Für Tabellen</span>
+              <button className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-green-50 transition-colors" onClick={() => exportData('csv')}>
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"><Download className="w-6 h-6 text-green-600" /></div>
+                <span className="font-medium">CSV</span><span className="text-xs text-muted-foreground">Für Tabellen</span>
               </button>
-              
-              <button
-                className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
-                onClick={() => handleExportData('pdf')}
-              >
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="font-medium">PDF Format</span>
-                <span className="text-xs text-muted-foreground">Zum Ausdrucken</span>
+              <button className="p-4 border rounded-lg flex flex-col items-center gap-2 hover:bg-blue-50 transition-colors" onClick={() => exportData('pdf')}>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><FileText className="w-6 h-6 text-blue-600" /></div>
+                <span className="font-medium">PDF</span><span className="text-xs text-muted-foreground">Zum Drucken</span>
               </button>
             </div>
           </div>

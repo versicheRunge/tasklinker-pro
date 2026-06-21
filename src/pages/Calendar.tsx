@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Plus, UserCheck, HeartPulse } from 'lucide-react';
@@ -13,11 +13,12 @@ import { AdminFilteredEvents } from '../components/calendar/AdminFilteredEvents'
 import { AddEventDialog } from '../components/calendar/AddEventDialog';
 import { ViewEventDialog } from '../components/calendar/ViewEventDialog';
 import { CustomCalendar } from '../components/calendar/CustomCalendar';
+import { HandoverDialog } from '../components/calendar/HandoverDialog';
 import { CalendarEvent } from '../types/calendar';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
-  const { 
+  const {
     date,
     events,
     isEventDialogOpen,
@@ -38,19 +39,18 @@ const CalendarPage: React.FC = () => {
     getEventsForDate
   } = useCalendar();
 
-  // Function to generate a unique ID
-  const generateUniqueId = () => {
-    return `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  };
+  const [handover, setHandover] = useState<{ start: string; end: string } | null>(null);
 
-  // Function to handle saving a new event with ID
+  const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
   const handleSaveEvent = (): boolean => {
-    const completeEvent: CalendarEvent = {
-      id: generateUniqueId(),
-      ...newEvent
-    };
-    
-    return handleAddEvent(completeEvent);
+    const completeEvent: CalendarEvent = { id: generateUniqueId(), ...newEvent };
+    const ok = handleAddEvent(completeEvent);
+    // Offer handover when saving personal absence
+    if (ok && newEvent.type === 'absence' && currentUser) {
+      setHandover({ start: newEvent.startDate ?? '', end: newEvent.endDate ?? newEvent.startDate ?? '' });
+    }
+    return ok;
   };
 
   return (
@@ -59,7 +59,7 @@ const CalendarPage: React.FC = () => {
         <div className="md:w-1/2 lg:w-2/5">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold">Teamkalender</h1>
-            <button 
+            <button
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               onClick={() => {
                 setNewEvent(prev => ({ ...prev, date }));
@@ -70,24 +70,24 @@ const CalendarPage: React.FC = () => {
               <span>Termin eintragen</span>
             </button>
           </div>
-          
+
           <div className="bg-card border border-border rounded-xl p-4 mb-4">
-            <CustomCalendar 
+            <CustomCalendar
               date={date}
               onDateChange={handleDateChange}
               events={events}
             />
           </div>
-          
+
           <CalendarLegend users={users} isAdmin={isAdmin} />
         </div>
-        
+
         <div className="md:w-1/2 lg:w-3/5">
           <div className="bg-card border border-border rounded-xl p-6">
             <h2 className="text-xl font-medium mb-4">
               {format(date, 'PPPP', { locale: de })}
             </h2>
-            
+
             {isAdmin && (
               <div className="mb-4 flex flex-wrap gap-2">
                 <button
@@ -112,9 +112,9 @@ const CalendarPage: React.FC = () => {
                 </button>
               </div>
             )}
-            
+
             {isAdmin && adminView !== 'all' ? (
-              <AdminFilteredEvents 
+              <AdminFilteredEvents
                 filteredEvents={getFilteredEvents()}
                 adminView={adminView}
                 users={users}
@@ -125,7 +125,7 @@ const CalendarPage: React.FC = () => {
               <div className="space-y-4">
                 {getEventsForDate(date).length > 0 ? (
                   getEventsForDate(date).map((event) => (
-                    <EventItem 
+                    <EventItem
                       key={event.id}
                       event={event}
                       users={users}
@@ -145,9 +145,9 @@ const CalendarPage: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-        <AddEventDialog 
+        <AddEventDialog
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
@@ -157,10 +157,10 @@ const CalendarPage: React.FC = () => {
           isAdmin={isAdmin}
         />
       </Dialog>
-      
+
       <Dialog open={isViewEventDialogOpen} onOpenChange={setIsViewEventDialogOpen}>
         {selectedEvent && (
-          <ViewEventDialog 
+          <ViewEventDialog
             event={selectedEvent}
             onClose={() => setIsViewEventDialogOpen(false)}
             onDelete={handleDeleteEvent}
@@ -170,6 +170,16 @@ const CalendarPage: React.FC = () => {
           />
         )}
       </Dialog>
+
+      {handover && currentUser && (
+        <HandoverDialog
+          currentUser={currentUser}
+          users={users}
+          vacationStart={handover.start}
+          vacationEnd={handover.end}
+          onClose={() => setHandover(null)}
+        />
+      )}
     </AppLayout>
   );
 };

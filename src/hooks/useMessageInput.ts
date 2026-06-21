@@ -1,7 +1,8 @@
-
 import { useState } from 'react';
-import { Message, User } from '../types/chat';
+import { Message } from '../types/chat';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface UseMessageInputProps {
   groupId?: string;
@@ -10,101 +11,58 @@ interface UseMessageInputProps {
 
 export const useMessageInput = ({ groupId = 'global', setMessages }: UseMessageInputProps) => {
   const { users, currentUser, mentionUser, addNotification } = useUser();
+  const { profile } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
   const formatMessageWithMentions = (text: string) => {
     let formattedText = text;
-    
     const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex) || [];
-    
     users.forEach(user => {
       const userMention = `@${user.name}`;
       if (text.includes(userMention)) {
-        formattedText = formattedText.replace(
-          new RegExp(userMention, 'g'),
-          `<span class="text-primary font-medium">${userMention}</span>`
-        );
+        formattedText = formattedText.replace(new RegExp(userMention, 'g'), `<span class="text-primary font-medium">${userMention}</span>`);
       }
     });
-    
     return { formattedText, mentions: mentions.map(m => m.substring(1)) };
   };
 
-  const simulateUserTyping = (userId: string) => {
-    if (!typingUsers.includes(userId)) {
-      setTypingUsers(prev => [...prev, userId]);
-      
-      setTimeout(() => {
-        setTypingUsers(prev => prev.filter(id => id !== userId));
-      }, 2000);
+  const sendMessage = async () => {
+    if (!inputValue.trim() || !profile) return;
+    const { mentions } = formatMessageWithMentions(inputValue);
+    const mentionedUserIds = mentions.map(name => users.find(u => u.name === name)?.id).filter(Boolean) as string[];
+
+    const { data: channel } = await supabase.from('chat_channels').select('id').eq('name', groupId).maybeSingle();
+    let channelId = channel?.id;
+
+    if (!channelId) {
+      const { data: created } = await supabase.from('chat_channels').insert({ name: groupId, type: 'channel', created_by: profile.id }).select('id').single();
+      channelId = created?.id;
     }
-  };
-  
-  const sendMessage = () => {
-    if (!inputValue.trim() || !currentUser) return;
-    
-    const { formattedText, mentions } = formatMessageWithMentions(inputValue);
-    
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      userId: currentUser.id,
-      text: inputValue,
-      timestamp: new Date().toISOString(),
-      mentions: mentions
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
+    if (!channelId) return;
+
+    const { error } = await supabase.from('chat_messages').insert({
+      channel_id: channelId, user_id: profile.id, text: inputValue, mentions: mentionedUserIds,
+    });
+    if (error) { console.error('Chat-Fehler:', error.message); return; }
     setInputValue('');
-    
-    const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
-    localStorage.setItem(lastSeenKey, newMessage.timestamp);
-    
-    // Handle mentions
-    mentions.forEach(mentionedName => {
-      const mentionedUser = users.find(u => u.name === mentionedName);
-      if (mentionedUser && mentionedUser.id !== currentUser.id) {
-        mentionUser(
-          mentionedUser.id, 
-          groupId, 
-          `@${mentionedUser.name} wurde im Chat erwähnt`,
-          "chat"
-        );
-      }
+
+    // Mention notifications
+    mentionedUserIds.forEach(uid => {
+      if (uid !== profile.id) mentionUser(uid, groupId, `@${users.find(u => u.id === uid)?.name} wurde erwähnt`, 'chat');
     });
-    
-    // Notify all users except the sender
+    // Notify all others
     users.forEach(user => {
-      if (user.id !== currentUser.id) {
-        addNotification({
-          title: `Neue Nachricht im Kanal`,
-          message: `${currentUser.name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? "..." : ""}`,
-          targetUserId: user.id,
-          type: "chat",
-          caseId: groupId
-        });
+      if (user.id !== profile.id) {
+        addNotification({ title: 'Neue Nachricht', message: `${profile.full_name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? '...' : ''}`, targetUserId: user.id, type: 'chat', caseId: groupId });
       }
     });
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    } else {
-      if (currentUser) {
-        simulateUserTyping(currentUser.id);
-      }
-    }
   };
 
-  return {
-    inputValue, 
-    setInputValue,
-    typingUsers,
-    formatMessageWithMentions,
-    sendMessage,
-    handleKeyDown
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
+
+  return { inputValue, setInputValue, typingUsers, formatMessageWithMentions, sendMessage, handleKeyDown };
 };

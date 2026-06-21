@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { cases } from '../data/mockData';
-import { CheckSquare, PlusCircle, Edit2, Trash, Save, ChevronDown, ChevronRight, Plus, Settings, AlertTriangle } from 'lucide-react';
+import { CheckSquare, PlusCircle, Edit2, Trash, Save, ChevronDown, ChevronRight, Plus, AlertTriangle } from 'lucide-react';
 import { toast } from "../hooks/use-toast";
 import { useUser } from '../contexts/UserContext';
-import { ChecklistItemType, CaseType, SubChecklistItem } from '../types/case';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { ChecklistItemType, CaseType, SubChecklistItem, CASE_TYPE_LABELS } from '../types/case';
 import { 
   Dialog, 
   DialogContent, 
@@ -30,43 +31,9 @@ import { Button } from "../components/ui/button";
 
 const Checklists: React.FC = () => {
   const { isAdmin } = useUser();
-  
-  const getStoredTemplates = () => {
-    const storedTemplates = localStorage.getItem('checklistTemplates');
-    if (storedTemplates) {
-      return JSON.parse(storedTemplates);
-    }
-    
-    return [
-      {
-        id: 'template-1',
-        title: 'Schadenmeldung',
-        type: 'damage' as CaseType,
-        items: cases.find(c => c.type === 'damage')?.checklist || []
-      },
-      {
-        id: 'template-2',
-        title: 'eVB-Anfrage',
-        type: 'evb' as CaseType,
-        items: cases.find(c => c.type === 'evb')?.checklist || []
-      },
-      {
-        id: 'template-3',
-        title: 'Vertragsänderung',
-        type: 'contract_change' as CaseType,
-        items: cases.find(c => c.type === 'contract_change')?.checklist || []
-      },
-      {
-        id: 'template-4',
-        title: 'Kundenanfrage',
-        type: 'inquiry' as CaseType,
-        items: cases.find(c => c.type === 'inquiry')?.checklist || []
-      }
-    ];
-  };
-
-  const [checklistTemplates, setChecklistTemplates] = useState(getStoredTemplates());
-  const [selectedTemplate, setSelectedTemplate] = useState(checklistTemplates[0]);
+  const { profile } = useAuth();
+  const [checklistTemplates, setChecklistTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
@@ -83,8 +50,6 @@ const Checklists: React.FC = () => {
   const [editingSubItemText, setEditingSubItemText] = useState('');
   const [isAddingSubItem, setIsAddingSubItem] = useState<number | null>(null);
   const [newSubItemText, setNewSubItemText] = useState('');
-  const [isCustomType, setIsCustomType] = useState(false);
-  const [customType, setCustomType] = useState('');
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<{
     id: string;
@@ -94,9 +59,15 @@ const Checklists: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem('checklistTemplates', JSON.stringify(checklistTemplates));
-  }, [checklistTemplates]);
+  const loadTemplates = async () => {
+    const { data } = await supabase.from('checklist_templates').select('*').order('created_at');
+    if (data) {
+      setChecklistTemplates(data);
+      if (!selectedTemplate && data.length > 0) setSelectedTemplate(data[0]);
+    }
+  };
+
+  useEffect(() => { if (profile) loadTemplates(); }, [profile]);
 
   const toggleItemExpanded = (index: number) => {
     setExpandedItems(prev => {
@@ -117,150 +88,50 @@ const Checklists: React.FC = () => {
     setEditingDescription(item.description || '');
   };
 
-  const handleSaveItem = () => {
-    if (editingItemIndex === null) return;
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        const updatedItems = [...template.items];
-        updatedItems[editingItemIndex] = {
-          ...updatedItems[editingItemIndex],
-          text: editingText,
-          description: editingDescription || undefined
-        };
-        return { ...template, items: updatedItems };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
-    if (updatedSelectedTemplate) {
-      setSelectedTemplate(updatedSelectedTemplate);
-    }
-    
-    setEditingItemIndex(null);
-    setEditingText('');
-    setEditingDescription('');
-    
-    toast({
-      title: "Checkliste aktualisiert",
-      description: "Der Eintrag wurde erfolgreich gespeichert."
-    });
+  const saveTemplateItems = async (items: any[]) => {
+    if (!selectedTemplate) return;
+    const { error } = await supabase.from('checklist_templates').update({ items }).eq('id', selectedTemplate.id);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    await loadTemplates();
+    const fresh = await supabase.from('checklist_templates').select('*').eq('id', selectedTemplate.id).single();
+    if (fresh.data) setSelectedTemplate(fresh.data);
   };
 
-  const handleDeleteItem = (index: number) => {
-    if (!isAdmin) return;
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        const updatedItems = template.items.filter((_, i) => i !== index);
-        return { ...template, items: updatedItems };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
-    if (updatedSelectedTemplate) {
-      setSelectedTemplate(updatedSelectedTemplate);
-    }
-    
-    toast({
-      title: "Eintrag gelöscht",
-      description: "Der Eintrag wurde erfolgreich aus der Checkliste entfernt."
-    });
+  const handleSaveItem = async () => {
+    if (editingItemIndex === null || !selectedTemplate) return;
+    const updatedItems = [...selectedTemplate.items];
+    updatedItems[editingItemIndex] = { ...updatedItems[editingItemIndex], text: editingText, description: editingDescription || undefined };
+    await saveTemplateItems(updatedItems);
+    setEditingItemIndex(null); setEditingText(''); setEditingDescription('');
+    toast({ title: 'Checkliste aktualisiert', description: 'Eintrag gespeichert.' });
   };
 
-  const handleAddItem = () => {
-    if (!newItemText.trim()) return;
-    
-    const newItem: ChecklistItemType = {
-      text: newItemText,
-      description: newItemDescription || undefined,
-      completed: false,
-      subItems: []
-    };
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        return { ...template, items: [...template.items, newItem] };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === selectedTemplate.id);
-    if (updatedSelectedTemplate) {
-      setSelectedTemplate(updatedSelectedTemplate);
-    }
-    
-    setNewItemText('');
-    setNewItemDescription('');
-    setIsAddingItem(false);
-    
-    toast({
-      title: "Eintrag hinzugefügt",
-      description: "Der neue Eintrag wurde erfolgreich zur Checkliste hinzugefügt."
-    });
+  const handleDeleteItem = async (index: number) => {
+    if (!isAdmin || !selectedTemplate) return;
+    const updatedItems = selectedTemplate.items.filter((_: any, i: number) => i !== index);
+    await saveTemplateItems(updatedItems);
+    toast({ title: 'Eintrag gelöscht' });
   };
 
-  const handleAddTemplate = () => {
-    if (!newTemplate.title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel für die Checkliste ein.",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handleAddItem = async () => {
+    if (!newItemText.trim() || !selectedTemplate) return;
+    const newItem: ChecklistItemType = { text: newItemText, description: newItemDescription || undefined, completed: false, subItems: [] };
+    await saveTemplateItems([...selectedTemplate.items, newItem]);
+    setNewItemText(''); setNewItemDescription(''); setIsAddingItem(false);
+    toast({ title: 'Eintrag hinzugefügt' });
+  };
 
-    let typeValue: CaseType;
-    if (isCustomType) {
-      if (!customType.trim()) {
-        toast({
-          title: "Fehler",
-          description: "Bitte geben Sie einen Typ für die Checkliste ein.",
-          variant: "destructive"
-        });
-        return;
-      }
-      typeValue = customType.trim() as CaseType;
-    } else {
-      if (!newTemplate.type) {
-        toast({
-          title: "Fehler",
-          description: "Bitte wählen Sie einen Typ für die Checkliste aus.",
-          variant: "destructive"
-        });
-        return;
-      }
-      typeValue = newTemplate.type;
-    }
-
-    const newTemplateId = `template-${Date.now()}`;
-    const newChecklistTemplate = {
-      id: newTemplateId,
-      title: newTemplate.title,
-      type: typeValue,
-      items: []
-    };
-
-    const updatedTemplates = [...checklistTemplates, newChecklistTemplate];
-    setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(newChecklistTemplate);
-    setIsAddingTemplate(false);
-    setNewTemplate({
-      title: '',
-      type: ''
-    });
-    setIsCustomType(false);
-    setCustomType('');
-
-    toast({
-      title: "Checkliste erstellt",
-      description: "Die neue Checkliste wurde erfolgreich erstellt."
-    });
+  const handleAddTemplate = async () => {
+    if (!newTemplate.title.trim()) { toast({ title: 'Fehler', description: 'Titel eingeben.', variant: 'destructive' }); return; }
+    if (!newTemplate.type) { toast({ title: 'Fehler', description: 'Typ auswählen.', variant: 'destructive' }); return; }
+    const { data, error } = await supabase.from('checklist_templates').insert({
+      title: newTemplate.title, type: newTemplate.type, items: [], created_by: profile?.id,
+    }).select().single();
+    if (error || !data) { toast({ title: 'Fehler', description: error?.message, variant: 'destructive' }); return; }
+    setIsAddingTemplate(false); setNewTemplate({ title: '', type: '' as CaseType });
+    await loadTemplates();
+    setSelectedTemplate(data);
+    toast({ title: 'Checkliste erstellt' });
   };
 
   const handleEditSubItem = (parentIndex: number, subIndex: number) => {
@@ -273,96 +144,38 @@ const Checklists: React.FC = () => {
     }
   };
 
-  const handleSaveSubItem = () => {
-    if (!editingSubItem) return;
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        const updatedItems = [...template.items];
-        const parentItem = {...updatedItems[editingSubItem.parentIndex]};
-        const subItems = [...(parentItem.subItems || [])];
-        
-        subItems[editingSubItem.subIndex] = {
-          ...subItems[editingSubItem.subIndex],
-          text: editingSubItemText
-        };
-        
-        parentItem.subItems = subItems;
-        updatedItems[editingSubItem.parentIndex] = parentItem;
-        
-        return { ...template, items: updatedItems };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
-    setEditingSubItem(null);
-    setEditingSubItemText('');
-    
-    toast({
-      title: "Unterpunkt aktualisiert",
-      description: "Der Unterpunkt wurde erfolgreich gespeichert."
-    });
+  const handleSaveSubItem = async () => {
+    if (!editingSubItem || !selectedTemplate) return;
+    const updatedItems = [...selectedTemplate.items];
+    const parentItem = { ...updatedItems[editingSubItem.parentIndex] };
+    const subItems = [...(parentItem.subItems || [])];
+    subItems[editingSubItem.subIndex] = { ...subItems[editingSubItem.subIndex], text: editingSubItemText };
+    parentItem.subItems = subItems;
+    updatedItems[editingSubItem.parentIndex] = parentItem;
+    await saveTemplateItems(updatedItems);
+    setEditingSubItem(null); setEditingSubItemText('');
+    toast({ title: 'Unterpunkt aktualisiert' });
   };
 
-  const handleDeleteSubItem = (parentIndex: number, subIndex: number) => {
-    if (!isAdmin) return;
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        const updatedItems = [...template.items];
-        const parentItem = {...updatedItems[parentIndex]};
-        
-        if (parentItem.subItems) {
-          parentItem.subItems = parentItem.subItems.filter((_, i) => i !== subIndex);
-          updatedItems[parentIndex] = parentItem;
-        }
-        
-        return { ...template, items: updatedItems };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
-    
-    toast({
-      title: "Unterpunkt gelöscht",
-      description: "Der Unterpunkt wurde erfolgreich entfernt."
-    });
+  const handleDeleteSubItem = async (parentIndex: number, subIndex: number) => {
+    if (!isAdmin || !selectedTemplate) return;
+    const updatedItems = [...selectedTemplate.items];
+    const parentItem = { ...updatedItems[parentIndex] };
+    if (parentItem.subItems) { parentItem.subItems = parentItem.subItems.filter((_: any, i: number) => i !== subIndex); }
+    updatedItems[parentIndex] = parentItem;
+    await saveTemplateItems(updatedItems);
+    toast({ title: 'Unterpunkt gelöscht' });
   };
 
-  const handleAddSubItem = (parentIndex: number) => {
-    if (!newSubItemText.trim()) return;
-    
-    const newSubItem: SubChecklistItem = {
-      text: newSubItemText,
-      completed: false
-    };
-    
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === selectedTemplate.id) {
-        const updatedItems = [...template.items];
-        const parentItem = {...updatedItems[parentIndex]};
-        
-        parentItem.subItems = [...(parentItem.subItems || []), newSubItem];
-        updatedItems[parentIndex] = parentItem;
-        
-        return { ...template, items: updatedItems };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    setSelectedTemplate(updatedTemplates.find(t => t.id === selectedTemplate.id)!);
-    setIsAddingSubItem(null);
-    setNewSubItemText('');
-    
-    toast({
-      title: "Unterpunkt hinzugefügt",
-      description: "Der neue Unterpunkt wurde erfolgreich hinzugefügt."
-    });
+  const handleAddSubItem = async (parentIndex: number) => {
+    if (!newSubItemText.trim() || !selectedTemplate) return;
+    const updatedItems = [...selectedTemplate.items];
+    const parentItem = { ...updatedItems[parentIndex] };
+    parentItem.subItems = [...(parentItem.subItems || []), { text: newSubItemText, completed: false }];
+    updatedItems[parentIndex] = parentItem;
+    await saveTemplateItems(updatedItems);
+    setIsAddingSubItem(null); setNewSubItemText('');
+    toast({ title: 'Unterpunkt hinzugefügt' });
   };
 
   const handleOpenEditDialog = () => {
@@ -376,39 +189,15 @@ const Checklists: React.FC = () => {
     setIsEditingTemplate(true);
   };
 
-  const handleSaveTemplateEdit = () => {
-    if (!editingTemplate.title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel für die Checkliste ein.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const updatedTemplates = checklistTemplates.map(template => {
-      if (template.id === editingTemplate.id) {
-        return {
-          ...template,
-          title: editingTemplate.title,
-          type: editingTemplate.type as CaseType
-        };
-      }
-      return template;
-    });
-    
-    setChecklistTemplates(updatedTemplates);
-    const updatedSelectedTemplate = updatedTemplates.find(t => t.id === editingTemplate.id);
-    if (updatedSelectedTemplate) {
-      setSelectedTemplate(updatedSelectedTemplate);
-    }
-    
+  const handleSaveTemplateEdit = async () => {
+    if (!editingTemplate.title.trim()) { toast({ title: 'Fehler', description: 'Titel eingeben.', variant: 'destructive' }); return; }
+    const { error } = await supabase.from('checklist_templates').update({ title: editingTemplate.title }).eq('id', editingTemplate.id);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
     setIsEditingTemplate(false);
-    
-    toast({
-      title: "Checkliste aktualisiert",
-      description: "Die Checkliste wurde erfolgreich aktualisiert."
-    });
+    await loadTemplates();
+    const fresh = await supabase.from('checklist_templates').select('*').eq('id', editingTemplate.id).single();
+    if (fresh.data) setSelectedTemplate(fresh.data);
+    toast({ title: 'Checkliste aktualisiert' });
   };
 
   const handleOpenDeleteDialog = () => {
@@ -417,23 +206,15 @@ const Checklists: React.FC = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDeleteTemplate = () => {
+  const handleDeleteTemplate = async () => {
     if (!templateToDelete) return;
-    
-    const updatedTemplates = checklistTemplates.filter(template => template.id !== templateToDelete);
-    setChecklistTemplates(updatedTemplates);
-    
-    if (updatedTemplates.length > 0) {
-      setSelectedTemplate(updatedTemplates[0]);
-    }
-    
-    setTemplateToDelete(null);
-    setIsDeleteDialogOpen(false);
-    
-    toast({
-      title: "Checkliste gelöscht",
-      description: "Die Checkliste wurde erfolgreich gelöscht."
-    });
+    const { error } = await supabase.from('checklist_templates').delete().eq('id', templateToDelete);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    setTemplateToDelete(null); setIsDeleteDialogOpen(false);
+    const remaining = checklistTemplates.filter(t => t.id !== templateToDelete);
+    setSelectedTemplate(remaining.length > 0 ? remaining[0] : null);
+    await loadTemplates();
+    toast({ title: 'Checkliste gelöscht' });
   };
 
   return (
@@ -499,55 +280,17 @@ const Checklists: React.FC = () => {
                   <label className="block text-sm font-medium mb-1" htmlFor="templateType">
                     Vorgangstyp
                   </label>
-                  {!isCustomType ? (
-                    <>
-                      <select
-                        id="templateType"
-                        className="w-full p-2 rounded-md border border-input"
-                        value={newTemplate.type}
-                        onChange={(e) => setNewTemplate({...newTemplate, type: e.target.value as CaseType})}
-                      >
-                        <option value="">Bitte wählen</option>
-                        <option value="damage">Schadenmeldung</option>
-                        <option value="evb">eVB-Anfrage</option>
-                        <option value="contract_change">Vertragsänderung</option>
-                        <option value="inquiry">Kundenanfrage</option>
-                        <option value="other">Sonstiges</option>
-                      </select>
-                      <div className="mt-2">
-                        <button 
-                          type="button" 
-                          className="text-primary text-sm hover:underline"
-                          onClick={() => setIsCustomType(true)}
-                        >
-                          + Eigenen Typ hinzufügen
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        id="customType"
-                        type="text"
-                        className="w-full p-2 rounded-md border border-input"
-                        value={customType}
-                        onChange={(e) => setCustomType(e.target.value)}
-                        placeholder="Eigener Vorgangstyp"
-                      />
-                      <div className="mt-2">
-                        <button 
-                          type="button" 
-                          className="text-muted-foreground text-sm hover:underline"
-                          onClick={() => {
-                            setIsCustomType(false);
-                            setCustomType('');
-                          }}
-                        >
-                          Zurück zu Standard-Typen
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <select
+                    id="templateType"
+                    className="w-full p-2 rounded-md border border-input"
+                    value={newTemplate.type}
+                    onChange={(e) => setNewTemplate({...newTemplate, type: e.target.value as CaseType})}
+                  >
+                    <option value="">Bitte wählen</option>
+                    {(Object.entries(CASE_TYPE_LABELS) as [CaseType, string][]).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                   <button
@@ -568,6 +311,10 @@ const Checklists: React.FC = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          ) : !selectedTemplate ? (
+            <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
+              {isAdmin ? 'Keine Checklisten vorhanden. Erstellen Sie eine neue mit dem Button oben rechts.' : 'Keine Checklisten vorhanden.'}
             </div>
           ) : (
             <div className="bg-card rounded-xl border border-border p-6 animate-fade-in">

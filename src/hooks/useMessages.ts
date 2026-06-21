@@ -1,115 +1,87 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Message } from '../types/chat';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { toast } from './use-toast';
 
 interface UseMessagesProps {
   groupId?: string;
 }
 
+const rowToMessage = (row: any): Message => ({
+  id: row.id,
+  userId: row.user_id,
+  text: row.text,
+  timestamp: row.created_at,
+  mentions: row.mentions ?? [],
+  isEdited: row.is_edited ?? false,
+});
+
 export const useMessages = ({ groupId = 'global' }: UseMessagesProps = {}) => {
   const { currentUser } = useUser();
+  const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string>('');
-  const [unreadMessages, setUnreadMessages] = useState<number>(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const channelRef = useRef<any>(null);
 
-  // Nachrichten laden
+  const ensureChannel = async () => {
+    if (!profile) return null;
+    const { data: existing } = await supabase.from('chat_channels').select('id').eq('name', groupId).maybeSingle();
+    if (existing) return existing.id;
+    const { data: created } = await supabase.from('chat_channels').insert({
+      name: groupId, type: 'channel', created_by: profile.id,
+    }).select('id').single();
+    return created?.id ?? null;
+  };
+
+  const loadMessages = async () => {
+    if (!profile) return;
+    setIsLoading(true);
+    const channelId = await ensureChannel();
+    if (!channelId) { setIsLoading(false); return; }
+    const { data } = await supabase.from('chat_messages').select('*').eq('channel_id', channelId).order('created_at');
+    if (data) setMessages(data.map(rowToMessage));
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const loadMessages = () => {
-      try {
-        const storageKey = `chatMessages_${groupId}`;
-        const storedMessages = localStorage.getItem(storageKey);
-        
-        const lastSeenKey = `lastSeen_${groupId}_${currentUser?.id}`;
-        const storedLastSeen = localStorage.getItem(lastSeenKey);
-        
-        if (storedLastSeen) {
-          setLastSeenTimestamp(storedLastSeen);
-        }
-        
-        if (storedMessages) {
-          const parsedMessages = JSON.parse(storedMessages);
-          setMessages(parsedMessages);
-          
-          if (storedLastSeen && currentUser) {
-            const unread = parsedMessages.filter(
-              (msg: Message) => 
-                msg.timestamp > storedLastSeen && 
-                msg.userId !== currentUser.id
-            ).length;
-            setUnreadMessages(unread);
-          }
-        }
-        
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error('Fehler beim Laden der Nachrichten:', error);
-        setIsLoading(false);
-      }
-    };
-    
+    if (!profile) return;
     loadMessages();
-  }, [groupId, currentUser]);
-  
-  // Ungelesene Nachrichten aktualisieren
-  useEffect(() => {
-    if (!isLoading && currentUser && messages.length > 0) {
-      const lastMessageTimestamp = messages[messages.length - 1].timestamp;
-      const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
-      
-      localStorage.setItem(lastSeenKey, lastMessageTimestamp);
-      setLastSeenTimestamp(lastMessageTimestamp);
-      setUnreadMessages(0);
-    }
-  }, [messages, isLoading, currentUser, groupId]);
-  
-  // Nachrichten speichern
-  useEffect(() => {
-    if (messages.length > 0 && !isLoading) {
-      const storageKey = `chatMessages_${groupId}`;
-      localStorage.setItem(storageKey, JSON.stringify(messages));
-    }
-  }, [messages, isLoading, groupId]);
 
-  const editMessage = (messageId: string, newText: string) => {
-    const updatedMessages = messages.map(msg => {
-      if (msg.id === messageId) {
-        return {
-          ...msg,
-          text: newText,
-          isEdited: true
-        };
-      }
-      return msg;
-    });
-    
-    setMessages(updatedMessages);
-    toast({
-      title: "Nachricht bearbeitet",
-      description: "Ihre Nachricht wurde erfolgreich bearbeitet."
-    });
-  };
-  
-  const deleteMessage = (messageId: string) => {
-    const updatedMessages = messages.filter(msg => msg.id !== messageId);
-    setMessages(updatedMessages);
-    
-    toast({
-      title: "Nachricht gelöscht",
-      description: "Ihre Nachricht wurde erfolgreich gelöscht."
-    });
+    const sub = supabase.channel(`chat:${groupId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+        setMessages(prev => {
+          if (prev.find(m => m.id === payload.new.id)) return prev;
+          const newMsg = rowToMessage(payload.new);
+          if (currentUser && newMsg.userId !== currentUser.id) setUnreadMessages(u => u + 1);
+          return [...prev, newMsg];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? rowToMessage(payload.new) : m));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
+        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+      })
+      .subscribe();
+
+    channelRef.current = sub;
+    return () => { supabase.removeChannel(sub); };
+  }, [profile, groupId]);
+
+  const editMessage = async (messageId: string, newText: string) => {
+    const { error } = await supabase.from('chat_messages').update({ text: newText, is_edited: true }).eq('id', messageId);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Nachricht bearbeitet' });
   };
 
-  return {
-    messages,
-    setMessages,
-    isLoading,
-    unreadMessages,
-    editMessage,
-    deleteMessage
+  const deleteMessage = async (messageId: string) => {
+    const { error } = await supabase.from('chat_messages').delete().eq('id', messageId);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Nachricht gelöscht' });
   };
+
+  return { messages, setMessages, isLoading, unreadMessages, editMessage, deleteMessage };
 };
