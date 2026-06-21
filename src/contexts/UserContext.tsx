@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth, Profile } from './AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import { User } from '../types/case';
+import { toast } from '../hooks/use-toast';
 import { Notification } from '../types/chat';
 
 const profileToUser = (p: Profile): User => ({
@@ -140,7 +141,37 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       markNotificationsAsRead,
       clearNotifications,
       mentionUser,
-      addUser: () => {},
+      addUser: async (userData: Omit<User, 'id'>) => {
+        if (!supabaseAdmin) {
+          toast({ title: 'Konfigurationsfehler', description: 'VITE_SUPABASE_SERVICE_KEY fehlt.', variant: 'destructive' });
+          return;
+        }
+        // Generate a random temp password — user should reset via email
+        const tempPassword = Math.random().toString(36).slice(-12) + 'Aa1!';
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: userData.email ?? '',
+          password: tempPassword,
+          email_confirm: true,
+        });
+        if (authError || !authData.user) {
+          toast({ title: 'Fehler beim Anlegen', description: authError?.message ?? 'Unbekannt', variant: 'destructive' });
+          return;
+        }
+        // Upsert profile (trigger may already have created it)
+        await supabaseAdmin.from('profiles').upsert({
+          id: authData.user.id,
+          email: userData.email ?? '',
+          full_name: userData.name,
+          phone: userData.phone ?? null,
+          avatar_url: userData.avatar ?? null,
+          department: userData.department ?? 'innendienst',
+          role: userData.userRole === 'admin' ? 'admin' : 'staff',
+          is_active: true,
+        });
+        const { data } = await supabase.from('profiles').select('*').eq('is_active', true);
+        if (data) setUsers((data as Profile[]).map(profileToUser));
+        toast({ title: 'Benutzer angelegt', description: `${userData.name} wurde erfolgreich hinzugefügt.` });
+      },
       updateUser: async (id: string, userData: Partial<User>) => {
         const update: Record<string, any> = {};
         if (userData.name !== undefined)      update.full_name   = userData.name;
@@ -148,13 +179,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userData.avatar !== undefined)    update.avatar_url  = userData.avatar;
         if (userData.department !== undefined)update.department  = userData.department;
         if (userData.badges !== undefined)    update.badges      = userData.badges;
+        if (userData.userRole !== undefined) update.role = userData.userRole === 'admin' ? 'admin' : 'staff';
+        if (userData.role !== undefined && !userData.userRole) update.role = userData.role;
         if (Object.keys(update).length > 0) {
           await supabase.from('profiles').update(update).eq('id', id);
           const { data } = await supabase.from('profiles').select('*').eq('is_active', true);
           if (data) setUsers((data as Profile[]).map(profileToUser));
         }
       },
-      deleteUser: () => {},
+      deleteUser: async (id: string) => {
+        if (!supabaseAdmin) return;
+        await supabase.from('profiles').update({ is_active: false }).eq('id', id);
+        const { data } = await supabase.from('profiles').select('*').eq('is_active', true);
+        if (data) setUsers((data as Profile[]).map(profileToUser));
+      },
       validatePassword: () => false,
       changePassword: () => false,
       setCurrentUser: () => {},
