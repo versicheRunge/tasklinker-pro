@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Plus, UserCheck, HeartPulse, Plane, Stethoscope, RefreshCw } from 'lucide-react';
+import { Plus, UserCheck, HeartPulse, Plane, Stethoscope, RefreshCw, ExternalLink } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
@@ -16,7 +16,7 @@ import { CustomCalendar } from '../components/calendar/CustomCalendar';
 import { HandoverDialog } from '../components/calendar/HandoverDialog';
 import { VacationRequestDialog } from '../components/calendar/VacationRequestDialog';
 import { CalendarEvent } from '../types/calendar';
-import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
+import { useAgencyCalendar, buildGoogleCalendarAddUrl } from '../hooks/useAgencyCalendar';
 import { MyVacationRequests } from '../components/calendar/MyVacationRequests';
 
 const CalendarPage: React.FC = () => {
@@ -45,23 +45,32 @@ const CalendarPage: React.FC = () => {
   const [handover, setHandover] = useState<{ start: string; end: string } | null>(null);
   const [vacReqOpen, setVacReqOpen] = useState(false);
   const [vacReqType, setVacReqType] = useState<'vacation' | 'sick'>('vacation');
-  const { isConnected: gcalConnected, events: gcalEvents, isLoading: gcalLoading, refresh: gcalRefresh } = useGoogleCalendar();
+  const [gcalAddUrl, setGcalAddUrl] = useState<string | null>(null);
 
-  // Map Google Calendar events to today's view
-  const gcalTodayEvents = gcalConnected ? gcalEvents.filter(e => {
-    const d = e.start.date ?? e.start.dateTime?.slice(0, 10) ?? '';
-    const formattedDate = format(date, 'yyyy-MM-dd');
+  const { events: agencyEvents, isLoading: agencyLoading, isConfigured: agencyConfigured, lastSynced, refresh: agencyRefresh } = useAgencyCalendar();
+
+  const formattedDate = format(date, 'yyyy-MM-dd');
+  const agencyTodayEvents = agencyEvents.filter(e => {
+    const d = e.allDay ? e.start.slice(0, 10) : e.start.slice(0, 10);
     return d === formattedDate;
-  }) : [];
+  });
 
   const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   const handleSaveEvent = (): boolean => {
     const completeEvent: CalendarEvent = { id: generateUniqueId(), ...newEvent };
     const ok = handleAddEvent(completeEvent);
-    // Offer handover when saving personal absence
     if (ok && newEvent.type === 'absence' && currentUser) {
       setHandover({ start: newEvent.startDate ?? '', end: newEvent.endDate ?? newEvent.startDate ?? '' });
+      // Offer Google Calendar quick-add for the absence
+      if (newEvent.startDate) {
+        setGcalAddUrl(buildGoogleCalendarAddUrl(
+          newEvent.title || `Abwesenheit: ${currentUser.name}`,
+          newEvent.startDate,
+          newEvent.endDate ?? newEvent.startDate,
+          'Eingetragen über TaskLinker',
+        ));
+      }
     }
     return ok;
   };
@@ -177,34 +186,66 @@ const CalendarPage: React.FC = () => {
                   </div>
                 )}
 
-              {gcalConnected && gcalTodayEvents.length > 0 && (
+              {agencyConfigured && agencyTodayEvents.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
-                    <span>📅 Google Kalender</span>
-                  </div>
-                  {gcalTodayEvents.map(e => {
-                    const timeStr = e.start.dateTime
-                      ? new Date(e.start.dateTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                    Google Teamkalender
+                  </p>
+                  {agencyTodayEvents.map(e => {
+                    const timeStr = !e.allDay
+                      ? new Date(e.start).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
                       : 'Ganztägig';
                     return (
-                      <div key={e.id} className="flex items-center gap-2 py-2 px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg mb-1.5 text-sm">
-                        <span className="text-blue-500 shrink-0">{timeStr}</span>
-                        <span className="truncate">{e.summary}</span>
+                      <div key={e.id} className="flex items-start gap-2 py-2 px-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-lg mb-1.5 text-sm">
+                        <span className="text-blue-500 shrink-0 font-medium w-14">{timeStr}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{e.title}</p>
+                          {e.location && <p className="text-xs text-muted-foreground truncate">{e.location}</p>}
+                        </div>
+                        {e.htmlLink && (
+                          <a href={e.htmlLink} target="_blank" rel="noopener noreferrer" className="shrink-0 text-blue-400 hover:text-blue-600">
+                            <RefreshCw className="w-3.5 h-3.5 rotate-45" />
+                          </a>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               )}
+
+              {agencyConfigured && agencyTodayEvents.length === 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                    Keine Google-Termine an diesem Tag
+                  </p>
+                </div>
+              )}
               </div>
             )}
 
-            {gcalConnected && (
-              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            {agencyConfigured && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground border-t border-border pt-3">
                 <span className="w-2 h-2 bg-blue-400 rounded-full" />
-                Google Kalender verbunden
-                <button onClick={gcalRefresh} className="hover:text-foreground ml-auto" title="Synchronisieren">
-                  <RefreshCw className={`w-3 h-3 ${gcalLoading ? 'animate-spin' : ''}`} />
+                Teamkalender synchronisiert
+                {lastSynced && <span className="opacity-60">· {lastSynced.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</span>}
+                <button onClick={agencyRefresh} className="hover:text-foreground ml-auto" title="Jetzt synchronisieren">
+                  <RefreshCw className={`w-3 h-3 ${agencyLoading ? 'animate-spin' : ''}`} />
                 </button>
+              </div>
+            )}
+
+            {gcalAddUrl && (
+              <div className="mt-3 flex items-center gap-2 text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                <span className="flex-1">Abwesenheit auch im Google Kalender eintragen?</span>
+                <a href={gcalAddUrl} target="_blank" rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:underline shrink-0"
+                  onClick={() => setGcalAddUrl(null)}
+                >
+                  Zu Google Kalender hinzufügen →
+                </a>
+                <button onClick={() => setGcalAddUrl(null)} className="text-muted-foreground hover:text-foreground">✕</button>
               </div>
             )}
           </div>
