@@ -67,12 +67,16 @@ export const EditUserDialog: React.FC<EditUserDialogProps> = ({
             <label className="block text-sm font-medium mb-1" htmlFor="edit-department">
               Abteilung
             </label>
-            <input
+            <select
               id="edit-department"
-              className="w-full p-2 rounded-md border border-input"
-              value={editingUser.department}
+              className="w-full p-2 rounded-md border border-input bg-background"
+              value={editingUser.department ?? 'innendienst'}
               onChange={(e) => setEditingUser({...editingUser, department: e.target.value})}
-            />
+            >
+              <option value="innendienst">Innendienst</option>
+              <option value="aussendienst">Außendienst</option>
+              <option value="leitung">Agenturleitung</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="edit-phone">

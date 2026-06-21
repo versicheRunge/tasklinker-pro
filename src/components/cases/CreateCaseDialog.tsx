@@ -4,7 +4,7 @@ import { toast } from '../../hooks/use-toast';
 import { Button } from '../ui/button';
 import { useUser } from '../../contexts/UserContext';
 import { supabase } from '../../lib/supabase';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Users } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogDescription,
@@ -34,12 +34,13 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
   const { currentUser, users } = useUser();
   const [form, setForm] = useState(EMPTY_FORM);
   const [selectedAssignee, setSelectedAssignee] = useState('');
+  const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string }[]>([]);
   const dupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isOpen && currentUser) setSelectedAssignee(currentUser.id);
-    if (!isOpen) setDuplicates([]);
+    if (!isOpen) { setDuplicates([]); setCollaboratorIds([]); }
   }, [isOpen, currentUser]);
 
   useEffect(() => {
@@ -73,14 +74,21 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
   const set = (key: keyof typeof EMPTY_FORM, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  const toggleCollaborator = (userId: string) => {
+    setCollaboratorIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
   const handleCreate = () => {
     if (!form.title.trim()) {
       toast({ title: 'Fehler', description: 'Bitte Titel eingeben.', variant: 'destructive' });
       return;
     }
-    onCreateCase(form, selectedAssignee);
+    onCreateCase({ ...form, collaboratorIds }, selectedAssignee);
     setForm(EMPTY_FORM);
     setSelectedAssignee('');
+    setCollaboratorIds([]);
   };
 
   return (
@@ -223,6 +231,37 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
               />
             </div>
           </div>
+
+          {/* Kollegen einbinden */}
+          {users.filter(u => u.id !== selectedAssignee).length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                Kollegen einbinden (@mention)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {users.filter(u => u.id !== selectedAssignee).map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => toggleCollaborator(u.id)}
+                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                      collaboratorIds.includes(u.id)
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-input hover:bg-muted'
+                    }`}
+                  >
+                    @{u.name}
+                  </button>
+                ))}
+              </div>
+              {collaboratorIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {collaboratorIds.length} Kollege{collaboratorIds.length > 1 ? 'n' : ''} werden benachrichtigt.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>

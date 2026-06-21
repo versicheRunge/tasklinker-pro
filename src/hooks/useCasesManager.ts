@@ -57,6 +57,7 @@ const rowToCase = (row: any, users: any[]): CaseItem => {
         subItems: c.sub_items ?? [],
       })),
     documents: [],
+    collaboratorIds: (row.case_collaborators ?? []).map((c: any) => c.user_id),
   };
 };
 
@@ -78,7 +79,7 @@ export const useCasesManager = () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('cases')
-      .select('*, case_activities(*), checklist_items(*)')
+      .select('*, case_activities(*), checklist_items(*), case_collaborators(user_id)')
       .eq('archived', isArchived)
       .order('updated_at', { ascending: false });
 
@@ -130,6 +131,23 @@ export const useCasesManager = () => {
       type: 'status',
       content: 'Vorgang erstellt.',
     });
+
+    // Save collaborators + notify them
+    const collabIds: string[] = caseData.collaboratorIds ?? [];
+    if (collabIds.length > 0) {
+      await supabase.from('case_collaborators').insert(
+        collabIds.map((uid: string) => ({ case_id: data.id, user_id: uid }))
+      );
+      for (const uid of collabIds) {
+        await supabase.from('notifications').insert({
+          user_id: uid,
+          type: 'mention',
+          title: `Sie wurden eingebunden`,
+          body: `Vorgang: ${caseData.title}`,
+          case_id: data.id,
+        });
+      }
+    }
 
     await loadCases();
     return data.id as string;

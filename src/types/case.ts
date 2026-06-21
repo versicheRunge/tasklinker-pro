@@ -104,6 +104,7 @@ export interface CaseItem {
   priority?: CasePriority; // Priorität der Aufgabe (optional)
   reminderSent?: boolean;
   waitingReason?: string;
+  collaboratorIds?: string[];
 }
 
 // Templates for checklists

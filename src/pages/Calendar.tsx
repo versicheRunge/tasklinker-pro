@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Plus, UserCheck, HeartPulse } from 'lucide-react';
+import { Plus, UserCheck, HeartPulse, Plane, Stethoscope } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
@@ -14,6 +14,7 @@ import { AddEventDialog } from '../components/calendar/AddEventDialog';
 import { ViewEventDialog } from '../components/calendar/ViewEventDialog';
 import { CustomCalendar } from '../components/calendar/CustomCalendar';
 import { HandoverDialog } from '../components/calendar/HandoverDialog';
+import { VacationRequestDialog } from '../components/calendar/VacationRequestDialog';
 import { CalendarEvent } from '../types/calendar';
 
 const CalendarPage: React.FC = () => {
@@ -40,6 +41,8 @@ const CalendarPage: React.FC = () => {
   } = useCalendar();
 
   const [handover, setHandover] = useState<{ start: string; end: string } | null>(null);
+  const [vacReqOpen, setVacReqOpen] = useState(false);
+  const [vacReqType, setVacReqType] = useState<'vacation' | 'sick'>('vacation');
 
   const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -59,16 +62,38 @@ const CalendarPage: React.FC = () => {
         <div className="md:w-1/2 lg:w-2/5">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold">Teamkalender</h1>
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              onClick={() => {
-                setNewEvent(prev => ({ ...prev, date }));
-                setIsEventDialogOpen(true);
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Termin eintragen</span>
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              {!isAdmin && (
+                <>
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                    onClick={() => { setVacReqType('vacation'); setVacReqOpen(true); }}
+                  >
+                    <Plane className="w-3.5 h-3.5" />
+                    Urlaub beantragen
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors text-sm"
+                    onClick={() => { setVacReqType('sick'); setVacReqOpen(true); }}
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Krank melden
+                  </button>
+                </>
+              )}
+              {isAdmin && (
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  onClick={() => {
+                    setNewEvent(prev => ({ ...prev, date }));
+                    setIsEventDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Termin eintragen</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-card border border-border rounded-xl p-4 mb-4">
@@ -180,6 +205,12 @@ const CalendarPage: React.FC = () => {
           onClose={() => setHandover(null)}
         />
       )}
+
+      <VacationRequestDialog
+        isOpen={vacReqOpen}
+        onOpenChange={setVacReqOpen}
+        defaultType={vacReqType}
+      />
     </AppLayout>
   );
 };

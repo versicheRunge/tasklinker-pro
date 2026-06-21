@@ -10,6 +10,7 @@ import { AvatarDialog } from '../components/team/AvatarDialog';
 import { BadgeManagementDialog } from '../components/team/BadgeManagementDialog';
 import { VacationAllowanceDialog } from '../components/team/VacationAllowanceDialog';
 import { AbsenceStatsTable } from '../components/team/AbsenceStatsTable';
+import { VacationRequestsAdmin } from '../components/team/VacationRequestsAdmin';
 import { useTeamManager } from '../hooks/useTeamManager';
 
 const Team: React.FC = () => {
@@ -75,10 +76,13 @@ const Team: React.FC = () => {
         )}
       </div>
       
+      {/* Admin Only: Vacation Requests */}
+      {isAdmin && <VacationRequestsAdmin />}
+
       {/* Admin Only: Absence Statistics */}
       {isAdmin && (
-        <AbsenceStatsTable 
-          users={users} 
+        <AbsenceStatsTable
+          users={users}
           events={calendarEvents}
           isAdmin={isAdmin}
           onEditAllowance={handleOpenVacationDialog}

@@ -8,6 +8,7 @@ import { toast } from "../../hooks/use-toast";
 
 // Import refactored components
 import { CustomerHistoryPanel } from './CustomerHistoryPanel';
+import { CaseCollaboratorsPanel } from './CaseCollaboratorsPanel';
 import { CaseHeader } from './detail/CaseHeader';
 import { CaseDescription } from './detail/CaseDescription';
 import { ChecklistSection } from './detail/ChecklistSection';
@@ -426,6 +427,20 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           {caseItem.customerName && (
             <CustomerHistoryPanel customerName={caseItem.customerName} currentCaseId={caseItem.id} />
           )}
+          <CaseCollaboratorsPanel
+            caseId={caseItem.id}
+            collaboratorIds={caseItem.collaboratorIds ?? []}
+            onUpdated={() => {
+              // Reload case to refresh collaborators
+              supabase.from('cases').select('*, case_activities(*), checklist_items(*), case_collaborators(user_id)')
+                .eq('id', caseItem.id).single().then(({ data }) => {
+                  if (data) setCaseItem(prev => prev ? {
+                    ...prev,
+                    collaboratorIds: (data.case_collaborators ?? []).map((c: any) => c.user_id),
+                  } : prev);
+                });
+            }}
+          />
           <CaseActions
             onGeneratePDF={() => {
               const fileName = generatePDF(caseItem);

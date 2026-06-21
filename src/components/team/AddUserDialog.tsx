@@ -65,12 +65,16 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
             <label className="block text-sm font-medium mb-1" htmlFor="department">
               Abteilung
             </label>
-            <input
+            <select
               id="department"
-              className="w-full p-2 rounded-md border border-input"
-              value={newUser.department}
+              className="w-full p-2 rounded-md border border-input bg-background"
+              value={newUser.department ?? 'innendienst'}
               onChange={(e) => setNewUser({...newUser, department: e.target.value})}
-            />
+            >
+              <option value="innendienst">Innendienst</option>
+              <option value="aussendienst">Außendienst</option>
+              <option value="leitung">Agenturleitung</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="phone">

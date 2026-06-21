@@ -141,7 +141,14 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
           {user.department && (
             <div className="flex items-center text-sm">
               <span className="w-20 text-muted-foreground">Abteilung:</span>
-              <span>{user.department}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                user.department === 'aussendienst' ? 'bg-blue-100 text-blue-700' :
+                user.department === 'leitung' ? 'bg-purple-100 text-purple-700' :
+                'bg-green-100 text-green-700'
+              }`}>
+                {user.department === 'aussendienst' ? 'Außendienst' :
+                 user.department === 'leitung' ? 'Agenturleitung' : 'Innendienst'}
+              </span>
             </div>
           )}
           
