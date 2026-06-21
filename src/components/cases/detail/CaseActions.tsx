@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileText, ArchiveIcon, RefreshCw, Clock, Hourglass } from 'lucide-react';
+import { FileText, ArchiveIcon, RefreshCw, Clock, Hourglass, Trash2 } from 'lucide-react';
 import { CaseItem, User } from '../../../types/case';
 import EmailTemplateSelector from '../EmailTemplateSelector';
 import { supabase } from '../../../lib/supabase';
@@ -21,14 +21,17 @@ const WAITING_REASONS = [
 interface CaseActionsProps {
   onGeneratePDF: () => void;
   onArchiveCase: () => void;
+  onDeleteCase?: () => void;
+  isAdmin?: boolean;
   caseItem: CaseItem;
   currentUser: User | null;
   onUpdate?: (id: string, data: Partial<CaseItem>) => void;
 }
 
 export const CaseActions: React.FC<CaseActionsProps> = ({
-  onGeneratePDF, onArchiveCase, caseItem, currentUser, onUpdate
+  onGeneratePDF, onArchiveCase, onDeleteCase, isAdmin, caseItem, currentUser, onUpdate
 }) => {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [followUpDate, setFollowUpDate] = useState(caseItem.followUpDate ? format(new Date(caseItem.followUpDate), 'yyyy-MM-dd') : '');
   const [dueDate, setDueDate] = useState(caseItem.dueDate ? format(new Date(caseItem.dueDate), 'yyyy-MM-dd') : '');
   const [waitingReason, setWaitingReason] = useState(caseItem.waitingReason ?? '');
@@ -128,6 +131,31 @@ export const CaseActions: React.FC<CaseActionsProps> = ({
         >
           <ArchiveIcon className="w-4 h-4" /> Vorgang archivieren
         </button>
+
+        {isAdmin && onDeleteCase && (
+          confirmDelete ? (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-3 space-y-2">
+              <p className="text-xs text-red-800 font-medium">Vorgang wirklich permanent löschen? Dies kann nicht rückgängig gemacht werden.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={onDeleteCase}
+                  className="flex-1 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >Ja, löschen</button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 py-1.5 text-xs border border-border rounded-lg hover:bg-muted transition-colors"
+                >Abbrechen</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="flex items-center gap-2 w-full px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="w-4 h-4" /> Vorgang permanent löschen
+            </button>
+          )
+        )}
       </div>
     </div>
   );

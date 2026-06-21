@@ -29,8 +29,11 @@ const Chat: React.FC = () => {
   const loadChannels = async () => {
     if (!profile) return;
     const { data } = await supabase.from('chat_channels').select('*').eq('type', 'channel').order('created_at');
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (data && data.length > 0) {
-      const mapped: ChatChannel[] = data.map((c: any) => ({ id: c.id, name: c.name, type: c.type }));
+      const mapped: ChatChannel[] = data
+        .filter((c: any) => !UUID_RE.test(c.name))
+        .map((c: any) => ({ id: c.id, name: c.name, type: c.type }));
       setChannels(mapped);
       if (!activeChannel) setActiveChannel(mapped[0]);
     } else {

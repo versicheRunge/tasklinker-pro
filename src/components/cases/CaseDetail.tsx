@@ -333,10 +333,14 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
   };
 
   const handleArchiveCase = () => {
-    toast({
-      title: "Vorgang archiviert",
-      description: "Der Vorgang wurde erfolgreich archiviert."
-    });
+    toast({ title: 'Vorgang archiviert', description: 'Der Vorgang wurde erfolgreich archiviert.' });
+    navigate('/cases');
+  };
+
+  const handleDeleteCase = async () => {
+    const { error } = await supabase.from('cases').delete().eq('id', caseItem.id);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Vorgang gelöscht', description: 'Der Vorgang wurde permanent gelöscht.' });
     navigate('/cases');
   };
 
@@ -431,6 +435,8 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               });
             }}
             onArchiveCase={handleArchiveCase}
+            onDeleteCase={handleDeleteCase}
+            isAdmin={isAdmin}
             caseItem={caseItem}
             currentUser={currentUser}
             onUpdate={(id, data) => {

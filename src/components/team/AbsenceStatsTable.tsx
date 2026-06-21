@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../../types/case';
 import { Edit } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
-import { calculateUsedVacationDays, calculateRemainingVacationDays } from '../../utils/calendarUtils';
+import { calculateUsedVacationDays } from '../../utils/calendarUtils';
 import { supabase } from '../../lib/supabase';
 
 interface AbsenceStatsTableProps {
@@ -35,11 +35,13 @@ export const AbsenceStatsTable: React.FC<AbsenceStatsTableProps> = ({ users, eve
       const diff = Math.ceil(Math.abs(new Date(e.endDate).getTime() - new Date(e.date).getTime()) / (1000 * 60 * 60 * 24)) + 1;
       return total + diff;
     }, 0);
+    const totalAllowance = allowances[userId] ?? 0;
+    const usedVacationDays = calculateUsedVacationDays(userId, currentYear, events);
     return {
       sickDays,
-      totalAllowance: allowances[userId] ?? 0,
-      usedVacationDays: calculateUsedVacationDays(userId, currentYear, events),
-      remainingVacationDays: calculateRemainingVacationDays(userId, currentYear, events),
+      totalAllowance,
+      usedVacationDays,
+      remainingVacationDays: Math.max(0, totalAllowance - usedVacationDays),
     };
   };
 
