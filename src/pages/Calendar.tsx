@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Plus, UserCheck, HeartPulse, Plane, Stethoscope } from 'lucide-react';
+import { Plus, UserCheck, HeartPulse, Plane, Stethoscope, RefreshCw } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
@@ -16,6 +16,7 @@ import { CustomCalendar } from '../components/calendar/CustomCalendar';
 import { HandoverDialog } from '../components/calendar/HandoverDialog';
 import { VacationRequestDialog } from '../components/calendar/VacationRequestDialog';
 import { CalendarEvent } from '../types/calendar';
+import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
@@ -43,6 +44,14 @@ const CalendarPage: React.FC = () => {
   const [handover, setHandover] = useState<{ start: string; end: string } | null>(null);
   const [vacReqOpen, setVacReqOpen] = useState(false);
   const [vacReqType, setVacReqType] = useState<'vacation' | 'sick'>('vacation');
+  const { isConnected: gcalConnected, events: gcalEvents, isLoading: gcalLoading, refresh: gcalRefresh } = useGoogleCalendar();
+
+  // Map Google Calendar events to today's view
+  const gcalTodayEvents = gcalConnected ? gcalEvents.filter(e => {
+    const d = e.start.date ?? e.start.dateTime?.slice(0, 10) ?? '';
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    return d === formattedDate;
+  }) : [];
 
   const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -165,6 +174,35 @@ const CalendarPage: React.FC = () => {
                     Keine Termine für diesen Tag
                   </div>
                 )}
+
+              {gcalConnected && gcalTodayEvents.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
+                    <span>📅 Google Kalender</span>
+                  </div>
+                  {gcalTodayEvents.map(e => {
+                    const timeStr = e.start.dateTime
+                      ? new Date(e.start.dateTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                      : 'Ganztägig';
+                    return (
+                      <div key={e.id} className="flex items-center gap-2 py-2 px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg mb-1.5 text-sm">
+                        <span className="text-blue-500 shrink-0">{timeStr}</span>
+                        <span className="truncate">{e.summary}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              </div>
+            )}
+
+            {gcalConnected && (
+              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="w-2 h-2 bg-blue-400 rounded-full" />
+                Google Kalender verbunden
+                <button onClick={gcalRefresh} className="hover:text-foreground ml-auto" title="Synchronisieren">
+                  <RefreshCw className={`w-3 h-3 ${gcalLoading ? 'animate-spin' : ''}`} />
+                </button>
               </div>
             )}
           </div>

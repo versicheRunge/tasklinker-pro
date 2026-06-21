@@ -24,42 +24,30 @@ export const EditUserDialog: React.FC<EditUserDialogProps> = ({
         <DialogTitle>Benutzer bearbeiten</DialogTitle>
       </DialogHeader>
       <div className="space-y-4 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="edit-name">
-              Name*
-            </label>
-            <input
-              id="edit-name"
-              className="w-full p-2 rounded-md border border-input"
-              value={editingUser.name}
-              onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="edit-role">
-              Position*
-            </label>
-            <input
-              id="edit-role"
-              className="w-full p-2 rounded-md border border-input"
-              value={editingUser.role}
-              onChange={(e) => setEditingUser({...editingUser, role: e.target.value})}
-            />
-          </div>
-        </div>
-        
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="edit-email">
-            E-Mail*
+          <label className="block text-sm font-medium mb-1" htmlFor="edit-name">
+            Name*
           </label>
           <input
-            id="edit-email"
-            type="email"
+            id="edit-name"
             className="w-full p-2 rounded-md border border-input"
-            value={editingUser.email}
-            onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+            value={editingUser.name}
+            onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            E-Mail
+          </label>
+          <input
+            type="email"
+            className="w-full p-2 rounded-md border border-input bg-muted text-muted-foreground cursor-not-allowed"
+            value={editingUser.email}
+            readOnly
+            title="E-Mail kann nicht geändert werden"
+          />
+          <p className="text-xs text-muted-foreground mt-1">E-Mail kann nur über Supabase Admin geändert werden.</p>
         </div>
         
         <div className="grid grid-cols-2 gap-4">

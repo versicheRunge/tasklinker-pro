@@ -11,6 +11,7 @@ import { AgencySettings } from '../components/settings/AgencySettings';
 import { AdminBoard } from '../components/admin/AdminBoard';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { GoogleCalendarSettings } from '../components/settings/GoogleCalendarSettings';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState("general");
@@ -56,6 +57,7 @@ const Settings: React.FC = () => {
           <TabsList className="mb-8 flex-wrap">
             <TabsTrigger value="general">Allgemein</TabsTrigger>
             <TabsTrigger value="account">Konto</TabsTrigger>
+            <TabsTrigger value="integrations">Integrationen</TabsTrigger>
             {isAdmin && (
               <>
                 <TabsTrigger value="agency">Agentur</TabsTrigger>
@@ -77,6 +79,12 @@ const Settings: React.FC = () => {
               <AgencySettings />
             </TabsContent>
           )}
+
+          <TabsContent value="integrations">
+            <div className="max-w-xl bg-card rounded-lg border border-border p-6">
+              <GoogleCalendarSettings />
+            </div>
+          </TabsContent>
 
           <TabsContent value="account">
             <div className="max-w-md">

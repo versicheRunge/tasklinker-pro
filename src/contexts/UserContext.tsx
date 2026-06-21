@@ -192,8 +192,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userData.avatar !== undefined)    update.avatar_url  = userData.avatar;
         if (userData.department !== undefined)update.department  = userData.department;
         if (userData.badges !== undefined)    update.badges      = userData.badges;
-        if (userData.userRole !== undefined) update.role = userData.userRole === 'admin' ? 'admin' : 'staff';
-        if (userData.role !== undefined && !userData.userRole) update.role = userData.role;
+        if (userData.userRole !== undefined)  update.role = userData.userRole === 'admin' ? 'admin' : 'staff';
         if (Object.keys(update).length > 0) {
           await supabase.from('profiles').update(update).eq('id', id);
           const { data } = await supabase.from('profiles').select('*').eq('is_active', true);
