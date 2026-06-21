@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MoreHorizontal, Edit, Trash2, Camera, Award, CalendarClock } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Camera, Award, CalendarClock, KeyRound } from 'lucide-react';
 import { USER_COLORS } from '../../contexts/UserTypes';
 import { User } from '../../types/case';
 import { CustomBadge } from '../ui/CustomBadge';
@@ -20,6 +20,7 @@ interface TeamMemberCardProps {
   onAvatarChange: (user: User) => void;
   onManageBadges: (user: User) => void;
   onManageVacation?: (user: User) => void;
+  onResetPassword?: (user: User) => void;
   userStats?: { absence: number; sick: number };
 }
 
@@ -28,6 +29,7 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
   currentUserId,
   isAdmin,
   onEdit,
+  onResetPassword,
   onDelete,
   onAvatarChange,
   onManageBadges,
@@ -120,6 +122,12 @@ export const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
                   <DropdownMenuItem onClick={() => onManageVacation(user)}>
                     <CalendarClock className="w-4 h-4 mr-2" />
                     <span>Urlaubsanspruch</span>
+                  </DropdownMenuItem>
+                )}
+                {onResetPassword && !isCurrentUser && (
+                  <DropdownMenuItem onClick={() => onResetPassword(user)}>
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    <span>Passwort zurücksetzen</span>
                   </DropdownMenuItem>
                 )}
                 {!isCurrentUser && (

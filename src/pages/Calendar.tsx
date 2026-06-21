@@ -17,6 +17,7 @@ import { HandoverDialog } from '../components/calendar/HandoverDialog';
 import { VacationRequestDialog } from '../components/calendar/VacationRequestDialog';
 import { CalendarEvent } from '../types/calendar';
 import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
+import { MyVacationRequests } from '../components/calendar/MyVacationRequests';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
@@ -114,6 +115,7 @@ const CalendarPage: React.FC = () => {
           </div>
 
           <CalendarLegend users={users} isAdmin={isAdmin} />
+          {!isAdmin && <MyVacationRequests />}
         </div>
 
         <div className="md:w-1/2 lg:w-3/5">

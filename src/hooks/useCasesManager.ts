@@ -31,7 +31,8 @@ const rowToCase = (row: any, users: any[]): CaseItem => {
     priority: row.priority ?? 'medium',
     type: row.type,
     customerName: row.customer_name ?? '',
-    customerEmail: '',
+    customerEmail: row.customer_email ?? '',
+    customerPhone: row.customer_phone ?? '',
     assignee: findUser(row.assignee_id),
     creator: row.created_by ? findUser(row.created_by) : undefined,
     createdAt: row.created_at,
@@ -79,7 +80,7 @@ export const useCasesManager = () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('cases')
-      .select('*, case_activities(*), checklist_items(*), case_collaborators(user_id)')
+      .select('*, case_activities(*), checklist_items(*), case_collaborators(user_id), customer_email, customer_phone')
       .eq('archived', isArchived)
       .order('updated_at', { ascending: false });
 
@@ -113,6 +114,8 @@ export const useCasesManager = () => {
       priority: caseData.priority ?? 'medium',
       type: caseData.type ?? 'sonstiges',
       customer_name: caseData.customerName ?? '',
+      customer_email: caseData.customerEmail ?? '',
+      customer_phone: caseData.customerPhone ?? '',
       assignee_id: assigneeId ?? caseData.assignee?.id ?? profile.id,
       created_by: profile.id,
       due_date: caseData.dueDate || null,
@@ -172,8 +175,10 @@ export const useCasesManager = () => {
     if (caseData.status !== undefined)       update.status = caseData.status;
     if (caseData.priority !== undefined)     update.priority = caseData.priority;
     if (caseData.type !== undefined)         update.type = caseData.type;
-    if (caseData.customerName !== undefined) update.customer_name = caseData.customerName;
-    if (caseData.assignee !== undefined)     update.assignee_id = caseData.assignee.id;
+    if (caseData.customerName !== undefined)  update.customer_name = caseData.customerName;
+    if (caseData.customerEmail !== undefined) update.customer_email = caseData.customerEmail;
+    if (caseData.customerPhone !== undefined) update.customer_phone = caseData.customerPhone;
+    if (caseData.assignee !== undefined)      update.assignee_id = caseData.assignee.id;
     if (caseData.dueDate !== undefined)      update.due_date = caseData.dueDate;
     if (caseData.followUpDate !== undefined) update.follow_up_date = caseData.followUpDate;
     if (caseData.archived !== undefined)      update.archived = caseData.archived;

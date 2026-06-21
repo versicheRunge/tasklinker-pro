@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { PlusCircle } from 'lucide-react';
-import { Dialog } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { TeamMemberCard } from '../components/team/TeamMemberCard';
 import { AddUserDialog } from '../components/team/AddUserDialog';
 import { EditUserDialog } from '../components/team/EditUserDialog';
@@ -12,6 +12,9 @@ import { VacationAllowanceDialog } from '../components/team/VacationAllowanceDia
 import { AbsenceStatsTable } from '../components/team/AbsenceStatsTable';
 import { VacationRequestsAdmin } from '../components/team/VacationRequestsAdmin';
 import { useTeamManager } from '../hooks/useTeamManager';
+import { supabase } from '../lib/supabase';
+import { toast } from '../hooks/use-toast';
+import { User } from '../types/case';
 
 const Team: React.FC = () => {
   const {
@@ -53,6 +56,24 @@ const Team: React.FC = () => {
     handleSaveVacation,
     generateRandomAvatar
   } = useTeamManager();
+
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [resetSending, setResetSending] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!resetUser?.email) return;
+    setResetSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetUser.email, {
+      redirectTo: `${window.location.origin}/settings`,
+    });
+    if (error) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Reset-E-Mail gesendet', description: `Eine E-Mail wurde an ${resetUser.email} geschickt.` });
+      setResetUser(null);
+    }
+    setResetSending(false);
+  };
 
   return (
     <AppLayout>
@@ -101,6 +122,7 @@ const Team: React.FC = () => {
             onAvatarChange={handleOpenAvatarDialog}
             onManageBadges={handleOpenBadgeDialog}
             onManageVacation={isAdmin ? handleOpenVacationDialog : undefined}
+            onResetPassword={isAdmin ? (u) => setResetUser(u) : undefined}
           />
         ))}
       </div>
@@ -154,6 +176,29 @@ const Team: React.FC = () => {
             onSave={handleSaveVacation}
           />
         )}
+      </Dialog>
+      {/* Password reset confirm dialog */}
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) setResetUser(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Passwort zurücksetzen</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Eine Reset-E-Mail wird an <strong>{resetUser?.email}</strong> gesendet. Der Mitarbeiter kann dann ein neues Passwort setzen.
+          </p>
+          <DialogFooter>
+            <button className="px-4 py-2 rounded-lg border border-input hover:bg-muted" onClick={() => setResetUser(null)}>
+              Abbrechen
+            </button>
+            <button
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+              onClick={handleResetPassword}
+              disabled={resetSending}
+            >
+              {resetSending ? 'Wird gesendet…' : 'Reset-E-Mail senden'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </AppLayout>
   );
