@@ -9,6 +9,7 @@ interface MessageListProps {
   isLoading: boolean;
   users: User[];
   currentUser: User | null | undefined;
+  isAdmin?: boolean;
   formatMessageWithMentions: (text: string) => { formattedText: string; mentions: string[] };
   typingUsers: string[];
   getUserById: (userId: string) => User | undefined;
@@ -21,6 +22,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoading,
   users,
   currentUser,
+  isAdmin,
   formatMessageWithMentions,
   typingUsers,
   getUserById,
@@ -66,6 +68,8 @@ export const MessageList: React.FC<MessageListProps> = ({
         const sender = getUserById(message.userId);
         const isCurrentUser = currentUser?.id === message.userId;
 
+        const canDelete = isCurrentUser || isAdmin;
+
         return (
           <MessageItem
             key={message.id}
@@ -73,10 +77,11 @@ export const MessageList: React.FC<MessageListProps> = ({
             index={index}
             allMessages={messages}
             isCurrentUser={isCurrentUser}
+            isAdmin={isAdmin}
             sender={sender}
             formatMessageWithMentions={formatMessageWithMentions}
-            onEditMessage={onEditMessage}
-            onDeleteMessage={onDeleteMessage}
+            onEditMessage={isCurrentUser ? onEditMessage : undefined}
+            onDeleteMessage={canDelete ? onDeleteMessage : undefined}
           />
         );
       })}

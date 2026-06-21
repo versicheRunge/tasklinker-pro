@@ -12,7 +12,7 @@ interface TeamChatProps {
 }
 
 export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
-  const { users, currentUser, notifications, markNotificationsAsRead } = useUser();
+  const { users, currentUser, isAdmin, notifications, markNotificationsAsRead } = useUser();
   const {
     messages,
     inputValue,
@@ -69,6 +69,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ groupId = 'global' }) => {
           isLoading={isLoading}
           users={users}
           currentUser={currentUser}
+          isAdmin={isAdmin}
           formatMessageWithMentions={formatMessageWithMentions}
           typingUsers={typingUsers}
           getUserById={getUserById}

@@ -4,9 +4,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useUser } from '../../contexts/UserContext';
 import { Button } from '../ui/button';
 import { toast } from '../../hooks/use-toast';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X, Clock, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { buildGoogleCalendarAddUrl } from '../../hooks/useAgencyCalendar';
+
+const MANAGER_EMAIL = 'thomas.runge@itzehoer.de';
 
 interface VacationRequest {
   id: string;
@@ -51,11 +54,13 @@ export const VacationRequestsAdmin: React.FC = () => {
       reviewed_at: new Date().toISOString(),
     }).eq('id', id);
 
+    const employee = users.find(u => u.id === req.user_id);
+    const dateRange = `${format(new Date(req.start_date), 'dd.MM.', { locale: de })} – ${format(new Date(req.end_date), 'dd.MM.yyyy', { locale: de })}`;
+
     if (status === 'approved') {
-      // Auto-create calendar event (columns match calendar_events table)
       const calType = req.type === 'vacation' ? 'absence' : 'sick';
       await supabase.from('calendar_events').insert({
-        title: `${TYPE_LABELS[req.type]} – ${users.find(u => u.id === req.user_id)?.name ?? ''}`,
+        title: `${TYPE_LABELS[req.type]} – ${employee?.name ?? ''}`,
         start_time: new Date(req.start_date).toISOString(),
         end_time: new Date(req.end_date).toISOString(),
         all_day: true,
@@ -64,20 +69,34 @@ export const VacationRequestsAdmin: React.FC = () => {
         created_by: profile?.id,
         working_days_count: req.working_days,
       });
-      // Notify employee
       await supabase.from('notifications').insert({
         user_id: req.user_id,
         type: 'system',
         title: `${TYPE_LABELS[req.type]} genehmigt`,
-        body: `${format(new Date(req.start_date), 'dd.MM.', { locale: de })} – ${format(new Date(req.end_date), 'dd.MM.yyyy', { locale: de })}`,
+        body: dateRange,
       });
-      toast({ title: 'Genehmigt', description: 'Kalendereintrag wurde automatisch erstellt.' });
+
+      // If Außendienst: offer mailto invite to manager
+      const isField = employee?.department === 'aussendienst';
+      if (isField && req.type === 'vacation') {
+        const gcalUrl = buildGoogleCalendarAddUrl(
+          `Urlaub ${employee?.name ?? ''}`,
+          req.start_date,
+          req.end_date,
+          `Genehmigter Urlaub – ${req.working_days} Arbeitstag${req.working_days > 1 ? 'e' : ''}`,
+        );
+        const body = `Hallo,\n\nder Urlaub von ${employee?.name ?? ''} (${dateRange}, ${req.working_days} AT) wurde genehmigt.\n\nKalendereinladung:\n${gcalUrl}\n\nMit freundlichen Grüßen`;
+        const mailto = `mailto:${MANAGER_EMAIL}?subject=${encodeURIComponent(`Urlaub genehmigt: ${employee?.name ?? ''} ${dateRange}`)}&body=${encodeURIComponent(body)}`;
+        window.open(mailto);
+      }
+
+      toast({ title: 'Genehmigt', description: 'Kalendereintrag automatisch erstellt.' });
     } else {
       await supabase.from('notifications').insert({
         user_id: req.user_id,
         type: 'system',
         title: `${TYPE_LABELS[req.type]} abgelehnt`,
-        body: `${format(new Date(req.start_date), 'dd.MM.', { locale: de })} – ${format(new Date(req.end_date), 'dd.MM.yyyy', { locale: de })}`,
+        body: dateRange,
       });
       toast({ title: 'Abgelehnt' });
     }

@@ -11,6 +11,7 @@ interface MessageItemProps {
   index: number;
   allMessages: Message[];
   isCurrentUser: boolean;
+  isAdmin?: boolean;
   sender: User | undefined;
   formatMessageWithMentions: (text: string) => { formattedText: string; mentions: string[] };
   onEditMessage?: (messageId: string, newText: string) => void;
@@ -22,6 +23,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   index,
   allMessages,
   isCurrentUser,
+  isAdmin,
   sender,
   formatMessageWithMentions,
   onEditMessage,
@@ -59,8 +61,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     <>
       {showDateHeader && <DateSeparator date={message.timestamp} />}
       
-      <div 
-        className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-1' : 'mt-4'}`}
+      <div
+        className={`group flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isConsecutive ? 'mt-1' : 'mt-4'}`}
       >
         <div className={`flex items-start gap-3 max-w-[80%] ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
           {(!isConsecutive || showDateHeader) && <MessageAvatar sender={sender} />}
@@ -87,10 +89,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               handleKeyDown={handleKeyDown}
             />
             
-            {isCurrentUser && !isEditing && (
-              <MessageActions 
-                onEdit={() => setIsEditing(true)}
-                onDelete={() => onDeleteMessage && onDeleteMessage(message.id)}
+            {(isCurrentUser || isAdmin) && !isEditing && onDeleteMessage && (
+              <MessageActions
+                onEdit={isCurrentUser ? () => setIsEditing(true) : undefined}
+                onDelete={() => onDeleteMessage(message.id)}
               />
             )}
           </div>
