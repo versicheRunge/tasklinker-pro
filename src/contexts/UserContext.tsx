@@ -5,17 +5,29 @@ import { User } from '../types/case';
 import { toast } from '../hooks/use-toast';
 import { Notification } from '../types/chat';
 
-const profileToUser = (p: Profile): User => ({
-  id: p.id,
-  name: p.full_name,
-  email: p.email,
-  phone: p.phone,
-  role: p.role === 'admin' ? 'Administrator' : p.role === 'field' ? 'Außendienst' : 'Innendienst',
-  department: p.department,
-  avatar: p.avatar_url,
-  userRole: p.role === 'admin' ? 'admin' : 'staff',
-  stats: { casesHandled: 0, inProgress: 0, completed: 0 },
-});
+const profileToUser = (p: Profile): User => {
+  let displayRole: string;
+  if (p.role === 'admin') {
+    displayRole = 'Administrator';
+  } else if (p.department === 'aussendienst') {
+    displayRole = 'Außendienst';
+  } else if (p.department === 'leitung') {
+    displayRole = 'Agenturleitung';
+  } else {
+    displayRole = 'Innendienst';
+  }
+  return {
+    id: p.id,
+    name: p.full_name,
+    email: p.email,
+    phone: p.phone,
+    role: displayRole,
+    department: p.department,
+    avatar: p.avatar_url,
+    userRole: p.role === 'admin' ? 'admin' : 'staff',
+    stats: { casesHandled: 0, inProgress: 0, completed: 0 },
+  };
+};
 
 type UserContextType = {
   currentUser: User | null;
@@ -27,7 +39,7 @@ type UserContextType = {
   markNotificationsAsRead: (ids: string[]) => void;
   clearNotifications: () => void;
   mentionUser: (userId: string, caseId: string, message: string, type?: 'chat' | 'case' | 'system') => void;
-  addUser: (user: Omit<User, 'id'>) => void;
+  addUser: (user: Omit<User, 'id'>) => Promise<void>;
   updateUser: (id: string, userData: Partial<User>) => void;
   deleteUser: (id: string) => void;
   validatePassword: (userId: string, password: string) => boolean;
@@ -74,19 +86,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase
       .from('notifications')
       .select('*')
-      .eq('target_user_id', profile.id)
+      .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => {
         if (data) setNotifications(data.map((n: any) => ({
           id: n.id,
           title: n.title,
-          message: n.message,
+          message: n.body ?? '',
           timestamp: n.created_at,
           read: n.read,
           type: n.type,
           caseId: n.case_id,
-          targetUserId: n.target_user_id,
+          targetUserId: n.user_id,
         })));
       });
   }, [profile]);
@@ -94,18 +106,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addNotification = async (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     if (!n.targetUserId) return;
     const { data } = await supabase.from('notifications').insert({
-      target_user_id: n.targetUserId,
+      user_id: n.targetUserId,
       title: n.title,
-      message: n.message,
+      body: n.message ?? null,
       type: n.type,
-      case_id: n.caseId,
+      case_id: n.caseId ?? null,
       read: false,
     }).select().single();
     if (data && n.targetUserId === profile?.id) {
       setNotifications(prev => [{
-        id: data.id, title: data.title, message: data.message,
+        id: data.id, title: data.title, message: data.body,
         timestamp: data.created_at, read: false, type: data.type,
-        caseId: data.case_id, targetUserId: data.target_user_id,
+        caseId: data.case_id, targetUserId: data.user_id,
       }, ...prev]);
     }
   };
@@ -122,7 +134,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearNotifications = async () => {
     if (!profile) return;
-    await supabase.from('notifications').delete().eq('target_user_id', profile.id);
+    await supabase.from('notifications').delete().eq('user_id', profile.id);
     setNotifications([]);
   };
 

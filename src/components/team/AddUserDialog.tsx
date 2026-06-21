@@ -36,13 +36,14 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="role">
-              Position*
+              Position
             </label>
             <input
               id="role"
               className="w-full p-2 rounded-md border border-input"
               value={newUser.role}
               onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+              placeholder="z.B. Versicherungskaufmann"
             />
           </div>
         </div>

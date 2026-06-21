@@ -52,14 +52,17 @@ export const VacationRequestsAdmin: React.FC = () => {
     }).eq('id', id);
 
     if (status === 'approved') {
-      // Auto-create calendar event
+      // Auto-create calendar event (columns match calendar_events table)
+      const calType = req.type === 'vacation' ? 'absence' : 'sick';
       await supabase.from('calendar_events').insert({
         title: `${TYPE_LABELS[req.type]} – ${users.find(u => u.id === req.user_id)?.name ?? ''}`,
-        start: req.start_date,
-        end: req.end_date,
-        type: req.type,
+        start_time: new Date(req.start_date).toISOString(),
+        end_time: new Date(req.end_date).toISOString(),
+        all_day: true,
+        type: calType,
         user_id: req.user_id,
         created_by: profile?.id,
+        working_days_count: req.working_days,
       });
       // Notify employee
       await supabase.from('notifications').insert({

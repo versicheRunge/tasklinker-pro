@@ -18,37 +18,31 @@ const BadgeItem: React.FC<BadgeItemProps> = ({ badge, badgeCategories, onEdit, o
     ? badge.icon.replace('lucide:', '') 
     : badge.icon;
 
+  const categoryName = badgeCategories.find(c => c.id === badge.category)?.name || 'Kategorie';
+
   return (
-    <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-      <div className="flex items-center gap-3">
-        {isLucideIcon ? (
-          <Award className="h-6 w-6 text-primary" />
-        ) : (
-          <span className="text-2xl">{badge.icon}</span>
-        )}
-        
-        <div>
-          <h3 className="font-medium">{badge.name}</h3>
-          <p className="text-xs text-muted-foreground">
-            {badgeCategories.find(c => c.id === badge.category)?.name || 'Kategorie'}
-          </p>
-        </div>
+    <div className="relative group flex flex-col items-center text-center p-4 border border-border rounded-xl hover:bg-muted/40 hover:shadow-sm transition-all">
+      <div className="text-3xl mb-2 leading-none">
+        {isLucideIcon ? <Award className="h-8 w-8 text-primary mx-auto" /> : iconDisplay}
       </div>
-      
-      <div className="flex gap-1">
+      <h3 className="font-semibold text-sm leading-snug mb-0.5">{badge.name}</h3>
+      <p className="text-xs text-muted-foreground">{categoryName}</p>
+
+      {/* Hover actions */}
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+          className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-background transition-colors"
           onClick={() => onEdit(badge)}
           title="Bearbeiten"
         >
-          <Pencil className="w-4 h-4" />
+          <Pencil className="w-3.5 h-3.5" />
         </button>
         <button
-          className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-muted transition-colors"
+          className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-background transition-colors"
           onClick={() => onDelete(badge.id)}
           title="Löschen"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

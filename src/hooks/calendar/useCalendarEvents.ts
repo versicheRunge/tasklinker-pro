@@ -32,7 +32,11 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
     const { data } = await supabase.from('calendar_events').select('*').order('start_time');
     const dbEvents = data ? data.map(rowToEvent) : [];
     const holidays = getHolidays();
-    setEvents([...holidays, ...dbEvents]);
+    // Non-admins only see their own sick events; all other event types visible to all
+    const filtered = isAdmin
+      ? dbEvents
+      : dbEvents.filter(e => e.type !== 'sick' || e.userId === profile.id);
+    setEvents([...holidays, ...filtered]);
   };
 
   useEffect(() => { if (profile) loadEvents(); }, [profile]);
