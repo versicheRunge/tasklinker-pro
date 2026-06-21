@@ -5,6 +5,7 @@ import { CustomAvatar } from '../ui/CustomAvatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../../hooks/use-toast';
 import { NotificationBell } from './NotificationBell';
@@ -15,15 +16,16 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { setTheme, theme } = useTheme();
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser } = useUser();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    toast({ title: 'Abmeldung erfolgreich', description: 'Sie wurden erfolgreich abgemeldet.' });
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
+    toast({ title: 'Abmeldung erfolgreich', description: 'Sie wurden erfolgreich abgemeldet.' });
   };
 
   return (

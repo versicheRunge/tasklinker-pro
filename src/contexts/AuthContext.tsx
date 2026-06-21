@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin } from '../lib/supabase';
+import { UserBadge } from './UserTypes';
 
 export interface Profile {
   id: string;
@@ -11,6 +12,7 @@ export interface Profile {
   department?: string;
   avatar_url?: string;
   is_active: boolean;
+  badges?: UserBadge[];
 }
 
 interface AuthContextType {

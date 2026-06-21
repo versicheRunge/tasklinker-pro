@@ -17,15 +17,23 @@ export const useMessageInput = ({ groupId = 'global', setMessages }: UseMessageI
 
   const formatMessageWithMentions = (text: string) => {
     let formattedText = text;
-    const mentionRegex = /@(\w+)/g;
-    const mentions = text.match(mentionRegex) || [];
-    users.forEach(user => {
-      const userMention = `@${user.name}`;
-      if (text.includes(userMention)) {
-        formattedText = formattedText.replace(new RegExp(userMention, 'g'), `<span class="text-primary font-medium">${userMention}</span>`);
+    // Escape HTML to prevent XSS, then re-insert mention spans
+    const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    formattedText = escapeHtml(formattedText);
+    const mentionedUsers: string[] = [];
+    // Sort by longest name first to avoid partial replacements
+    [...users].sort((a, b) => b.name.length - a.name.length).forEach(user => {
+      const tag = `@${user.name}`;
+      const escaped = escapeHtml(tag);
+      if (formattedText.includes(escaped)) {
+        mentionedUsers.push(user.name);
+        // Use inline styles so mention is visible on both light and dark bubbles
+        formattedText = formattedText.split(escaped).join(
+          `<span style="background:rgba(255,255,255,0.25);border-radius:4px;padding:1px 4px;font-weight:600;">${escaped}</span>`
+        );
       }
     });
-    return { formattedText, mentions: mentions.map(m => m.substring(1)) };
+    return { formattedText, mentions: mentionedUsers };
   };
 
   const sendMessage = async () => {
@@ -48,16 +56,17 @@ export const useMessageInput = ({ groupId = 'global', setMessages }: UseMessageI
     if (error) { console.error('Chat-Fehler:', error.message); return; }
     setInputValue('');
 
-    // Mention notifications
-    mentionedUserIds.forEach(uid => {
-      if (uid !== profile.id) mentionUser(uid, groupId, `@${users.find(u => u.id === uid)?.name} wurde erwähnt`, 'chat');
-    });
-    // Notify all others
-    users.forEach(user => {
-      if (user.id !== profile.id) {
-        addNotification({ title: 'Neue Nachricht', message: `${profile.full_name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? '...' : ''}`, targetUserId: user.id, type: 'chat', caseId: groupId });
+    // Only notify mentioned users
+    for (const uid of mentionedUserIds) {
+      if (uid !== profile.id) {
+        await supabase.from('notifications').insert({
+          user_id: uid,
+          type: 'mention',
+          title: `${currentUser?.name ?? 'Jemand'} hat Sie erwähnt`,
+          body: inputValue.substring(0, 80),
+        });
       }
-    });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

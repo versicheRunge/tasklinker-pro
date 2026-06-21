@@ -26,6 +26,7 @@ const profileToUser = (p: Profile): User => {
     avatar: p.avatar_url,
     userRole: p.role === 'admin' ? 'admin' : 'staff',
     stats: { casesHandled: 0, inProgress: 0, completed: 0 },
+    badges: p.badges ?? [],
   };
 };
 
