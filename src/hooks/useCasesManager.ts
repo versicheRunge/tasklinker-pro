@@ -132,6 +132,18 @@ export const useCasesManager = () => {
       content: 'Vorgang erstellt.',
     });
 
+    // Notify assignee if different from creator
+    const effectiveAssigneeId = assigneeId ?? caseData.assignee?.id ?? profile.id;
+    if (effectiveAssigneeId && effectiveAssigneeId !== profile.id) {
+      await supabase.from('notifications').insert({
+        user_id: effectiveAssigneeId,
+        type: 'assignment',
+        title: 'Neuer Vorgang zugewiesen',
+        body: caseData.title,
+        case_id: data.id,
+      });
+    }
+
     // Save collaborators + notify them
     const collabIds: string[] = caseData.collaboratorIds ?? [];
     if (collabIds.length > 0) {
@@ -185,10 +197,21 @@ export const useCasesManager = () => {
         });
       }
       if (caseData.assignee) {
+        const existingCase = cases.find(c => c.id === id);
         await supabase.from('case_activities').insert({
           case_id: id, user_id: profile.id, type: 'assignment',
           content: `Vorgang zugewiesen an: ${caseData.assignee.name}`,
         });
+        // Notify the new assignee (skip if it's yourself)
+        if (caseData.assignee.id !== profile.id) {
+          await supabase.from('notifications').insert({
+            user_id: caseData.assignee.id,
+            type: 'assignment',
+            title: 'Vorgang zugewiesen',
+            body: existingCase?.title ?? 'Ein Vorgang wurde Ihnen zugewiesen.',
+            case_id: id,
+          });
+        }
       }
     }
 

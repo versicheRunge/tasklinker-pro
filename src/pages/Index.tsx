@@ -87,7 +87,7 @@ function SectionBox({ title, icon: Icon, count, children, onMore, emptyText }: {
 }
 
 // ─── Admin Dashboard ─────────────────────────────────────────
-function AdminDashboard({ allCases, users, absentToday }: { allCases: CaseItem[]; users: any[]; absentToday: string[] }) {
+function AdminDashboard({ allCases, users, absentToday, pendingRequests }: { allCases: CaseItem[]; users: any[]; absentToday: string[]; pendingRequests: number }) {
   const navigate = useNavigate();
 
   const active = allCases.filter(c => c.status !== 'completed');
@@ -118,7 +118,7 @@ function AdminDashboard({ allCases, users, absentToday }: { allCases: CaseItem[]
         <StatTile label="Offene Vorgänge" value={active.length} icon={FileText} color="bg-blue-100 text-blue-600" onClick={() => navigate('/cases')} />
         <StatTile label="Neue Vorgänge" value={newCases.length} icon={ClipboardCheck} color="bg-purple-100 text-purple-600" onClick={() => navigate('/cases')} />
         <StatTile label="Überfällig" value={overdue.length} icon={AlertTriangle} color="bg-red-100 text-red-600" onClick={() => navigate('/cases')} />
-        <StatTile label="Heute abwesend" value={absentToday.length} icon={UserX} color="bg-amber-100 text-amber-600" />
+        <StatTile label="Anträge ausstehend" value={pendingRequests} icon={UserCheck} color="bg-teal-100 text-teal-600" onClick={() => navigate('/team')} />
       </div>
 
       {/* Warnungen */}
@@ -335,6 +335,7 @@ const Index: React.FC = () => {
   const [allCases, setAllCases] = useState<CaseItem[]>([]);
   const [absentToday, setAbsentToday] = useState<string[]>([]);
   const [rawUsers, setRawUsers] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
@@ -366,6 +367,10 @@ const Index: React.FC = () => {
     // Raw profiles for workload table
     supabase.from('profiles').select('id,full_name,avatar_url,role').eq('is_active', true)
       .then(({ data }) => { if (data) setRawUsers(data); });
+
+    // Pending vacation/sick requests (admin only)
+    supabase.from('vacation_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      .then(({ count }) => { if (count !== null) setPendingRequests(count); });
   }, [profile]);
 
   const greeting = () => {
@@ -390,7 +395,7 @@ const Index: React.FC = () => {
       </div>
 
       {isAdmin
-        ? <AdminDashboard allCases={allCases} users={rawUsers} absentToday={absentToday} />
+        ? <AdminDashboard allCases={allCases} users={rawUsers} absentToday={absentToday} pendingRequests={pendingRequests} />
         : <StaffDashboard allCases={allCases} currentUserId={currentUser?.id ?? ''} users={rawUsers} />
       }
     </AppLayout>
