@@ -1,13 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
-import { Bell, User, X, Sun, Moon, Menu as MenuIcon, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sun, Moon, Menu as MenuIcon, LogOut } from 'lucide-react';
 import { CustomAvatar } from '../ui/CustomAvatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
-import { User as UserType, Notification } from '../../types/case';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../../hooks/use-toast';
+import { NotificationBell } from './NotificationBell';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -15,29 +16,16 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { setTheme, theme } = useTheme();
-  const { currentUser, setCurrentUser, notifications, markNotificationAsRead, clearNotifications } = useUser();
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { currentUser } = useUser();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    toast({
-      title: "Abmeldung erfolgreich",
-      description: "Sie wurden erfolgreich abgemeldet.",
-    });
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
-  };
-
-  const handleNotificationClick = (notification: Notification) => {
-    markNotificationAsRead(notification.id);
-    if (notification.caseId) {
-      navigate(`/cases/${notification.caseId}`);
-      setShowNotifications(false);
-    }
+    toast({ title: 'Abmeldung erfolgreich', description: 'Sie wurden erfolgreich abgemeldet.' });
   };
 
   return (
@@ -58,70 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
           
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 rounded-full hover:bg-accent transition-colors relative"
-            >
-              <Bell className="h-5 w-5" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
-                  {notifications.length}
-                </span>
-              )}
-            </button>
-            
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 p-3 rounded-md border border-border bg-card shadow-md z-50">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Benachrichtigungen</h3>
-                  <div className="flex gap-2">
-                    {notifications.length > 0 && (
-                      <button
-                        onClick={() => clearNotifications()}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Alle löschen
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowNotifications(false)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-[300px] overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`p-2 mb-1 rounded cursor-pointer ${
-                          notification.read
-                            ? "hover:bg-muted"
-                            : "bg-muted/50 border-l-2 border-primary"
-                        }`}
-                      >
-                        <p className="text-sm font-medium">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(notification.timestamp).toLocaleString('de-DE')}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Keine Benachrichtigungen
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <NotificationBell />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

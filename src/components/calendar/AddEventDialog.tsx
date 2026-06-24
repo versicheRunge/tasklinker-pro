@@ -48,21 +48,24 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
     setNewEvent({...newEvent, description: e.target.value});
   };
   
-  const handleTypeChange = (type: CalendarEvent['type']) => {
-    if (type === 'absence' || type === 'sick') {
-      // For absence and sick, default to current user
-      setNewEvent({
-        ...newEvent, 
-        type,
-        userId: currentUserId
-      });
-    } else {
-      setNewEvent({...newEvent, type, userId: undefined});
-    }
+  const TYPE_LABELS: Partial<Record<CalendarEvent['type'], string>> = {
+    absence: 'Urlaub', sick: 'Krankheit', meeting: 'Meeting',
+    training: 'Schulung', holiday: 'Feiertag', birthday: 'Geburtstag', other: 'Sonstiges',
   };
-  
+
+  const autoTitle = (type: CalendarEvent['type'], userId?: string) => {
+    const label = TYPE_LABELS[type] ?? type;
+    const user = users.find(u => u.id === userId);
+    return user ? `${label} - ${user.name}` : label;
+  };
+
+  const handleTypeChange = (type: CalendarEvent['type']) => {
+    const userId = (type === 'absence' || type === 'sick') ? (newEvent.userId ?? currentUserId) : undefined;
+    setNewEvent({ ...newEvent, type, userId, title: autoTitle(type, userId) });
+  };
+
   const handleUserChange = (userId: string) => {
-    setNewEvent({...newEvent, userId});
+    setNewEvent({ ...newEvent, userId, title: autoTitle(newEvent.type, userId) });
   };
   
   const handleStartDateChange = (date: Date) => {

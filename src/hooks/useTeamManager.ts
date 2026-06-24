@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import React from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useUserOperations } from './team/useUserOperations';
 import { useAvatarOperations } from './team/useAvatarOperations';
@@ -15,10 +14,6 @@ export const useTeamManager = () => {
   const vacationOps = useVacationOperations();
   const { calendarEvents } = useCalendarEvents();
 
-  // Store users in localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('teamUsers', JSON.stringify(users));
-  }, [users]);
 
   return {
     users,

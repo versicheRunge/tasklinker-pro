@@ -2,6 +2,7 @@ import { format, addDays, isWithinInterval, isValid, isWeekend, differenceInCale
 import { de } from 'date-fns/locale';
 import { CalendarEvent, VacationAllowance } from '../types/calendar';
 import { User } from '../types/case';
+import { supabase } from '../lib/supabase';
 
 // Helper to get correct Easter date
 export const getEasterSunday = (year: number): Date => {
@@ -193,48 +194,15 @@ export const calculateWorkingDays = (startDate: Date, endDate: Date, holidays: C
   return workingDays;
 };
 
-// Get vacation allowance for a user and year
-export const getVacationAllowance = (userId: string, year: number): number => {
-  const storedAllowances = localStorage.getItem('vacationAllowances');
-  if (!storedAllowances) return 0;
-  
-  try {
-    const allowances: VacationAllowance[] = JSON.parse(storedAllowances);
-    const userAllowance = allowances.find(
-      allowance => allowance.userId === userId && allowance.year === year
-    );
-    
-    return userAllowance ? userAllowance.totalDays : 0;
-  } catch (e) {
-    console.error('Error parsing vacation allowances:', e);
-    return 0;
-  }
+// Get vacation allowance for a user and year (async, reads from Supabase)
+export const getVacationAllowance = async (userId: string, year: number): Promise<number> => {
+  const { data } = await supabase.from('vacation_allowances').select('total_days').eq('user_id', userId).eq('year', year).maybeSingle();
+  return data?.total_days ?? 0;
 };
 
-// Save vacation allowance for a user and year
-export const saveVacationAllowance = (userId: string, year: number, totalDays: number): void => {
-  const storedAllowances = localStorage.getItem('vacationAllowances');
-  let allowances: VacationAllowance[] = [];
-  
-  if (storedAllowances) {
-    try {
-      allowances = JSON.parse(storedAllowances);
-    } catch (e) {
-      console.error('Error parsing vacation allowances:', e);
-    }
-  }
-  
-  const existingIndex = allowances.findIndex(
-    allowance => allowance.userId === userId && allowance.year === year
-  );
-  
-  if (existingIndex >= 0) {
-    allowances[existingIndex].totalDays = totalDays;
-  } else {
-    allowances.push({ userId, year, totalDays });
-  }
-  
-  localStorage.setItem('vacationAllowances', JSON.stringify(allowances));
+// Save vacation allowance for a user and year (async, writes to Supabase)
+export const saveVacationAllowance = async (userId: string, year: number, totalDays: number): Promise<void> => {
+  await supabase.from('vacation_allowances').upsert({ user_id: userId, year, total_days: totalDays }, { onConflict: 'user_id,year' });
 };
 
 // Calculate used vacation days for a user in a year

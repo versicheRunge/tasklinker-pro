@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Plus, UserCheck, HeartPulse } from 'lucide-react';
+import { Plus, UserCheck, HeartPulse, Plane, Stethoscope, RefreshCw } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Dialog } from "../components/ui/dialog";
 import { useUser } from '../contexts/UserContext';
@@ -13,11 +13,14 @@ import { AdminFilteredEvents } from '../components/calendar/AdminFilteredEvents'
 import { AddEventDialog } from '../components/calendar/AddEventDialog';
 import { ViewEventDialog } from '../components/calendar/ViewEventDialog';
 import { CustomCalendar } from '../components/calendar/CustomCalendar';
+import { HandoverDialog } from '../components/calendar/HandoverDialog';
+import { VacationRequestDialog } from '../components/calendar/VacationRequestDialog';
 import { CalendarEvent } from '../types/calendar';
+import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
-  const { 
+  const {
     date,
     events,
     isEventDialogOpen,
@@ -38,19 +41,28 @@ const CalendarPage: React.FC = () => {
     getEventsForDate
   } = useCalendar();
 
-  // Function to generate a unique ID
-  const generateUniqueId = () => {
-    return `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  };
+  const [handover, setHandover] = useState<{ start: string; end: string } | null>(null);
+  const [vacReqOpen, setVacReqOpen] = useState(false);
+  const [vacReqType, setVacReqType] = useState<'vacation' | 'sick'>('vacation');
+  const { isConnected: gcalConnected, events: gcalEvents, isLoading: gcalLoading, refresh: gcalRefresh } = useGoogleCalendar();
 
-  // Function to handle saving a new event with ID
+  // Map Google Calendar events to today's view
+  const gcalTodayEvents = gcalConnected ? gcalEvents.filter(e => {
+    const d = e.start.date ?? e.start.dateTime?.slice(0, 10) ?? '';
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    return d === formattedDate;
+  }) : [];
+
+  const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
   const handleSaveEvent = (): boolean => {
-    const completeEvent: CalendarEvent = {
-      id: generateUniqueId(),
-      ...newEvent
-    };
-    
-    return handleAddEvent(completeEvent);
+    const completeEvent: CalendarEvent = { id: generateUniqueId(), ...newEvent };
+    const ok = handleAddEvent(completeEvent);
+    // Offer handover when saving personal absence
+    if (ok && newEvent.type === 'absence' && currentUser) {
+      setHandover({ start: newEvent.startDate ?? '', end: newEvent.endDate ?? newEvent.startDate ?? '' });
+    }
+    return ok;
   };
 
   return (
@@ -59,35 +71,57 @@ const CalendarPage: React.FC = () => {
         <div className="md:w-1/2 lg:w-2/5">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold">Teamkalender</h1>
-            <button 
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              onClick={() => {
-                setNewEvent(prev => ({ ...prev, date }));
-                setIsEventDialogOpen(true);
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Termin eintragen</span>
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              {!isAdmin && (
+                <>
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                    onClick={() => { setVacReqType('vacation'); setVacReqOpen(true); }}
+                  >
+                    <Plane className="w-3.5 h-3.5" />
+                    Urlaub beantragen
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors text-sm"
+                    onClick={() => { setVacReqType('sick'); setVacReqOpen(true); }}
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Krank melden
+                  </button>
+                </>
+              )}
+              {isAdmin && (
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  onClick={() => {
+                    setNewEvent(prev => ({ ...prev, date }));
+                    setIsEventDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Termin eintragen</span>
+                </button>
+              )}
+            </div>
           </div>
-          
+
           <div className="bg-card border border-border rounded-xl p-4 mb-4">
-            <CustomCalendar 
+            <CustomCalendar
               date={date}
               onDateChange={handleDateChange}
               events={events}
             />
           </div>
-          
+
           <CalendarLegend users={users} isAdmin={isAdmin} />
         </div>
-        
+
         <div className="md:w-1/2 lg:w-3/5">
           <div className="bg-card border border-border rounded-xl p-6">
             <h2 className="text-xl font-medium mb-4">
               {format(date, 'PPPP', { locale: de })}
             </h2>
-            
+
             {isAdmin && (
               <div className="mb-4 flex flex-wrap gap-2">
                 <button
@@ -112,9 +146,9 @@ const CalendarPage: React.FC = () => {
                 </button>
               </div>
             )}
-            
+
             {isAdmin && adminView !== 'all' ? (
-              <AdminFilteredEvents 
+              <AdminFilteredEvents
                 filteredEvents={getFilteredEvents()}
                 adminView={adminView}
                 users={users}
@@ -125,7 +159,7 @@ const CalendarPage: React.FC = () => {
               <div className="space-y-4">
                 {getEventsForDate(date).length > 0 ? (
                   getEventsForDate(date).map((event) => (
-                    <EventItem 
+                    <EventItem
                       key={event.id}
                       event={event}
                       users={users}
@@ -140,14 +174,43 @@ const CalendarPage: React.FC = () => {
                     Keine Termine für diesen Tag
                   </div>
                 )}
+
+              {gcalConnected && gcalTodayEvents.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
+                    <span>📅 Google Kalender</span>
+                  </div>
+                  {gcalTodayEvents.map(e => {
+                    const timeStr = e.start.dateTime
+                      ? new Date(e.start.dateTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                      : 'Ganztägig';
+                    return (
+                      <div key={e.id} className="flex items-center gap-2 py-2 px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg mb-1.5 text-sm">
+                        <span className="text-blue-500 shrink-0">{timeStr}</span>
+                        <span className="truncate">{e.summary}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              </div>
+            )}
+
+            {gcalConnected && (
+              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="w-2 h-2 bg-blue-400 rounded-full" />
+                Google Kalender verbunden
+                <button onClick={gcalRefresh} className="hover:text-foreground ml-auto" title="Synchronisieren">
+                  <RefreshCw className={`w-3 h-3 ${gcalLoading ? 'animate-spin' : ''}`} />
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
-      
+
       <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-        <AddEventDialog 
+        <AddEventDialog
           newEvent={newEvent}
           setNewEvent={setNewEvent}
           onCancel={() => setIsEventDialogOpen(false)}
@@ -157,10 +220,10 @@ const CalendarPage: React.FC = () => {
           isAdmin={isAdmin}
         />
       </Dialog>
-      
+
       <Dialog open={isViewEventDialogOpen} onOpenChange={setIsViewEventDialogOpen}>
         {selectedEvent && (
-          <ViewEventDialog 
+          <ViewEventDialog
             event={selectedEvent}
             onClose={() => setIsViewEventDialogOpen(false)}
             onDelete={handleDeleteEvent}
@@ -170,6 +233,22 @@ const CalendarPage: React.FC = () => {
           />
         )}
       </Dialog>
+
+      {handover && currentUser && (
+        <HandoverDialog
+          currentUser={currentUser}
+          users={users}
+          vacationStart={handover.start}
+          vacationEnd={handover.end}
+          onClose={() => setHandover(null)}
+        />
+      )}
+
+      <VacationRequestDialog
+        isOpen={vacReqOpen}
+        onOpenChange={setVacReqOpen}
+        defaultType={vacReqType}
+      />
     </AppLayout>
   );
 };

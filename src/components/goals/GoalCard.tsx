@@ -11,7 +11,7 @@ import { toast } from '../../hooks/use-toast';
 
 interface GoalCardProps {
   goal: Goal;
-  onUpdateGoal: (updatedGoal: Goal) => void;
+  onUpdateGoal: (updatedGoal: Goal, delta?: number) => void;
   onDeleteGoal: (goalId: string) => void;
   isEditable?: boolean;
 }
@@ -113,8 +113,8 @@ export const GoalCard: React.FC<GoalCardProps> = ({
       current: goal.current + 1,
       userContributions: newUserContributions
     };
-    
-    onUpdateGoal(updatedGoal);
+
+    onUpdateGoal(updatedGoal, 1);
     
     // Show confetti if we've hit the target exactly
     if (updatedGoal.current === updatedGoal.target) {
@@ -145,7 +145,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
       ...goal,
       current: goal.current - 1,
       userContributions: newUserContributions
-    });
+    }, -1);
   };
   
   const handleSaveEdit = () => {

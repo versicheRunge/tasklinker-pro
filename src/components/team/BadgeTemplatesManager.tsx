@@ -5,200 +5,77 @@ import BadgeToolbar from './badge/BadgeToolbar';
 import BadgeList from './badge/BadgeList';
 import BadgeDialogs from './badge/BadgeDialogs';
 import { generateDefaultBadges } from './badge/defaultBadges';
+import { supabase } from '../../lib/supabase';
+
+const BADGE_KEY = 'badge_templates';
 
 interface BadgeTemplatesManagerProps {
   badgeCategories: { id: string; name: string }[];
   onBadgesUpdated: () => void;
 }
 
-const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({
-  badgeCategories,
-  onBadgesUpdated
-}) => {
+const BadgeTemplatesManager: React.FC<BadgeTemplatesManagerProps> = ({ badgeCategories, onBadgesUpdated }) => {
   const [templates, setTemplates] = useState<UserBadge[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [currentBadge, setCurrentBadge] = useState<UserBadge | null>(null);
-  const [newBadge, setNewBadge] = useState({
-    id: '',
-    name: '',
-    icon: '🏆',
-    category: 'achievement'
-  });
+  const [newBadge, setNewBadge] = useState({ id: '', name: '', icon: '🏆', category: 'achievement' });
 
-  const categoryCountMap = templates.reduce((acc, badge) => {
-    acc[badge.category] = (acc[badge.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCountMap = templates.reduce((acc, b) => { acc[b.category] = (acc[b.category] || 0) + 1; return acc; }, {} as Record<string, number>);
 
-  useEffect(() => {
-    console.log("Checking for badges in localStorage...");
-    const storedBadges = localStorage.getItem('userBadges');
-    console.log("Stored badges:", storedBadges ? JSON.parse(storedBadges).length : 0);
-    
-    loadTemplates();
-    
-    const handleFocus = () => loadTemplates();
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
-  const loadTemplates = () => {
-    try {
-      const storedBadges = localStorage.getItem('userBadges');
-      if (storedBadges) {
-        const parsedBadges = JSON.parse(storedBadges);
-        if (Array.isArray(parsedBadges) && parsedBadges.length > 0) {
-          console.log(`Loaded ${parsedBadges.length} badges from storage`);
-          setTemplates(parsedBadges);
-          onBadgesUpdated();
-        } else {
-          console.log('No badges found in storage or empty array, initializing defaults');
-          initializeDefaultBadges();
-        }
-      } else {
-        console.log('No badges in storage, initializing defaults');
-        initializeDefaultBadges();
-      }
-    } catch (e) {
-      console.error('Error parsing badges:', e);
-      initializeDefaultBadges();
+  const load = async () => {
+    const { data } = await supabase.from('agency_settings').select('value').eq('key', BADGE_KEY).maybeSingle();
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      if (Array.isArray(parsed) && parsed.length > 0) { setTemplates(parsed); onBadgesUpdated(); return; }
     }
-  };
-
-  const initializeDefaultBadges = () => {
-    const defaultBadges = generateDefaultBadges();
-    console.log(`Generated ${defaultBadges.length} default badges`);
-    localStorage.setItem('userBadges', JSON.stringify(defaultBadges));
-    setTemplates(defaultBadges);
+    const defaults = generateDefaultBadges();
+    await supabase.from('agency_settings').upsert({ key: BADGE_KEY, value: JSON.stringify(defaults) }, { onConflict: 'key' });
+    setTemplates(defaults);
     onBadgesUpdated();
   };
 
-  useEffect(() => {
-    if (templates.length > 0) {
-      console.log(`Saving ${templates.length} badges to localStorage`);
-      localStorage.setItem('userBadges', JSON.stringify(templates));
-      onBadgesUpdated();
-    }
-  }, [templates, onBadgesUpdated]);
-
-  useEffect(() => {
-    if (templates.length > 0 && templates.length < 10) {
-      console.log(`Only ${templates.length} badges found, reinitializing defaults...`);
-      initializeDefaultBadges();
-    }
-  }, [templates]);
-
-  const handleEditBadge = (badge: UserBadge) => {
-    setCurrentBadge({ ...badge });
-    setIsEditDialogOpen(true);
+  const persist = async (updated: UserBadge[]) => {
+    await supabase.from('agency_settings').upsert({ key: BADGE_KEY, value: JSON.stringify(updated) }, { onConflict: 'key' });
+    setTemplates(updated);
+    onBadgesUpdated();
   };
 
-  const handleSaveEdit = () => {
-    if (!currentBadge || !currentBadge.name.trim() || !currentBadge.icon.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Alle Felder müssen ausgefüllt sein.",
-        variant: "destructive"
-      });
-      return;
-    }
+  useEffect(() => { load(); }, []);
 
-    const updatedTemplates = templates.map(badge => 
-      badge.id === currentBadge.id ? currentBadge : badge
-    );
-    
-    setTemplates(updatedTemplates);
+  const handleEditBadge = (badge: UserBadge) => { setCurrentBadge({ ...badge }); setIsEditDialogOpen(true); };
+
+  const handleSaveEdit = async () => {
+    if (!currentBadge?.name.trim() || !currentBadge?.icon.trim()) {
+      toast({ title: 'Fehler', description: 'Alle Felder müssen ausgefüllt sein.', variant: 'destructive' }); return;
+    }
+    await persist(templates.map(b => b.id === currentBadge.id ? currentBadge : b));
     setIsEditDialogOpen(false);
-    setCurrentBadge(null);
-    
-    toast({
-      title: "Auszeichnung aktualisiert",
-      description: "Die Auszeichnung wurde erfolgreich aktualisiert."
-    });
+    toast({ title: 'Auszeichnung aktualisiert' });
   };
 
-  const handleDeleteBadge = (id: string) => {
-    const updatedTemplates = templates.filter(badge => badge.id !== id);
-    setTemplates(updatedTemplates);
-    
-    toast({
-      title: "Auszeichnung gelöscht",
-      description: "Die Auszeichnung wurde erfolgreich gelöscht."
-    });
+  const handleDeleteBadge = async (id: string) => {
+    await persist(templates.filter(b => b.id !== id));
+    toast({ title: 'Auszeichnung gelöscht' });
   };
 
-  const handleCreateBadge = () => {
+  const handleCreateBadge = async () => {
     if (!newBadge.name.trim() || !newBadge.icon.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Alle Felder müssen ausgefüllt sein.",
-        variant: "destructive"
-      });
-      return;
+      toast({ title: 'Fehler', description: 'Alle Felder müssen ausgefüllt sein.', variant: 'destructive' }); return;
     }
-
-    const newId = `badge-${Date.now()}`;
-    const createdBadge = {
-      ...newBadge,
-      id: newId
-    };
-    
-    setTemplates([...templates, createdBadge]);
+    await persist([...templates, { ...newBadge, id: `badge-${Date.now()}` }]);
     setIsCreateDialogOpen(false);
-    setNewBadge({
-      id: '',
-      name: '',
-      icon: '🏆',
-      category: 'achievement'
-    });
-    
-    toast({
-      title: "Auszeichnung erstellt",
-      description: "Die neue Auszeichnung wurde erfolgreich erstellt."
-    });
+    setNewBadge({ id: '', name: '', icon: '🏆', category: 'achievement' });
+    toast({ title: 'Auszeichnung erstellt' });
   };
 
   return (
     <div className="space-y-4">
-      <BadgeToolbar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        badgeCategories={badgeCategories}
-        badgeCount={templates.length}
-        categoryCountMap={categoryCountMap}
-        onCreateClick={() => setIsCreateDialogOpen(true)}
-      />
-      
-      <BadgeList
-        badges={templates}
-        searchTerm={searchTerm}
-        selectedCategory={selectedCategory}
-        badgeCategories={badgeCategories}
-        onEdit={handleEditBadge}
-        onDelete={handleDeleteBadge}
-      />
-      
-      <BadgeDialogs
-        isEditDialogOpen={isEditDialogOpen}
-        setIsEditDialogOpen={setIsEditDialogOpen}
-        isCreateDialogOpen={isCreateDialogOpen}
-        setIsCreateDialogOpen={setIsCreateDialogOpen}
-        currentBadge={currentBadge}
-        setCurrentBadge={setCurrentBadge}
-        newBadge={newBadge}
-        setNewBadge={setNewBadge}
-        badgeCategories={badgeCategories}
-        onSaveEdit={handleSaveEdit}
-        onCreateBadge={handleCreateBadge}
-      />
+      <BadgeToolbar searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} badgeCategories={badgeCategories} badgeCount={templates.length} categoryCountMap={categoryCountMap} onCreateClick={() => setIsCreateDialogOpen(true)} />
+      <BadgeList badges={templates} searchTerm={searchTerm} selectedCategory={selectedCategory} badgeCategories={badgeCategories} onEdit={handleEditBadge} onDelete={handleDeleteBadge} />
+      <BadgeDialogs isEditDialogOpen={isEditDialogOpen} setIsEditDialogOpen={setIsEditDialogOpen} isCreateDialogOpen={isCreateDialogOpen} setIsCreateDialogOpen={setIsCreateDialogOpen} currentBadge={currentBadge} setCurrentBadge={setCurrentBadge} newBadge={newBadge} setNewBadge={setNewBadge} badgeCategories={badgeCategories} onSaveEdit={handleSaveEdit} onCreateBadge={handleCreateBadge} />
     </div>
   );
 };

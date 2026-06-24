@@ -98,18 +98,16 @@ export const MentionInput: React.FC<MentionInputProps> = ({
       
       if (atIndex !== -1 && (atIndex === 0 || /\s/.test(textBeforeCursor[atIndex - 1]))) {
         const query = textBeforeCursor.substring(atIndex + 1);
-        // Only show suggestions if we don't have a space after the @ symbol yet
-        if (!query.includes(' ')) {
+        // Filter users — allow spaces in query to support multi-word names
+        const filteredUsers = users.filter(user =>
+          user.name.toLowerCase().startsWith(query.toLowerCase()) ||
+          user.name.toLowerCase().includes(query.toLowerCase())
+        );
+        if (filteredUsers.length > 0) {
           setMentionQuery(query.toLowerCase());
           setMentionStartPos(atIndex);
-          
-          // Filter users based on the query
-          const filteredUsers = users.filter(user => 
-            user.name.toLowerCase().includes(query.toLowerCase())
-          );
-          
           setSuggestions(filteredUsers);
-          setSelectedSuggestionIndex(0); // Reset selection index with new suggestions
+          setSelectedSuggestionIndex(0);
           return;
         }
       }

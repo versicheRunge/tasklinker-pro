@@ -41,29 +41,25 @@ export const useUserOperations = () => {
     badges: []
   });
 
-  const handleAddUser = () => {
-    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.role.trim()) {
+  const handleAddUser = async () => {
+    if (!newUser.name.trim() || !newUser.email.trim()) {
       toast({
         title: "Fehler",
-        description: "Bitte füllen Sie alle erforderlichen Felder aus.",
+        description: "Bitte Name und E-Mail eingeben.",
         variant: "destructive"
       });
       return;
     }
 
-    addUser({
+    await addUser({
       name: newUser.name,
       role: newUser.role,
       email: newUser.email,
-      department: newUser.department || 'Allgemein',
+      department: newUser.department || 'innendienst',
       phone: newUser.phone || '',
-      avatar: newUser.avatar || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`,
+      avatar: newUser.avatar || '',
       userRole: newUser.userRole,
-      stats: {
-        casesHandled: 0,
-        completed: 0,
-        inProgress: 0
-      },
+      stats: { casesHandled: 0, completed: 0, inProgress: 0 },
       badges: []
     });
 
@@ -76,17 +72,8 @@ export const useUserOperations = () => {
       phone: '',
       avatar: '',
       userRole: 'staff',
-      stats: {
-        casesHandled: 0,
-        completed: 0,
-        inProgress: 0
-      },
+      stats: { casesHandled: 0, completed: 0, inProgress: 0 },
       badges: []
-    });
-
-    toast({
-      title: "Benutzer hinzugefügt",
-      description: "Der neue Benutzer wurde erfolgreich angelegt."
     });
   };
 
@@ -114,10 +101,10 @@ export const useUserOperations = () => {
   };
 
   const handleSaveUser = () => {
-    if (!editingUser.name.trim() || !editingUser.email.trim() || !editingUser.role.trim()) {
+    if (!editingUser.name.trim() || !editingUser.email.trim()) {
       toast({
         title: "Fehler",
-        description: "Bitte füllen Sie alle erforderlichen Felder aus.",
+        description: "Bitte Name und E-Mail eingeben.",
         variant: "destructive"
       });
       return;

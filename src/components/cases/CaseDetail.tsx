@@ -3,15 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CaseItem, CaseStatus, CaseActivity, ChecklistItemType, SubChecklistItem, User as UserType, CasePriority } from '../../types/case';
 import { useUser } from '../../contexts/UserContext';
+import { supabase } from '../../lib/supabase';
 import { toast } from "../../hooks/use-toast";
 
 // Import refactored components
+import { CustomerHistoryPanel } from './CustomerHistoryPanel';
+import { CaseCollaboratorsPanel } from './CaseCollaboratorsPanel';
 import { CaseHeader } from './detail/CaseHeader';
 import { CaseDescription } from './detail/CaseDescription';
 import { ChecklistSection } from './detail/ChecklistSection';
 import { CommentSection } from './detail/CommentSection';
 import { CaseActions } from './detail/CaseActions';
-import { generatePDF, sendNotification, checkAllCasesCompleted } from './detail/CaseHelpers';
+import { generatePDF, checkAllCasesCompleted } from './detail/CaseHelpers';
+import { insertNotification } from '../../hooks/useNotifications';
 import { showConfetti } from './detail/ConfettiEffect';
 
 interface CaseDetailProps {
@@ -45,54 +49,40 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     );
   }
 
-  const handleStatusChange = (newStatus: CaseStatus) => {
+  const handleStatusChange = (newStatus: CaseStatus, waitingReason?: string) => {
     if (caseItem.status === newStatus) return;
-    
+
+    const LABELS: Record<string, string> = { new: 'Neu', in_progress: 'In Bearbeitung', waiting: 'Wartet auf Rückmeldung', completed: 'Erledigt' };
+    const contentParts = [`Status geändert auf: ${LABELS[newStatus] ?? newStatus}`];
+    if (waitingReason) contentParts.push(`Grund: ${waitingReason}`);
+
     const newActivity: CaseActivity = {
       id: `act-${Date.now()}`,
       type: 'status',
-      content: `Status geändert auf: ${newStatus === 'new' ? 'Neu' : 
-                newStatus === 'in_progress' ? 'In Bearbeitung' : 
-                newStatus === 'waiting' ? 'Wartet auf Rückmeldung' : 'Erledigt'}`,
+      content: contentParts.join(' · '),
       timestamp: new Date().toISOString(),
       user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
-      caseId: caseItem.id
+      caseId: caseItem.id,
     };
-    
+
     const updatedCase = {
       ...caseItem,
       status: newStatus,
+      waitingReason: newStatus === 'waiting' ? (waitingReason ?? caseItem.waitingReason) : undefined,
       lastUpdated: new Date().toISOString(),
-      activities: [newActivity, ...caseItem.activities]
+      activities: [newActivity, ...caseItem.activities],
     };
-    
+
     setCaseItem(updatedCase);
-    
+
     if (updateCase) {
-      // Use a direct update to ensure the state is saved
       updateCase(caseItem.id, {
         status: newStatus,
-        lastUpdated: updatedCase.lastUpdated,
-        activities: updatedCase.activities
+        waitingReason: updatedCase.waitingReason,
       });
     }
-    
-    // Send notification to the case creator if it's not the current user
-    if (caseItem.assignee.id !== currentUser?.id) {
-      sendNotification(
-        caseItem.assignee.id, 
-        `Status geändert: ${caseItem.title}`,
-        `${currentUser?.name} hat den Status auf "${newStatus === 'new' ? 'Neu' : 
-          newStatus === 'in_progress' ? 'In Bearbeitung' : 
-          newStatus === 'waiting' ? 'Wartet auf Rückmeldung' : 'Erledigt'}" geändert.`,
-        caseItem.id
-      );
-    }
-    
-    // Check if all cases are now completed when this case is marked as completed
-    if (newStatus === 'completed' && checkAllCasesCompleted()) {
-      showConfetti();
-    }
+
+    if (newStatus === 'completed' && checkAllCasesCompleted()) showConfetti();
   };
 
   const handlePriorityChange = (newPriority: CasePriority) => {
@@ -169,12 +159,12 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
     
-    // Send notification to the newly assigned user
-    sendNotification(
-      userToAssign.id, 
-      `Neuer Vorgang zugewiesen: ${caseItem.title}`,
-      `${currentUser?.name} hat Ihnen den Vorgang "${caseItem.title}" zugewiesen.`,
-      caseItem.id
+    insertNotification(
+      userToAssign.id,
+      'assignment',
+      `Vorgang zugewiesen: ${caseItem.title}`,
+      `${currentUser?.name} hat Ihnen diesen Vorgang zugewiesen.`,
+      caseItem.id,
     );
     
     toast({
@@ -234,7 +224,7 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
     }
   };
 
-  const handleAddChecklistItem = (text: string, description: string, addToTemplate: boolean) => {
+  const handleAddChecklistItem = async (text: string, description: string, addToTemplate: boolean) => {
     const newItem: ChecklistItemType = {
       text,
       description: description || undefined,
@@ -271,27 +261,16 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
 
-    // Add to template if requested
     if (addToTemplate) {
-      const storedTemplates = localStorage.getItem('checklistTemplates');
-      if (storedTemplates) {
-        const templates = JSON.parse(storedTemplates);
-        const templateToUpdate = templates.find((t: any) => t.type === caseItem.type);
-        
-        if (templateToUpdate) {
-          templateToUpdate.items = [...templateToUpdate.items, newItem];
-          localStorage.setItem('checklistTemplates', JSON.stringify(templates));
-          
-          toast({
-            title: "Vorlage aktualisiert",
-            description: "Der neue Eintrag wurde auch zur Standardvorlage hinzugefügt"
-          });
-        }
+      const { data: tmpl } = await supabase.from('checklist_templates').select('id,items').eq('type', caseItem.type).maybeSingle();
+      if (tmpl) {
+        await supabase.from('checklist_templates').update({ items: [...(tmpl.items ?? []), newItem] }).eq('id', tmpl.id);
+        toast({ title: 'Vorlage aktualisiert', description: 'Eintrag zur Standardvorlage hinzugefügt.' });
       }
     }
   };
 
-  const handleAddSubItem = (parentIndex: number, subItemText: string, addToTemplate: boolean) => {
+  const handleAddSubItem = async (parentIndex: number, subItemText: string, addToTemplate: boolean) => {
     const newSubItem: SubChecklistItem = {
       text: subItemText,
       completed: false
@@ -338,83 +317,73 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
       });
     }
 
-    // Add to template if requested
     if (addToTemplate) {
-      const storedTemplates = localStorage.getItem('checklistTemplates');
-      if (storedTemplates) {
-        const templates = JSON.parse(storedTemplates);
-        const templateToUpdate = templates.find((t: any) => t.type === caseItem.type);
-        
-        if (templateToUpdate) {
-          const templateParentItem = updatedChecklist[parentIndex];
-          const templateParentIndex = templateToUpdate.items.findIndex((item: any) => item.text === templateParentItem.text);
-          
-          if (templateParentIndex !== -1) {
-            if (!templateToUpdate.items[templateParentIndex].subItems) {
-              templateToUpdate.items[templateParentIndex].subItems = [];
-            }
-            
-            templateToUpdate.items[templateParentIndex].subItems.push(newSubItem);
-            localStorage.setItem('checklistTemplates', JSON.stringify(templates));
-            
-            toast({
-              title: "Vorlage aktualisiert",
-              description: "Der neue Unterpunkt wurde auch zur Standardvorlage hinzugefügt"
-            });
-          }
+      const { data: tmpl } = await supabase.from('checklist_templates').select('id,items').eq('type', caseItem.type).maybeSingle();
+      if (tmpl) {
+        const items = [...(tmpl.items ?? [])];
+        const parentText = updatedChecklist[parentIndex].text;
+        const pi = items.findIndex((it: any) => it.text === parentText);
+        if (pi !== -1) {
+          if (!items[pi].subItems) items[pi].subItems = [];
+          items[pi].subItems.push(newSubItem);
+          await supabase.from('checklist_templates').update({ items }).eq('id', tmpl.id);
+          toast({ title: 'Vorlage aktualisiert', description: 'Unterpunkt zur Standardvorlage hinzugefügt.' });
         }
       }
     }
   };
 
   const handleArchiveCase = () => {
-    toast({
-      title: "Vorgang archiviert",
-      description: "Der Vorgang wurde erfolgreich archiviert."
-    });
+    toast({ title: 'Vorgang archiviert', description: 'Der Vorgang wurde erfolgreich archiviert.' });
     navigate('/cases');
   };
 
-  const handleAddComment = (text: string, mentions: string[]) => {
-    if (!text.trim()) return;
-    
-    const newActivity: CaseActivity = {
-      id: `act-${Date.now()}`,
-      type: 'comment',
+  const handleDeleteCase = async () => {
+    const { error } = await supabase.from('cases').delete().eq('id', caseItem.id);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Vorgang gelöscht', description: 'Der Vorgang wurde permanent gelöscht.' });
+    navigate('/cases');
+  };
+
+  const handleAddComment = async (text: string, mentions: string[], activityType: string = 'comment') => {
+    if (!text.trim() || !currentUser) return;
+
+    const { data: inserted, error } = await supabase.from('case_activities').insert({
+      case_id: caseItem.id,
+      user_id: currentUser.id,
+      type: activityType,
       content: text,
-      timestamp: new Date().toISOString(),
-      user: currentUser || { id: 'current-user', name: 'Max Schmidt', role: 'Mitarbeiter' },
-      caseId: caseItem.id,
-      mentions
-    };
-    
-    const updatedCase = {
-      ...caseItem,
-      lastUpdated: new Date().toISOString(),
-      activities: [newActivity, ...caseItem.activities]
-    };
-    
-    setCaseItem(updatedCase);
-    
-    if (updateCase) {
-      updateCase(caseItem.id, {
-        lastUpdated: updatedCase.lastUpdated,
-        activities: updatedCase.activities
-      });
+    }).select().single();
+
+    if (error || !inserted) {
+      toast({ title: 'Fehler beim Speichern', description: error?.message, variant: 'destructive' });
+      return;
     }
-    
-    // Notify mentioned users
+
+    const newActivity: CaseActivity = {
+      id: inserted.id,
+      type: activityType as CaseActivity['type'],
+      content: text,
+      timestamp: inserted.created_at,
+      user: currentUser,
+      caseId: caseItem.id,
+      mentions,
+    };
+
+    setCaseItem(prev => prev ? { ...prev, activities: [newActivity, ...prev.activities] } : prev);
+
+    // Update cases.updated_at
+    await supabase.from('cases').update({ updated_at: new Date().toISOString() }).eq('id', caseItem.id);
+
     mentions.forEach(userId => {
       if (userId !== currentUser?.id) {
-        const mentionedUser = users.find(u => u.id === userId);
-        if (mentionedUser) {
-          mentionUser(
-            userId,
-            caseItem.id,
-            `${currentUser?.name} hat Sie in einem Kommentar erwähnt`,
-            "case" // Use the correct type string literal
-          );
-        }
+        insertNotification(
+          userId,
+          'mention',
+          `@Erwähnung in: ${caseItem.title}`,
+          `${currentUser?.name}: ${text.slice(0, 100)}`,
+          caseItem.id,
+        );
       }
     });
   };
@@ -454,8 +423,25 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
           />
         </div>
         
-        <div className="lg:col-span-1">
-          <CaseActions 
+        <div className="lg:col-span-1 space-y-4">
+          {caseItem.customerName && (
+            <CustomerHistoryPanel customerName={caseItem.customerName} currentCaseId={caseItem.id} />
+          )}
+          <CaseCollaboratorsPanel
+            caseId={caseItem.id}
+            collaboratorIds={caseItem.collaboratorIds ?? []}
+            onUpdated={() => {
+              // Reload case to refresh collaborators
+              supabase.from('cases').select('*, case_activities(*), checklist_items(*), case_collaborators(user_id)')
+                .eq('id', caseItem.id).single().then(({ data }) => {
+                  if (data) setCaseItem(prev => prev ? {
+                    ...prev,
+                    collaboratorIds: (data.case_collaborators ?? []).map((c: any) => c.user_id),
+                  } : prev);
+                });
+            }}
+          />
+          <CaseActions
             onGeneratePDF={() => {
               const fileName = generatePDF(caseItem);
               toast({
@@ -464,8 +450,14 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => 
               });
             }}
             onArchiveCase={handleArchiveCase}
+            onDeleteCase={handleDeleteCase}
+            isAdmin={isAdmin}
             caseItem={caseItem}
             currentUser={currentUser}
+            onUpdate={(id, data) => {
+              setCaseItem(prev => prev ? { ...prev, ...data } : prev);
+              if (updateCase) updateCase(id, data);
+            }}
           />
         </div>
       </div>

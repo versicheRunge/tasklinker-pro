@@ -1,7 +1,8 @@
-
 import { useState } from 'react';
-import { Message, User } from '../types/chat';
+import { Message } from '../types/chat';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface UseMessageInputProps {
   groupId?: string;
@@ -10,101 +11,67 @@ interface UseMessageInputProps {
 
 export const useMessageInput = ({ groupId = 'global', setMessages }: UseMessageInputProps) => {
   const { users, currentUser, mentionUser, addNotification } = useUser();
+  const { profile } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
   const formatMessageWithMentions = (text: string) => {
     let formattedText = text;
-    
-    const mentionRegex = /@(\w+)/g;
-    const mentions = text.match(mentionRegex) || [];
-    
-    users.forEach(user => {
-      const userMention = `@${user.name}`;
-      if (text.includes(userMention)) {
-        formattedText = formattedText.replace(
-          new RegExp(userMention, 'g'),
-          `<span class="text-primary font-medium">${userMention}</span>`
+    // Escape HTML to prevent XSS, then re-insert mention spans
+    const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    formattedText = escapeHtml(formattedText);
+    const mentionedUsers: string[] = [];
+    // Sort by longest name first to avoid partial replacements
+    [...users].sort((a, b) => b.name.length - a.name.length).forEach(user => {
+      const tag = `@${user.name}`;
+      const escaped = escapeHtml(tag);
+      if (formattedText.includes(escaped)) {
+        mentionedUsers.push(user.name);
+        // Use inline styles so mention is visible on both light and dark bubbles
+        formattedText = formattedText.split(escaped).join(
+          `<span style="background:rgba(255,255,255,0.25);border-radius:4px;padding:1px 4px;font-weight:600;">${escaped}</span>`
         );
       }
     });
-    
-    return { formattedText, mentions: mentions.map(m => m.substring(1)) };
+    return { formattedText, mentions: mentionedUsers };
   };
 
-  const simulateUserTyping = (userId: string) => {
-    if (!typingUsers.includes(userId)) {
-      setTypingUsers(prev => [...prev, userId]);
-      
-      setTimeout(() => {
-        setTypingUsers(prev => prev.filter(id => id !== userId));
-      }, 2000);
+  const sendMessage = async () => {
+    if (!inputValue.trim() || !profile) return;
+    const { mentions } = formatMessageWithMentions(inputValue);
+    const mentionedUserIds = mentions.map(name => users.find(u => u.name === name)?.id).filter(Boolean) as string[];
+
+    const { data: channel } = await supabase.from('chat_channels').select('id').eq('name', groupId).maybeSingle();
+    let channelId = channel?.id;
+
+    if (!channelId) {
+      const { data: created } = await supabase.from('chat_channels').insert({ name: groupId, type: 'channel', created_by: profile.id }).select('id').single();
+      channelId = created?.id;
     }
-  };
-  
-  const sendMessage = () => {
-    if (!inputValue.trim() || !currentUser) return;
-    
-    const { formattedText, mentions } = formatMessageWithMentions(inputValue);
-    
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      userId: currentUser.id,
-      text: inputValue,
-      timestamp: new Date().toISOString(),
-      mentions: mentions
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-    setInputValue('');
-    
-    const lastSeenKey = `lastSeen_${groupId}_${currentUser.id}`;
-    localStorage.setItem(lastSeenKey, newMessage.timestamp);
-    
-    // Handle mentions
-    mentions.forEach(mentionedName => {
-      const mentionedUser = users.find(u => u.name === mentionedName);
-      if (mentionedUser && mentionedUser.id !== currentUser.id) {
-        mentionUser(
-          mentionedUser.id, 
-          groupId, 
-          `@${mentionedUser.name} wurde im Chat erwähnt`,
-          "chat"
-        );
-      }
+    if (!channelId) return;
+
+    const { error } = await supabase.from('chat_messages').insert({
+      channel_id: channelId, user_id: profile.id, text: inputValue, mentions: mentionedUserIds,
     });
-    
-    // Notify all users except the sender
-    users.forEach(user => {
-      if (user.id !== currentUser.id) {
-        addNotification({
-          title: `Neue Nachricht im Kanal`,
-          message: `${currentUser.name}: ${inputValue.substring(0, 40)}${inputValue.length > 40 ? "..." : ""}`,
-          targetUserId: user.id,
-          type: "chat",
-          caseId: groupId
+    if (error) { console.error('Chat-Fehler:', error.message); return; }
+    setInputValue('');
+
+    // Only notify mentioned users
+    for (const uid of mentionedUserIds) {
+      if (uid !== profile.id) {
+        await supabase.from('notifications').insert({
+          user_id: uid,
+          type: 'mention',
+          title: `${currentUser?.name ?? 'Jemand'} hat Sie erwähnt`,
+          body: inputValue.substring(0, 80),
         });
       }
-    });
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    } else {
-      if (currentUser) {
-        simulateUserTyping(currentUser.id);
-      }
     }
   };
 
-  return {
-    inputValue, 
-    setInputValue,
-    typingUsers,
-    formatMessageWithMentions,
-    sendMessage,
-    handleKeyDown
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
+
+  return { inputValue, setInputValue, typingUsers, formatMessageWithMentions, sendMessage, handleKeyDown };
 };
