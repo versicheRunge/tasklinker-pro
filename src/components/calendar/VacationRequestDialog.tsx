@@ -92,7 +92,7 @@ export const VacationRequestDialog: React.FC<VacationRequestDialogProps> = ({
                 type="date"
                 className="w-full mt-1 p-2 rounded-md border border-input bg-background text-sm"
                 value={startDate}
-                min={today}
+                min={type === 'vacation' ? today : undefined}
                 onChange={e => { setStartDate(e.target.value); if (e.target.value > endDate) setEndDate(e.target.value); }}
               />
             </div>

@@ -87,7 +87,7 @@ export const VacationRequestsAdmin: React.FC = () => {
         );
         const body = `Hallo,\n\nder Urlaub von ${employee?.name ?? ''} (${dateRange}, ${req.working_days} AT) wurde genehmigt.\n\nKalendereinladung:\n${gcalUrl}\n\nMit freundlichen Grüßen`;
         const mailto = `mailto:${MANAGER_EMAIL}?subject=${encodeURIComponent(`Urlaub genehmigt: ${employee?.name ?? ''} ${dateRange}`)}&body=${encodeURIComponent(body)}`;
-        window.open(mailto);
+        window.location.href = mailto;
       }
 
       toast({ title: 'Genehmigt', description: 'Kalendereintrag automatisch erstellt.' });

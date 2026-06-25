@@ -95,8 +95,9 @@ export interface CaseItem {
   checklist: ChecklistItemType[];
   documents?: Document[];
   archived?: boolean; // Add archived flag
-  customerName?: string; // Added for PDF export filename
-  customerEmail?: string; // Added for email functionality
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   
   // Neue Felder für erweiterte Funktionalität
   dueDate?: string; // Zu erledigen bis (optional)

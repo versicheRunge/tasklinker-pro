@@ -57,20 +57,19 @@ const CalendarPage: React.FC = () => {
 
   const generateUniqueId = () => `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-  const handleSaveEvent = (): boolean => {
+  const handleSaveEvent = async (): Promise<boolean> => {
     const completeEvent: CalendarEvent = { id: generateUniqueId(), ...newEvent };
-    const ok = handleAddEvent(completeEvent);
+    const ok = await handleAddEvent(completeEvent);
     if (ok && newEvent.type === 'absence' && currentUser) {
-      setHandover({ start: newEvent.startDate ?? '', end: newEvent.endDate ?? newEvent.startDate ?? '' });
-      // Offer Google Calendar quick-add for the absence
-      if (newEvent.startDate) {
-        setGcalAddUrl(buildGoogleCalendarAddUrl(
-          newEvent.title || `Abwesenheit: ${currentUser.name}`,
-          newEvent.startDate,
-          newEvent.endDate ?? newEvent.startDate,
-          'Eingetragen über TaskLinker',
-        ));
-      }
+      const startStr = format(newEvent.date, 'yyyy-MM-dd');
+      const endStr = newEvent.endDate ? format(newEvent.endDate, 'yyyy-MM-dd') : startStr;
+      setHandover({ start: startStr, end: endStr });
+      setGcalAddUrl(buildGoogleCalendarAddUrl(
+        newEvent.title || `Abwesenheit: ${currentUser.name}`,
+        startStr,
+        endStr,
+        'Eingetragen über TaskLinker',
+      ));
     }
     return ok;
   };

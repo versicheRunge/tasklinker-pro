@@ -22,6 +22,8 @@ const EMPTY_FORM = {
   description: '',
   type: 'sonstiges' as CaseType,
   customerName: '',
+  customerEmail: '',
+  customerPhone: '',
   selectedDefaultTitle: '',
   dueDate: '',
   followUpDate: '',
@@ -89,6 +91,7 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
     setForm(EMPTY_FORM);
     setSelectedAssignee('');
     setCollaboratorIds([]);
+    onOpenChange(false);
   };
 
   return (
@@ -115,34 +118,58 @@ export const CreateCaseDialog: React.FC<CreateCaseDialogProps> = ({
             </select>
           </div>
 
-          {/* Kundenname */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Kundenname</label>
-            <input
-              className="w-full p-2 rounded-md border border-input bg-background"
-              value={form.customerName}
-              onChange={e => set('customerName', e.target.value)}
-              placeholder="Name des Kunden"
-            />
-            {duplicates.length > 0 && (
-              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <div className="flex items-center gap-2 text-amber-800 font-medium text-xs mb-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {duplicates.length === 1
-                    ? 'Für diesen Kunden gibt es bereits einen offenen Vorgang:'
-                    : `Für diesen Kunden gibt es bereits ${duplicates.length} offene Vorgänge:`}
-                </div>
-                <ul className="space-y-0.5">
-                  {duplicates.map(d => (
-                    <li key={d.id} className="text-xs text-amber-700 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      {d.title}
-                    </li>
-                  ))}
-                </ul>
+          {/* Kundendaten */}
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Kundenname</label>
+              <input
+                className="w-full p-2 rounded-md border border-input bg-background"
+                value={form.customerName}
+                onChange={e => set('customerName', e.target.value)}
+                placeholder="Name des Kunden"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Kunden-E-Mail</label>
+                <input
+                  type="email"
+                  className="w-full p-2 rounded-md border border-input bg-background"
+                  value={form.customerEmail}
+                  onChange={e => set('customerEmail', e.target.value)}
+                  placeholder="kunde@beispiel.de"
+                />
               </div>
-            )}
+              <div>
+                <label className="block text-sm font-medium mb-1">Kunden-Telefon</label>
+                <input
+                  type="tel"
+                  className="w-full p-2 rounded-md border border-input bg-background"
+                  value={form.customerPhone}
+                  onChange={e => set('customerPhone', e.target.value)}
+                  placeholder="+49 123 456789"
+                />
+              </div>
+            </div>
           </div>
+          {duplicates.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-center gap-2 text-amber-800 font-medium text-xs mb-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                {duplicates.length === 1
+                  ? 'Für diesen Kunden gibt es bereits einen offenen Vorgang:'
+                  : `Für diesen Kunden gibt es bereits ${duplicates.length} offene Vorgänge:`}
+              </div>
+              <ul className="space-y-0.5">
+                {duplicates.map(d => (
+                  <li key={d.id} className="text-xs text-amber-700 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    {d.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Titel */}
           <div>

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Clock, Flag, Hourglass, CalendarCheck, CalendarClock } from 'lucide-react';
+import { ArrowLeft, UserPlus, Clock, Flag, Hourglass, CalendarCheck, CalendarClock, Mail, Phone } from 'lucide-react';
 import { CaseItem, User, CaseStatus, CasePriority, CASE_TYPE_LABELS } from '../../../types/case';
 import { CustomAvatar } from '../../ui/CustomAvatar';
 import { Badge } from '../../ui/badge';
@@ -63,6 +63,16 @@ export const CaseHeader: React.FC<CaseHeaderProps> = ({
         )}
         {caseItem.customerName && (
           <span className="text-sm text-muted-foreground">· Kunde: <strong>{caseItem.customerName}</strong></span>
+        )}
+        {caseItem.customerEmail && (
+          <a href={`mailto:${caseItem.customerEmail}`} className="flex items-center gap-1 text-sm text-primary hover:underline">
+            <Mail className="w-3.5 h-3.5" />{caseItem.customerEmail}
+          </a>
+        )}
+        {caseItem.customerPhone && (
+          <a href={`tel:${caseItem.customerPhone}`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <Phone className="w-3.5 h-3.5" />{caseItem.customerPhone}
+          </a>
         )}
       </div>
 

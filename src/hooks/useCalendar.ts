@@ -32,24 +32,19 @@ export const useCalendar = () => {
   const { adminView, setAdminView, getFilteredEvents } = useAdminView(events);
   
   // Add event wrapper that handles dialog closing and form reset
-  const addEvent = (event: CalendarEvent): boolean => {
-    // Ensure the event has an ID
-    if (!event.id) {
-      console.error('Event is missing ID');
-      return false;
-    }
-    
-    const success = handleAddEvent(event);
+  const addEvent = async (event: CalendarEvent): Promise<boolean> => {
+    if (!event.id) return false;
+    const success = await handleAddEvent(event);
     if (success) {
       setIsEventDialogOpen(false);
       resetNewEvent(date);
     }
     return success;
   };
-  
+
   // Delete event wrapper that also handles dialog closing
-  const deleteEvent = (id: string): boolean => {
-    const success = handleDeleteEvent(id);
+  const deleteEvent = async (id: string): Promise<boolean> => {
+    const success = await handleDeleteEvent(id);
     if (success) {
       setIsViewEventDialogOpen(false);
       setSelectedEvent(null);

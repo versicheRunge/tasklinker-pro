@@ -4,11 +4,11 @@ import { CaseDetail } from '../components/cases/CaseDetail';
 import { useCasesManager } from '../hooks/useCasesManager';
 
 const CaseDetails: React.FC = () => {
-  const { allCases, updateCase } = useCasesManager();
+  const { allCases, updateCase, isLoading } = useCasesManager();
 
   return (
     <AppLayout>
-      <CaseDetail cases={allCases} updateCase={updateCase} />
+      <CaseDetail cases={allCases} updateCase={updateCase} isLoading={isLoading} />
     </AppLayout>
   );
 };

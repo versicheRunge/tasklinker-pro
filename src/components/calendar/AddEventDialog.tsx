@@ -14,7 +14,7 @@ interface AddEventDialogProps {
   newEvent: Omit<CalendarEvent, 'id'>;
   setNewEvent: React.Dispatch<React.SetStateAction<Omit<CalendarEvent, 'id'>>>;
   onCancel: () => void;
-  onSave: () => boolean;
+  onSave: () => boolean | Promise<boolean>;
   users: User[];
   currentUserId?: string;
   isAdmin: boolean;
@@ -103,7 +103,7 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
     }
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!newEvent.title.trim()) {
       toast({
         title: "Fehler",
@@ -112,12 +112,8 @@ export const AddEventDialog: React.FC<AddEventDialogProps> = ({
       });
       return;
     }
-    
-    const success = onSave();
-    if (success) {
-      // Reset for next entry
-      setIsMultiDay(false);
-    }
+    const success = await onSave();
+    if (success) setIsMultiDay(false);
   };
   
   return (

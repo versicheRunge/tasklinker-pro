@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,6 +68,11 @@ export const useCasesManager = () => {
   const location = useLocation();
   const isArchived = location.pathname === '/cases/archived';
 
+  // Use a ref for users so loadCases doesn't re-create on every user update
+  // (which caused a reload loop: load with empty users → users arrive → load again → brief empty state)
+  const usersRef = useRef(users);
+  useEffect(() => { usersRef.current = users; }, [users]);
+
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -84,12 +89,27 @@ export const useCasesManager = () => {
       .eq('archived', isArchived)
       .order('updated_at', { ascending: false });
 
-    if (!error && data) setCases(data.map(row => rowToCase(row, users)));
+    if (!error && data) setCases(data.map(row => rowToCase(row, usersRef.current)));
     setIsLoading(false);
-  }, [isArchived, users]);
+  }, [isArchived]); // users removed from deps — accessed via ref to prevent reload loop
+
+  // Re-map case assignee names when users finish loading (they arrive after cases)
+  useEffect(() => {
+    if (users.length > 0) {
+      setCases(prev => prev.map(c => ({
+        ...c,
+        assignee: users.find(u => u.id === c.assignee?.id) ?? c.assignee,
+        creator: c.creator ? (users.find(u => u.id === c.creator?.id) ?? c.creator) : c.creator,
+        activities: c.activities.map(a => ({
+          ...a,
+          user: users.find(u => u.id === a.user.id) ?? a.user,
+        })),
+      })));
+    }
+  }, [users]);
 
   useEffect(() => {
-    if (profile && users.length >= 0) loadCases();
+    if (profile) loadCases();
   }, [profile, loadCases]);
 
   // Realtime subscription — reload on any case change

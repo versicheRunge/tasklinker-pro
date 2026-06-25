@@ -36,39 +36,53 @@ export const useMessages = ({ groupId = 'global' }: UseMessagesProps = {}) => {
     return created?.id ?? null;
   };
 
-  const loadMessages = async () => {
-    if (!profile) return;
-    setIsLoading(true);
-    const channelId = await ensureChannel();
-    if (!channelId) { setIsLoading(false); return; }
-    const { data } = await supabase.from('chat_messages').select('*').eq('channel_id', channelId).order('created_at');
-    if (data) setMessages(data.map(rowToMessage));
-    setIsLoading(false);
-  };
-
   useEffect(() => {
     if (!profile) return;
-    loadMessages();
+    let sub: ReturnType<typeof supabase.channel> | null = null;
 
-    const sub = supabase.channel(`chat:${groupId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setMessages(prev => {
-          if (prev.find(m => m.id === payload.new.id)) return prev;
-          const newMsg = rowToMessage(payload.new);
-          if (currentUser && newMsg.userId !== currentUser.id) setUnreadMessages(u => u + 1);
-          return [...prev, newMsg];
-        });
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setMessages(prev => prev.map(m => m.id === payload.new.id ? rowToMessage(payload.new) : m));
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
-      })
-      .subscribe();
+    const setup = async () => {
+      setIsLoading(true);
+      const channelId = await ensureChannel();
+      if (!channelId) { setIsLoading(false); return; }
 
-    channelRef.current = sub;
-    return () => { supabase.removeChannel(sub); };
+      const { data } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at');
+      if (data) setMessages(data.map(rowToMessage));
+      setIsLoading(false);
+
+      // Subscribe filtered to this channel only
+      sub = supabase.channel(`chat:${groupId}:${channelId}`)
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'chat_messages',
+          filter: `channel_id=eq.${channelId}`,
+        }, (payload) => {
+          setMessages(prev => {
+            if (prev.find(m => m.id === payload.new.id)) return prev;
+            const newMsg = rowToMessage(payload.new);
+            if (currentUser && newMsg.userId !== currentUser.id) setUnreadMessages(u => u + 1);
+            return [...prev, newMsg];
+          });
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE', schema: 'public', table: 'chat_messages',
+          filter: `channel_id=eq.${channelId}`,
+        }, (payload) => {
+          setMessages(prev => prev.map(m => m.id === payload.new.id ? rowToMessage(payload.new) : m));
+        })
+        .on('postgres_changes', {
+          event: 'DELETE', schema: 'public', table: 'chat_messages',
+        }, (payload) => {
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        })
+        .subscribe();
+      channelRef.current = sub;
+    };
+
+    setup();
+    return () => { if (sub) supabase.removeChannel(sub); };
   }, [profile, groupId]);
 
   const editMessage = async (messageId: string, newText: string) => {

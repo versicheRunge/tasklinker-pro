@@ -21,27 +21,88 @@ import { showConfetti } from './detail/ConfettiEffect';
 interface CaseDetailProps {
   cases: CaseItem[];
   updateCase?: (id: string, caseData: Partial<CaseItem>) => void;
+  isLoading?: boolean;
 }
 
-export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase }) => {
+export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase, isLoading = false }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAdmin, currentUser, users, mentionUser } = useUser();
-  const initialCase = cases.find(c => c.id === id);
-  
-  const [caseItem, setCaseItem] = useState<CaseItem | undefined>(initialCase);
-  
+
+  const [caseItem, setCaseItem] = useState<CaseItem | undefined>(() => cases.find(c => c.id === id));
+  const [directLoading, setDirectLoading] = useState(false);
+
+  // Sync from cases prop when they arrive (covers the list-based path)
   useEffect(() => {
-    const updatedCase = cases.find(c => c.id === id);
-    if (updatedCase) {
-      setCaseItem(updatedCase);
-    }
+    const found = cases.find(c => c.id === id);
+    if (found) setCaseItem(found);
   }, [cases, id]);
+
+  // Fallback: if the cases list is done loading but we still don't have the case,
+  // fetch it directly by ID from Supabase (covers direct URL access & fresh page loads)
+  useEffect(() => {
+    if (!id || caseItem) return;
+    if (isLoading) return; // still waiting for list — don't double-fetch yet
+
+    setDirectLoading(true);
+    supabase
+      .from('cases')
+      .select('*, case_activities(*), checklist_items(*), case_collaborators(user_id)')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          // minimal mapping without full users list — names will show fallback until list loads
+          const findUser = (uid: string) =>
+            users.find(u => u.id === uid) ?? { id: uid, name: 'Lädt…', role: '' };
+          setCaseItem({
+            id: data.id,
+            title: data.title,
+            description: data.description ?? '',
+            status: data.status,
+            priority: data.priority ?? 'medium',
+            type: data.type,
+            customerName: data.customer_name ?? '',
+            customerEmail: data.customer_email ?? '',
+            customerPhone: data.customer_phone ?? '',
+            assignee: findUser(data.assignee_id),
+            creator: data.created_by ? findUser(data.created_by) : undefined,
+            createdAt: data.created_at,
+            lastUpdated: data.updated_at,
+            dueDate: data.due_date,
+            followUpDate: data.follow_up_date,
+            waitingReason: data.waiting_reason,
+            archived: data.archived ?? false,
+            activities: (data.case_activities ?? []).map((a: any) => ({
+              id: a.id, type: a.type, content: a.content,
+              timestamp: a.created_at, user: findUser(a.user_id), caseId: data.id,
+            })),
+            checklist: (data.checklist_items ?? [])
+              .sort((a: any, b: any) => a.sort_order - b.sort_order)
+              .map((c: any) => ({ text: c.text, description: c.description, completed: c.completed, subItems: c.sub_items ?? [] })),
+            documents: [],
+            collaboratorIds: (data.case_collaborators ?? []).map((c: any) => c.user_id),
+          });
+        }
+        setDirectLoading(false);
+      });
+  }, [id, isLoading, caseItem, users]);
+
+  // Show skeleton while loading — never "not found" during a load
+  if (!caseItem && (isLoading || directLoading)) {
+    return (
+      <div className="p-8 space-y-4 animate-pulse">
+        <div className="h-7 bg-muted rounded w-64" />
+        <div className="h-4 bg-muted rounded w-40" />
+        <div className="h-4 bg-muted rounded w-full max-w-xl" />
+      </div>
+    );
+  }
 
   if (!caseItem) {
     return (
       <div className="p-8 text-center">
-        <p>Vorgang nicht gefunden</p>
+        <p className="text-muted-foreground">Vorgang nicht gefunden.</p>
         <Link to="/cases" className="text-primary hover:underline mt-4 inline-block">
           Zurück zur Übersicht
         </Link>
