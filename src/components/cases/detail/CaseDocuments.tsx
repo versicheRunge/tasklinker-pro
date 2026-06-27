@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from '../../../hooks/use-toast';
-import { FolderOpen, Plus, Copy, Trash2, Check, Paperclip, Upload } from 'lucide-react';
+import { FolderOpen, Plus, Copy, Trash2, Check, Paperclip, Upload, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { openLocalPath } from '../../../lib/pathProtocol';
 
 interface Doc {
   id: string;
@@ -208,8 +209,12 @@ export const CaseDocuments: React.FC<Props> = ({ caseId }) => {
                 <p className="text-xs text-muted-foreground opacity-60">{format(new Date(doc.created_at), 'dd.MM.yyyy', { locale: de })}</p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <button onClick={() => openLocalPath(doc.file_path)}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-blue-600" title="Im Explorer öffnen">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={() => copy(doc.file_path, doc.id)}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Kopieren">
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Pfad kopieren">
                   {copiedId === doc.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
                 <button onClick={() => remove(doc.id)}

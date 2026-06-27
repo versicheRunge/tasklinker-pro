@@ -9,7 +9,7 @@ import BadgeTemplatesManager from '../components/team/BadgeTemplatesManager';
 import EmailTemplatesManager from '../components/settings/EmailTemplatesManager';
 import { AgencySettings } from '../components/settings/AgencySettings';
 import { AdminBoard } from '../components/admin/AdminBoard';
-import { Lock, Eye, EyeOff } from 'lucide-react';
+import { Lock, Eye, EyeOff, Download, CheckCircle2, FolderOpen, MonitorDown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { GoogleCalendarSettings } from '../components/settings/GoogleCalendarSettings';
 
@@ -81,8 +81,65 @@ const Settings: React.FC = () => {
           )}
 
           <TabsContent value="integrations">
-            <div className="max-w-xl bg-card rounded-lg border border-border p-6">
-              <GoogleCalendarSettings />
+            <div className="space-y-6 max-w-xl">
+              <div className="bg-card rounded-lg border border-border p-6">
+                <GoogleCalendarSettings />
+              </div>
+
+              {/* Windows Explorer Protokoll */}
+              <div className="bg-card rounded-lg border border-border p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-950 rounded-lg">
+                    <MonitorDown className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold">Explorer-Links (Windows)</h2>
+                    <p className="text-sm text-muted-foreground">Datei- und Ordner-Verweise direkt per Klick öffnen</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-5">
+                  Einmalige Installation pro Windows-PC. Danach öffnet ein Klick auf "Öffnen" bei jedem
+                  Datei-Verweis direkt den Windows Explorer — kein Kopieren und Einfügen mehr.
+                </p>
+
+                <ol className="space-y-4 mb-6">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                    <div>
+                      <p className="text-sm font-medium">Hilfsskript herunterladen und nach <code className="bg-muted px-1 py-0.5 rounded text-xs">C:\</code> speichern</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 mb-2">Wichtig: direkt auf <code className="bg-muted px-1 py-0.5 rounded text-xs">C:\tasklinker-open.vbs</code> speichern, nicht in Downloads!</p>
+                      <a href="/tasklinker-open.vbs" download className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm transition-colors">
+                        <Download className="w-4 h-4" /> tasklinker-open.vbs
+                      </a>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                    <div>
+                      <p className="text-sm font-medium">Registry-Eintrag installieren</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 mb-2">Herunterladen und doppelklicken → Windows fragt "Möchten Sie fortfahren?" → <strong>Ja</strong></p>
+                      <a href="/tasklinker-install.reg" download className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm transition-colors">
+                        <Download className="w-4 h-4" /> tasklinker-install.reg
+                      </a>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium">Fertig — Browser neu starten</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Ab jetzt öffnet der "Öffnen"-Button in Vorgängen und Kundenstamm direkt den Explorer.</p>
+                    </div>
+                  </li>
+                </ol>
+
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                  <FolderOpen className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>Muss auf <strong>jedem Windows-PC</strong> einmalig ausgeführt werden. Kein Admin-Recht nötig. Funktioniert in Chrome und Edge.</span>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

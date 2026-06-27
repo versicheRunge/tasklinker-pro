@@ -1,0 +1,12 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Classes\tasklinker]
+@="TaskLinker Ordner oeffnen"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\tasklinker\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\tasklinker\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\tasklinker\shell\open\command]
+@="wscript.exe \"C:\\tasklinker-open.vbs\" \"%1\""

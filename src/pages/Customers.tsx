@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, Check, Users, Upload } from 'lucide-react';
+import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, Check, Users, Upload, ExternalLink } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { openLocalPath } from '../lib/pathProtocol';
 
 function uriToWindowsPath(uri: string): string {
   if (uri.startsWith('file:///')) return decodeURIComponent(uri.slice(8)).replace(/\//g, '\\');
@@ -223,11 +224,18 @@ export default function Customers() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   {c.folder_path && (
-                    <button onClick={() => copyPath(c.folder_path!, c.id)}
-                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      title="Pfad kopieren">
-                      {copiedId === c.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                    <>
+                      <button onClick={() => openLocalPath(c.folder_path!)}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition-colors"
+                        title="Im Explorer öffnen">
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => copyPath(c.folder_path!, c.id)}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title="Pfad kopieren">
+                        {copiedId === c.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </>
                   )}
                   <button onClick={() => searchCases(c.name)}
                     className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
