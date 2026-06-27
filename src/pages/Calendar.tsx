@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Plus, UserCheck, HeartPulse, Plane, Stethoscope, RefreshCw, ExternalLink } from 'lucide-react';
@@ -18,9 +18,35 @@ import { VacationRequestDialog } from '../components/calendar/VacationRequestDia
 import { CalendarEvent } from '../types/calendar';
 import { useAgencyCalendar, buildGoogleCalendarAddUrl } from '../hooks/useAgencyCalendar';
 import { MyVacationRequests } from '../components/calendar/MyVacationRequests';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const CalendarPage: React.FC = () => {
   const { users, currentUser, isAdmin } = useUser();
+  const { profile } = useAuth();
+
+  // Load follow-up cases for calendar overlay
+  const [wvlCases, setWvlCases] = useState<{ id: string; title: string; follow_up_date: string; assignee_id: string }[]>([]);
+  useEffect(() => {
+    if (!profile) return;
+    supabase.from('cases')
+      .select('id,title,follow_up_date,assignee_id')
+      .not('follow_up_date', 'is', null)
+      .eq('archived', false)
+      .neq('status', 'completed')
+      .then(({ data }) => { if (data) setWvlCases(data); });
+  }, [profile]);
+
+  // WVL cases for the selected calendar day (current user only, or admin sees all)
+  const wvlForDay = (d: Date) => {
+    const key = d.toISOString().slice(0, 10);
+    return wvlCases.filter(c =>
+      c.follow_up_date?.slice(0, 10) === key &&
+      (isAdmin || c.assignee_id === profile?.id)
+    );
+  };
+
   const {
     date,
     events,
@@ -119,6 +145,7 @@ const CalendarPage: React.FC = () => {
               date={date}
               onDateChange={handleDateChange}
               events={events}
+              wvlDates={wvlCases.map(c => c.follow_up_date.slice(0, 10))}
             />
           </div>
 
@@ -182,6 +209,29 @@ const CalendarPage: React.FC = () => {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     Keine Termine für diesen Tag
+                  </div>
+                )}
+
+                {/* Wiedervorlagen for this day */}
+                {wvlForDay(date).length > 0 && (
+                  <div className="mt-2 pt-3 border-t border-border">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                      Wiedervorlagen
+                    </p>
+                    <div className="space-y-1.5">
+                      {wvlForDay(date).map(c => {
+                        const assignee = users.find(u => u.id === c.assignee_id);
+                        return (
+                          <Link key={c.id} to={`/cases/${c.id}`}
+                            className="flex items-center gap-2 py-1.5 px-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg text-sm hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors">
+                            <RefreshCw className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="flex-1 truncate font-medium">{c.title}</span>
+                            {isAdmin && assignee && <span className="text-xs text-muted-foreground shrink-0">{assignee.name}</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 

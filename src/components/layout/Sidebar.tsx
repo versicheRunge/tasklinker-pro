@@ -4,21 +4,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target, Calendar, RefreshCw, ClipboardList, BookUser } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
+import { useWvlCount } from '../../hooks/useWvlCount';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { notifications, isAdmin } = useUser();
-  
-  // Count chat notifications
-  const chatNotifications = notifications.filter(
-    notif => notif.type === 'chat' && !notif.read
-  ).length;
+  const wvlCount = useWvlCount();
+
+  const chatNotifications = notifications.filter(n => n.type === 'chat' && !n.read).length;
   
   // Create base navigation items
   let navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
-    { name: 'Wiedervorlagen', path: '/wiedervorlagen', icon: RefreshCw },
+    { name: 'Wiedervorlagen', path: '/wiedervorlagen', icon: RefreshCw, badge: wvlCount },
     { name: 'Kunden', path: '/customers', icon: BookUser },
     { name: 'Meine Aufgaben', path: '/tasks', icon: ClipboardList },
     { name: 'Team', path: '/team', icon: Users },

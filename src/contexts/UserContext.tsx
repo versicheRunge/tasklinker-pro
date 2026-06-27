@@ -104,6 +104,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   }, [profile]);
 
+  // Startup: create bell-notifications for follow-up cases due today (once per day)
+  useEffect(() => {
+    if (!profile) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const storageKey = `wvl_notified_${profile.id}_${today}`;
+    if (localStorage.getItem(storageKey)) return;
+
+    supabase
+      .from('cases')
+      .select('id,title')
+      .eq('assignee_id', profile.id)
+      .eq('archived', false)
+      .neq('status', 'completed')
+      .eq('follow_up_date', today)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        localStorage.setItem(storageKey, '1');
+        data.forEach(c => {
+          supabase.from('notifications').insert({
+            user_id: profile.id,
+            type: 'system',
+            title: 'Wiedervorlage heute fällig',
+            body: c.title,
+            case_id: c.id,
+            read: false,
+          });
+        });
+      });
+  }, [profile]);
+
   const addNotification = async (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     if (!n.targetUserId) return;
     const { data } = await supabase.from('notifications').insert({

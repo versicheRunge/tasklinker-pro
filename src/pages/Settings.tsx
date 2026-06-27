@@ -139,6 +139,16 @@ const Settings: React.FC = () => {
                   <FolderOpen className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>Muss auf <strong>jedem Windows-PC</strong> einmalig ausgeführt werden. Kein Admin-Recht nötig. Funktioniert in Chrome und Edge.</span>
                 </div>
+
+                <div className="mt-5 pt-5 border-t border-border">
+                  <p className="text-sm font-medium mb-1">Mac-Version</p>
+                  <p className="text-xs text-muted-foreground mb-3">Für macOS: Script herunterladen und per Doppelklick ausführen (Terminal öffnet sich kurz).</p>
+                  <a href="/tasklinker-mac-install.command" download
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm transition-colors">
+                    <Download className="w-4 h-4" /> tasklinker-mac-install.command
+                  </a>
+                  <p className="text-xs text-muted-foreground mt-2">Beim ersten Ausführen: Rechtsklick → Öffnen → Öffnen bestätigen (Gatekeeper-Schutz).</p>
+                </div>
               </div>
             </div>
           </TabsContent>

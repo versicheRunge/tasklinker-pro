@@ -18,9 +18,10 @@ interface CustomCalendarProps {
   date: Date;
   onDateChange: (date: Date | undefined) => void;
   events: CalendarEvent[];
+  wvlDates?: string[]; // ISO date strings (YYYY-MM-DD) that have follow-up cases
 }
 
-export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChange, events }) => {
+export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChange, events, wvlDates = [] }) => {
   const getEventsForDay = (d: Date): CalendarEvent[] => {
     const key = d.toDateString();
     return events.filter(e => new Date(e.date).toDateString() === key);
@@ -28,6 +29,8 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChan
 
   const isHoliday = (d: Date) =>
     events.some(e => e.type === 'holiday' && new Date(e.date).toDateString() === d.toDateString());
+
+  const hasWvl = (d: Date) => wvlDates.includes(d.toISOString().slice(0, 10));
 
   return (
     <Calendar
@@ -53,17 +56,19 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({ date, onDateChan
           const dayEvents = getEventsForDay(d);
           const dots = dayEvents
             .map(e => TYPE_COLOR[e.type] ?? TYPE_COLOR.other)
-            .filter((c, i, a) => a.indexOf(c) === i) // unique colors
+            .filter((c, i, a) => a.indexOf(c) === i)
             .slice(0, 3);
+          const wvl = hasWvl(d);
 
           return (
             <div className="flex flex-col items-center justify-center w-full h-full">
               <span>{d.getDate()}</span>
-              {dots.length > 0 && (
+              {(dots.length > 0 || wvl) && (
                 <div className="flex gap-0.5 mt-0.5">
                   {dots.map((cls, i) => (
                     <span key={i} className={`w-1 h-1 rounded-full ${cls}`} />
                   ))}
+                  {wvl && <span className="w-1 h-1 rounded-full bg-amber-400" title="Wiedervorlage" />}
                 </div>
               )}
             </div>
