@@ -4,8 +4,25 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, X, Check, Users } from 'lucide-react';
+import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, Check, Users, Upload } from 'lucide-react';
 import { Button } from '../components/ui/button';
+
+function uriToWindowsPath(uri: string): string {
+  if (uri.startsWith('file:///')) return decodeURIComponent(uri.slice(8)).replace(/\//g, '\\');
+  if (uri.startsWith('file://'))  return '\\' + decodeURIComponent(uri.slice(5)).replace(/\//g, '\\');
+  return uri;
+}
+
+function extractFirstPath(dataTransfer: DataTransfer): string | null {
+  const uriList = dataTransfer.getData('text/uri-list');
+  if (uriList) {
+    const first = uriList.split(/\r?\n/).find(l => l.startsWith('file://') && !l.startsWith('#'));
+    if (first) return uriToWindowsPath(first);
+  }
+  const plain = dataTransfer.getData('text/plain');
+  if (plain && (plain.includes(':\\') || plain.startsWith('\\\\'))) return plain.trim();
+  return null;
+}
 
 interface Customer {
   id: string;
@@ -31,6 +48,7 @@ export default function Customers() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [folderDragOver, setFolderDragOver] = useState(false);
 
   const load = async () => {
     setIsLoading(true);
@@ -136,9 +154,27 @@ export default function Customers() {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Netzlaufwerk-Pfad</label>
-                <input value={form.folder_path ?? ''} onChange={e => setForm(f => ({ ...f, folder_path: e.target.value }))}
-                  placeholder="Z:\Kunden\Mustermann Max"
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                <div
+                  onDragOver={e => { e.preventDefault(); setFolderDragOver(true); }}
+                  onDragLeave={() => setFolderDragOver(false)}
+                  onDrop={e => {
+                    e.preventDefault();
+                    setFolderDragOver(false);
+                    const p = extractFirstPath(e.dataTransfer);
+                    if (p) setForm(f => ({ ...f, folder_path: p }));
+                    else toast({ title: 'Pfad nicht erkannt', description: 'Ordner direkt aus dem Windows Explorer ziehen.', variant: 'destructive' });
+                  }}
+                  className={`relative rounded-lg border transition-colors ${folderDragOver ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  <input value={form.folder_path ?? ''} onChange={e => setForm(f => ({ ...f, folder_path: e.target.value }))}
+                    placeholder="Z:\Kunden\Mustermann Max — oder Ordner reinziehen"
+                    className="w-full px-3 py-2 bg-background text-sm font-mono focus:outline-none rounded-lg" />
+                  {folderDragOver && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-lg pointer-events-none">
+                      <span className="text-primary text-xs font-medium flex items-center gap-1"><Upload className="w-3.5 h-3.5" /> Ordner loslassen</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="sm:col-span-2">
                 <label className="text-xs text-muted-foreground mb-1 block">Notiz</label>
