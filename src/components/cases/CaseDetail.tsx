@@ -17,6 +17,7 @@ import { CaseActions } from './detail/CaseActions';
 import { generatePDF, checkAllCasesCompleted } from './detail/CaseHelpers';
 import { insertNotification } from '../../hooks/useNotifications';
 import { showConfetti } from './detail/ConfettiEffect';
+import { CaseDocuments } from './detail/CaseDocuments';
 
 interface CaseDetailProps {
   cases: CaseItem[];
@@ -502,6 +503,15 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase, isLoa
                 });
             }}
           />
+          <CaseDocuments caseId={caseItem.id} />
+          {caseItem.customerEmail && (
+            <a
+              href={`mailto:${caseItem.customerEmail}?subject=${encodeURIComponent(caseItem.title)}`}
+              className="flex items-center justify-center gap-2 w-full px-3 py-2 border border-border rounded-xl text-sm hover:bg-muted transition-colors"
+            >
+              ✉ E-Mail an Kunde senden
+            </a>
+          )}
           <CaseActions
             onGeneratePDF={() => {
               const fileName = generatePDF(caseItem);

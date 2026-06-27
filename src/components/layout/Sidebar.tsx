@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target, Calendar } from 'lucide-react';
+import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare, Target, Calendar, RefreshCw, ClipboardList, BookUser } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
 
@@ -18,6 +18,9 @@ export const Sidebar: React.FC = () => {
   let navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
+    { name: 'Wiedervorlagen', path: '/wiedervorlagen', icon: RefreshCw },
+    { name: 'Kunden', path: '/customers', icon: BookUser },
+    { name: 'Meine Aufgaben', path: '/tasks', icon: ClipboardList },
     { name: 'Team', path: '/team', icon: Users },
     { name: 'Kalender', path: '/calendar', icon: Calendar },
     { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
@@ -25,15 +28,13 @@ export const Sidebar: React.FC = () => {
     { name: 'Berichte', path: '/reports', icon: BarChart3 },
     { name: 'Einstellungen', path: '/settings', icon: Settings },
   ];
-  
+
   // Add Checklists only for admin users
   if (isAdmin) {
-    navItems.splice(3, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
+    navItems.splice(2, 0, { name: 'Checklisten', path: '/checklists', icon: CheckSquare });
   }
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   return (
     <aside className="w-64 bg-sidebar border-r border-border h-screen sticky top-0 shrink-0">

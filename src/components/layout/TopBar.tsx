@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../../hooks/use-toast';
 import { NotificationBell } from './NotificationBell';
+import { GlobalSearch } from './GlobalSearch';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -38,6 +39,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           <MenuIcon className="h-6 w-6" />
           <span className="sr-only">Toggle Menu</span>
         </button>
+        <GlobalSearch />
         <div className="ml-auto flex items-center space-x-4">
           <button
             onClick={toggleTheme}
