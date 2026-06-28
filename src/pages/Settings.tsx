@@ -9,13 +9,15 @@ import BadgeTemplatesManager from '../components/team/BadgeTemplatesManager';
 import EmailTemplatesManager from '../components/settings/EmailTemplatesManager';
 import { AgencySettings } from '../components/settings/AgencySettings';
 import { AdminBoard } from '../components/admin/AdminBoard';
-import { Lock, Eye, EyeOff, Download, CheckCircle2, FolderOpen, MonitorDown } from 'lucide-react';
+import { Lock, Eye, EyeOff, Download, CheckCircle2, FolderOpen, MonitorDown, Info, RotateCcw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { GoogleCalendarSettings } from '../components/settings/GoogleCalendarSettings';
+import { useHints } from '../hooks/useHints';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState("general");
   const { isAdmin, user } = useAuth();
+  const { hintsEnabled, toggleHints } = useHints();
 
   // Passwort ändern
   const [currentPw, setCurrentPw] = useState('');
@@ -71,6 +73,47 @@ const Settings: React.FC = () => {
           <TabsContent value="general">
             <div className="grid gap-6">
               <TitleManager />
+
+              {/* Benutzereinstellungen */}
+              <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+                <h2 className="text-base font-semibold">Anzeigeoptionen</h2>
+
+                {/* Hints toggle */}
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Hilfe-Hinweise anzeigen</p>
+                      <p className="text-xs text-muted-foreground">Info-Buttons und Erklärungstexte in der App</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleHints}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${hintsEnabled ? 'bg-primary' : 'bg-muted'}`}
+                    role="switch" aria-checked={hintsEnabled}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${hintsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Onboarding reset */}
+                <div className="flex items-center justify-between py-2 border-t border-border/50">
+                  <div className="flex items-center gap-3">
+                    <RotateCcw className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Erste-Schritte-Checkliste</p>
+                      <p className="text-xs text-muted-foreground">Onboarding-Checkliste auf dem Dashboard wieder einblenden</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    localStorage.removeItem('onboarding_dismissed');
+                    localStorage.removeItem('onboarding_progress');
+                    toast({ title: 'Checkliste zurückgesetzt', description: 'Beim nächsten Dashboard-Besuch wieder sichtbar.' });
+                  }}>
+                    Einblenden
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

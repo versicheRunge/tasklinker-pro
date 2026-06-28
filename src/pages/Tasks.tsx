@@ -133,7 +133,7 @@ function TaskRow({
   const canToggle  = task.user_id === myId && !task.completed;
   const canReopen  = task.completed && (task.created_by === myId || isAdmin);
   const canEdit    = task.user_id === myId || task.created_by === myId || isAdmin;
-  const canDelete  = task.created_by === myId || task.user_id === myId || isAdmin;
+  const canDelete  = task.created_by === myId || isAdmin;
   const canReassign = !task.completed && (task.user_id === myId || task.created_by === myId || isAdmin);
   const creator  = users.find(u => u.id === task.created_by);
   const from     = task.reassigned_from_id ? users.find(u => u.id === task.reassigned_from_id) : null;
@@ -363,9 +363,30 @@ export default function Tasks() {
   };
 
   const remove = async (id: string) => {
-    await supabase.from('user_tasks').delete().eq('id', id);
+    const task = tasks.find(t => t.id === id);
+    const { error } = await supabase.from('user_tasks').delete().eq('id', id);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
     setTasks(prev => prev.filter(t => t.id !== id));
     toast({ title: 'Aufgabe gelöscht' });
+
+    // Notify assignee if a creator is deleting a task they assigned to someone
+    if (task && task.created_by === profile!.id && task.user_id !== profile!.id) {
+      await supabase.from('notifications').insert({
+        user_id: task.user_id, type: 'system',
+        title: 'Aufgabe gelöscht',
+        body: `Die Aufgabe „${task.title}" wurde vom Ersteller gelöscht.`,
+        read: false,
+      });
+    }
+    // Notify creator if admin deletes someone else's task
+    if (task && isAdmin && task.created_by !== profile!.id) {
+      await supabase.from('notifications').insert({
+        user_id: task.created_by, type: 'system',
+        title: 'Aufgabe gelöscht',
+        body: `Deine Aufgabe „${task.title}" wurde von einem Administrator gelöscht.`,
+        read: false,
+      });
+    }
   };
 
   const myId = profile?.id ?? '';

@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Clock, Flag, Hourglass, CalendarCheck, CalendarClock, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, UserPlus, Clock, Flag, Hourglass, CalendarCheck, CalendarClock, Mail, Phone, Pencil, Check, X } from 'lucide-react';
 import { CaseItem, User, CaseStatus, CasePriority, CASE_TYPE_LABELS } from '../../../types/case';
 import { CustomAvatar } from '../../ui/CustomAvatar';
 import { Badge } from '../../ui/badge';
@@ -18,6 +18,7 @@ interface CaseHeaderProps {
   onStatusChange: (newStatus: CaseStatus, waitingReason?: string) => void;
   onPriorityChange: (newPriority: CasePriority) => void;
   onAssignUser: (userId: string) => void;
+  onTitleChange?: (newTitle: string) => void;
   isAdmin: boolean;
   currentUser?: User;
 }
@@ -34,9 +35,24 @@ const statusLabel = {
 };
 
 export const CaseHeader: React.FC<CaseHeaderProps> = ({
-  caseItem, users, onStatusChange, onPriorityChange, onAssignUser, isAdmin, currentUser
+  caseItem, users, onStatusChange, onPriorityChange, onAssignUser, onTitleChange, isAdmin, currentUser
 }) => {
   const [isAssigningUser, setIsAssigningUser] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(caseItem.title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const canEditTitle = isAdmin || currentUser?.id === caseItem.assignee?.id;
+
+  useEffect(() => { setTitleDraft(caseItem.title); }, [caseItem.title]);
+  useEffect(() => { if (editingTitle) titleInputRef.current?.focus(); }, [editingTitle]);
+
+  const saveTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== caseItem.title) onTitleChange?.(trimmed);
+    setEditingTitle(false);
+  };
+  const cancelTitle = () => { setTitleDraft(caseItem.title); setEditingTitle(false); };
 
   const followUp = caseItem.followUpDate ? new Date(caseItem.followUpDate) : null;
   const due = caseItem.dueDate ? new Date(caseItem.dueDate) : null;
@@ -48,7 +64,30 @@ export const CaseHeader: React.FC<CaseHeaderProps> = ({
         <Link to="/cases" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-xl font-semibold">{caseItem.title}</h1>
+        {editingTitle ? (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') cancelTitle(); }}
+              onBlur={saveTitle}
+              className="flex-1 min-w-0 text-xl font-semibold bg-transparent border-b-2 border-primary outline-none px-0"
+            />
+            <button onMouseDown={e => { e.preventDefault(); saveTitle(); }} className="p-1 text-green-600 hover:text-green-700"><Check className="w-4 h-4" /></button>
+            <button onMouseDown={e => { e.preventDefault(); cancelTitle(); }} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 group">
+            <h1 className="text-xl font-semibold">{caseItem.title}</h1>
+            {canEditTitle && onTitleChange && (
+              <button onClick={() => setEditingTitle(true)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-foreground transition-opacity">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Kunde + Meta-Chips */}

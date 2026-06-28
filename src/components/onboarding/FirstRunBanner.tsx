@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { X, ExternalLink, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useHints } from '../../hooks/useHints';
 
 const STORAGE_KEY = 'setup_banner_dismissed';
 
 export const FirstRunBanner: React.FC = () => {
   const navigate = useNavigate();
+  const { hintsEnabled } = useHints();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Show only on Windows-like systems and only if not dismissed
     const isWindows = navigator.platform?.startsWith('Win') || navigator.userAgent?.includes('Windows');
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (isWindows && !dismissed) setVisible(true);
   }, []);
+
+  if (!hintsEnabled) return null;
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');

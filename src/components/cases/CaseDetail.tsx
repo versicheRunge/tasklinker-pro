@@ -454,12 +454,13 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({ cases, updateCase, isLoa
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <CaseHeader 
+          <CaseHeader
             caseItem={caseItem}
             users={users}
             onStatusChange={handleStatusChange}
             onPriorityChange={handlePriorityChange}
             onAssignUser={handleAssignUser}
+            onTitleChange={newTitle => updateCase && updateCase(caseItem.id, { title: newTitle })}
             isAdmin={isAdmin}
             currentUser={currentUser}
           />
