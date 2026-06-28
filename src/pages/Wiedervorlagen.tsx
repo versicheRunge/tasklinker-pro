@@ -37,7 +37,15 @@ export default function Wiedervorlagen() {
   const { users, currentUser, isAdmin } = useUser();
   const [cases, setCases] = useState<WVCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterUser, setFilterUser] = useState<string>(isAdmin ? 'all' : 'me');
+  const [filterUser, setFilterUser] = useState<string>('me');
+  const [filterInitialized, setFilterInitialized] = useState(false);
+
+  // Set admin default once isAdmin is known (auth loads async)
+  useEffect(() => {
+    if (filterInitialized) return;
+    if (isAdmin) { setFilterUser('all'); setFilterInitialized(true); }
+    else if (profile) setFilterInitialized(true);
+  }, [isAdmin, profile, filterInitialized]);
 
   useEffect(() => {
     if (!profile) return;
