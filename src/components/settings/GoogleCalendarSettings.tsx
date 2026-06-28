@@ -1,44 +1,104 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, CheckCircle2, XCircle, RefreshCw, ExternalLink,
-  Eye, EyeOff, Save, Info, Copy, Check, AlertTriangle, Trash2,
+  Eye, EyeOff, Save, Info, Copy, Check, Trash2, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from '../../hooks/use-toast';
 
-const STEPS = [
+// ─── Step definitions ────────────────────────────────────────────────────────
+
+const STEPS_EXISTING = [
   {
     n: 1,
-    title: 'Google Calendar API aktivieren',
-    text: 'console.cloud.google.com → APIs & Dienste → Bibliothek → "Google Calendar API" suchen → Aktivieren',
+    title: 'Google Cloud Console öffnen',
+    text: 'console.cloud.google.com → euer bestehendes Projekt auswählen (dasselbe das ihr für den Login nutzt)',
   },
   {
     n: 2,
+    title: 'Google Calendar API aktivieren',
+    text: 'APIs & Dienste → Bibliothek → "Google Calendar API" suchen → Aktivieren (falls noch nicht aktiv)',
+  },
+  {
+    n: 3,
     title: 'Dienstkonto erstellen',
     text: 'IAM & Verwaltung → Dienstkonten → "+ Dienstkonto erstellen" → Name z.B. "Teamkalender" → Erstellen → Weiter → Fertig',
   },
   {
-    n: 3,
-    title: 'JSON-Schlüssel herunterladen',
-    text: 'Auf das neue Dienstkonto klicken → Schlüssel → Schlüssel hinzufügen → Neuen Schlüssel erstellen → JSON → Erstellen → Datei wird heruntergeladen',
-  },
-  {
     n: 4,
-    title: 'JSON hier einfügen & speichern',
-    text: 'Den Inhalt der heruntergeladenen .json-Datei vollständig in das Textfeld unten einfügen und speichern. Die angezeigte E-Mail-Adresse für Schritt 5 kopieren.',
+    title: 'JSON-Schlüssel herunterladen',
+    text: 'Auf das neue Dienstkonto klicken → Reiter "Schlüssel" → "Schlüssel hinzufügen" → "Neuen Schlüssel erstellen" → JSON → Erstellen → Datei wird automatisch heruntergeladen',
   },
   {
     n: 5,
-    title: 'Kalender freigeben',
-    text: 'In Google Kalender: Kalendereinstellungen → "Freigabe & Berechtigungen" → E-Mail-Adresse aus Schritt 4 hinzufügen → Berechtigung: "Ereignisse anzeigen" → Senden',
+    title: 'JSON hier einfügen & speichern',
+    text: 'Den vollständigen Inhalt der heruntergeladenen .json-Datei in das Textfeld unten einfügen und speichern. Die angezeigte Dienstkonto-E-Mail für Schritt 6 kopieren.',
   },
   {
     n: 6,
+    title: 'Bestehenden Kalender freigeben',
+    text: 'In Google Kalender: Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 5 hinzufügen → Berechtigung: "Ereignisse anzeigen" → Senden',
+  },
+  {
+    n: 7,
     title: 'Kalender-ID eintragen',
-    text: 'Kalendereinstellungen → "Kalender integrieren" → Kalender-ID kopieren (z.B. xxx@group.calendar.google.com) und oben eintragen',
+    text: 'Kalendereinstellungen → "Kalender integrieren" → Kalender-ID kopieren (z.B. xxx@group.calendar.google.com) → oben eintragen → Verbindung testen',
+  },
+  {
+    n: 8,
+    title: 'Optional: Kalender auf privat stellen',
+    text: 'Da die Verbindung jetzt über das Dienstkonto läuft, kann der Kalender unter Freigabe → "Öffentlich zugänglich machen" wieder deaktiviert werden. Eure Termine sind dann vollständig privat.',
+    highlight: true,
   },
 ];
+
+const STEPS_NEW = [
+  {
+    n: 1,
+    title: 'Neuen Google Kalender erstellen',
+    text: 'calendar.google.com → linke Sidebar → "Weitere Kalender" → "+ Neuen Kalender erstellen" → Name z.B. "Teamkalender [Agentur]" → Erstellen',
+  },
+  {
+    n: 2,
+    title: 'Google Cloud Console öffnen',
+    text: 'console.cloud.google.com → bestehendes Projekt auswählen oder neues Projekt erstellen',
+  },
+  {
+    n: 3,
+    title: 'Google Calendar API aktivieren',
+    text: 'APIs & Dienste → Bibliothek → "Google Calendar API" suchen → Aktivieren',
+  },
+  {
+    n: 4,
+    title: 'Dienstkonto erstellen',
+    text: 'IAM & Verwaltung → Dienstkonten → "+ Dienstkonto erstellen" → Name z.B. "Teamkalender" → Erstellen → Weiter → Fertig',
+  },
+  {
+    n: 5,
+    title: 'JSON-Schlüssel herunterladen',
+    text: 'Auf das neue Dienstkonto klicken → Reiter "Schlüssel" → "Schlüssel hinzufügen" → "Neuen Schlüssel erstellen" → JSON → Erstellen → Datei wird heruntergeladen',
+  },
+  {
+    n: 6,
+    title: 'JSON hier einfügen & speichern',
+    text: 'Den vollständigen Inhalt der .json-Datei in das Textfeld unten einfügen und speichern. Die angezeigte Dienstkonto-E-Mail für Schritt 7 kopieren.',
+  },
+  {
+    n: 7,
+    title: 'Kalender freigeben',
+    text: 'In Google Kalender: neuen Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 6 hinzufügen → Berechtigung: "Ereignisse anzeigen" → Senden',
+  },
+  {
+    n: 8,
+    title: 'Kalender-ID eintragen',
+    text: 'Kalendereinstellungen → "Kalender integrieren" → Kalender-ID kopieren (z.B. xxx@group.calendar.google.com) → oben eintragen → Verbindung testen',
+  },
+];
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+type HasCalendar = 'yes' | 'no' | null;
 
 export const GoogleCalendarSettings: React.FC = () => {
   const { profile } = useAuth();
@@ -48,24 +108,26 @@ export const GoogleCalendarSettings: React.FC = () => {
   const [jsonInput, setJsonInput] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [showJson, setShowJson] = useState(false);
-  const [showSteps, setShowSteps] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'error' | null>(null);
   const [testError, setTestError] = useState('');
   const [configured, setConfigured] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [hasCalendar, setHasCalendar] = useState<HasCalendar>(null);
+  const [showSteps, setShowSteps] = useState(false);
 
   useEffect(() => {
     supabase
       .from('agency_settings')
       .select('key, value')
-      .in('key', ['gcal_calendar_id', 'gcal_client_email', 'gcal_configured'])
+      .in('key', ['gcal_calendar_id', 'gcal_client_email', 'gcal_configured', 'gcal_has_existing'])
       .then(({ data }) => {
         const map = Object.fromEntries((data ?? []).map(r => [r.key, r.value]));
         if (map.gcal_calendar_id) setCalendarId(map.gcal_calendar_id);
         if (map.gcal_client_email) setClientEmail(map.gcal_client_email);
         if (map.gcal_configured === '1') setConfigured(true);
+        if (map.gcal_has_existing) setHasCalendar(map.gcal_has_existing as HasCalendar);
       });
   }, []);
 
@@ -79,7 +141,7 @@ export const GoogleCalendarSettings: React.FC = () => {
   }, [jsonInput]);
 
   const validateJson = (): string | null => {
-    if (!jsonInput.trim()) return null; // no new JSON pasted, keep existing
+    if (!jsonInput.trim()) return null;
     try {
       const p = JSON.parse(jsonInput);
       if (p.type !== 'service_account') return 'Kein Service-Account-JSON (type ≠ "service_account")';
@@ -93,20 +155,14 @@ export const GoogleCalendarSettings: React.FC = () => {
 
   const handleSave = async () => {
     if (!calendarId.trim()) {
-      toast({ title: 'Kalender-ID fehlt', variant: 'destructive' });
-      return;
+      toast({ title: 'Kalender-ID fehlt', variant: 'destructive' }); return;
     }
-
     const jsonError = validateJson();
     if (jsonError && jsonInput.trim()) {
-      toast({ title: 'JSON-Fehler', description: jsonError, variant: 'destructive' });
-      return;
+      toast({ title: 'JSON-Fehler', description: jsonError, variant: 'destructive' }); return;
     }
-
-    // Must have EITHER new JSON or already configured
     if (!configured && !jsonInput.trim()) {
-      toast({ title: 'Service-Account-JSON fehlt', variant: 'destructive' });
-      return;
+      toast({ title: 'Service-Account-JSON fehlt', variant: 'destructive' }); return;
     }
 
     setSaving(true);
@@ -114,35 +170,26 @@ export const GoogleCalendarSettings: React.FC = () => {
       { key: 'gcal_calendar_id', value: calendarId.trim() },
       { key: 'gcal_configured', value: '1' },
     ];
-
+    if (hasCalendar) upserts.push({ key: 'gcal_has_existing', value: hasCalendar });
     if (jsonInput.trim()) {
       const parsed = JSON.parse(jsonInput);
       upserts.push({ key: 'gcal_service_account', value: jsonInput.trim() });
       upserts.push({ key: 'gcal_client_email', value: parsed.client_email });
     }
-
     for (const row of upserts) {
       await supabase.from('agency_settings').upsert(row, { onConflict: 'key' });
     }
-
     setConfigured(true);
-    setJsonInput(''); // clear after save — don't keep private key in state
-    toast({ title: 'Google Kalender gespeichert', description: 'Kalender wird beim nächsten Refresh geladen.' });
+    setJsonInput('');
+    toast({ title: 'Google Kalender gespeichert' });
     setSaving(false);
     setTestResult(null);
   };
 
   const handleTest = async () => {
-    // Save first if there's unsaved JSON
-    if (jsonInput.trim()) {
-      await handleSave();
-    }
+    if (jsonInput.trim()) await handleSave();
     if (!configured && !jsonInput.trim()) return;
-
-    setTesting(true);
-    setTestResult(null);
-    setTestError('');
-
+    setTesting(true); setTestResult(null); setTestError('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -161,21 +208,17 @@ export const GoogleCalendarSettings: React.FC = () => {
         setTestResult('error');
       }
     } catch (e: any) {
-      setTestError(e.message);
-      setTestResult('error');
+      setTestError(e.message); setTestResult('error');
     }
     setTesting(false);
   };
 
   const handleDisconnect = async () => {
     await supabase.from('agency_settings').delete().in('key', [
-      'gcal_service_account', 'gcal_calendar_id', 'gcal_client_email', 'gcal_configured',
+      'gcal_service_account', 'gcal_calendar_id', 'gcal_client_email', 'gcal_configured', 'gcal_has_existing',
     ]);
-    setConfigured(false);
-    setCalendarId('');
-    setClientEmail('');
-    setJsonInput('');
-    setTestResult(null);
+    setConfigured(false); setCalendarId(''); setClientEmail('');
+    setJsonInput(''); setTestResult(null); setHasCalendar(null);
     toast({ title: 'Google Kalender getrennt' });
   };
 
@@ -185,22 +228,60 @@ export const GoogleCalendarSettings: React.FC = () => {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // ─── Non-admin view ───────────────────────────────────────────────────────
+
   if (!isAdmin) {
     return (
       <div className="bg-card border border-border rounded-xl p-5">
-        {configured ? (
-          <div className="flex items-center gap-2 text-sm text-green-700">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            Google Teamkalender ist verbunden — Termine erscheinen im Kalender.
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Der Google Teamkalender wird von deinem Admin eingerichtet.
-          </p>
-        )}
+        {configured
+          ? <div className="flex items-center gap-2 text-sm text-green-700"><CheckCircle2 className="w-4 h-4 shrink-0" />Google Teamkalender ist verbunden — Termine erscheinen im Kalender.</div>
+          : <p className="text-sm text-muted-foreground">Der Google Teamkalender wird von deinem Admin eingerichtet.</p>}
       </div>
     );
   }
+
+  // ─── Step 0: ask if they already have a calendar ─────────────────────────
+
+  if (!configured && hasCalendar === null) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-primary" />
+          Agentur-Teamkalender (Google)
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Um die Einrichtung so einfach wie möglich zu machen — eine kurze Frage vorab:
+        </p>
+        <p className="font-medium text-sm">Habt ihr bereits einen gemeinsamen Google Kalender für die Agentur?</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <button
+            onClick={() => setHasCalendar('yes')}
+            className="flex items-center justify-between px-4 py-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+          >
+            <div>
+              <p className="font-semibold text-sm">Ja, haben wir bereits</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Wir nutzen schon einen gemeinsamen Google Kalender</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+          </button>
+          <button
+            onClick={() => setHasCalendar('no')}
+            className="flex items-center justify-between px-4 py-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+          >
+            <div>
+              <p className="font-semibold text-sm">Nein, noch nicht</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Wir brauchen zuerst einen neuen Kalender</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main setup form ──────────────────────────────────────────────────────
+
+  const steps = hasCalendar === 'yes' ? STEPS_EXISTING : STEPS_NEW;
 
   return (
     <div className="space-y-5">
@@ -213,24 +294,44 @@ export const GoogleCalendarSettings: React.FC = () => {
             Agentur-Teamkalender (Google)
             {configured && <CheckCircle2 className="w-4 h-4 text-green-500" />}
           </h3>
-          <button
-            onClick={() => setShowSteps(s => !s)}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            <Info className="w-3.5 h-3.5" />
-            {showSteps ? 'Anleitung ausblenden' : 'Einrichtungsanleitung'}
-          </button>
+          <div className="flex items-center gap-3">
+            {!configured && hasCalendar !== null && (
+              <button onClick={() => setHasCalendar(null)} className="text-xs text-muted-foreground hover:text-foreground">
+                ← Zurück
+              </button>
+            )}
+            <button
+              onClick={() => setShowSteps(s => !s)}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <Info className="w-3.5 h-3.5" />
+              {showSteps ? 'Anleitung ausblenden' : 'Schritt-für-Schritt-Anleitung'}
+            </button>
+          </div>
         </div>
+
+        {/* Context banner for existing calendar users */}
+        {hasCalendar === 'yes' && !configured && (
+          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-xs">
+            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-800 dark:text-amber-300">Bestehenden Kalender sicher einbinden</p>
+              <p className="text-amber-700 dark:text-amber-400 mt-0.5">
+                Euer Kalender bleibt unverändert — alle Termine bleiben erhalten. Wir verbinden ihn über ein privates Dienstkonto, sodass er nicht mehr öffentlich zugänglich sein muss.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Step-by-step guide */}
         {showSteps && (
           <div className="rounded-xl bg-muted/40 border border-border p-4 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Einrichtung (einmalig, ca. 5 Minuten)
+              {hasCalendar === 'yes' ? 'Bestehenden Kalender einbinden' : 'Neuen Kalender einrichten'} — Schritt für Schritt
             </p>
-            {STEPS.map(s => (
-              <div key={s.n} className="flex gap-3">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">
+            {steps.map((s: any) => (
+              <div key={s.n} className={`flex gap-3 ${s.highlight ? 'p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg' : ''}`}>
+                <span className={`shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 ${s.highlight ? 'bg-green-500 text-white' : 'bg-primary text-primary-foreground'}`}>
                   {s.n}
                 </span>
                 <div>
@@ -245,7 +346,7 @@ export const GoogleCalendarSettings: React.FC = () => {
         {/* Calendar ID */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground block mb-1">
-            Kalender-ID <span className="text-muted-foreground font-normal">(z.B. xxx@group.calendar.google.com)</span>
+            Kalender-ID <span className="font-normal">(z.B. xxx@group.calendar.google.com)</span>
           </label>
           <input
             className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary font-mono"
@@ -261,7 +362,7 @@ export const GoogleCalendarSettings: React.FC = () => {
             <label className="text-xs font-semibold text-muted-foreground">
               Service-Account-JSON
               {configured && !jsonInput && (
-                <span className="ml-2 text-green-600 font-normal">✓ Konfiguriert (nur neu einfügen zum Ändern)</span>
+                <span className="ml-2 text-green-600 font-normal">✓ Konfiguriert — nur neu einfügen zum Ändern</span>
               )}
             </label>
             {jsonInput && (
@@ -276,7 +377,7 @@ export const GoogleCalendarSettings: React.FC = () => {
             value={showJson ? jsonInput : (jsonInput ? '••••••••••••••••••••••••••••••••' : '')}
             onChange={e => { if (showJson || !jsonInput) { setJsonInput(e.target.value); setTestResult(null); } }}
             onFocus={() => { if (!showJson) setShowJson(true); }}
-            placeholder='Inhalt der heruntergeladenen .json-Datei hier einfügen…'
+            placeholder="Inhalt der heruntergeladenen .json-Datei hier einfügen…"
             className="w-full px-3 py-2 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary font-mono resize-none"
           />
           {validateJson() && jsonInput.trim() && (
@@ -286,17 +387,17 @@ export const GoogleCalendarSettings: React.FC = () => {
           )}
         </div>
 
-        {/* Show extracted client_email (needed for calendar sharing) */}
+        {/* Show extracted client_email */}
         {clientEmail && (
-          <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl">
             <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
-                Schritt 5: Kalender mit dieser E-Mail freigeben
+                {hasCalendar === 'yes' ? 'Schritt 6' : 'Schritt 7'}: Kalender mit dieser E-Mail freigeben
               </p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 font-mono mt-1 break-all">{clientEmail}</p>
+              <p className="text-xs font-mono text-blue-700 dark:text-blue-400 mt-1 break-all">{clientEmail}</p>
               <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
-                In Google Kalender → Kalendereinstellungen → Freigabe → diese E-Mail hinzufügen → "Ereignisse anzeigen"
+                Google Kalender → Kalendereinstellungen → Freigabe → diese E-Mail hinzufügen → "Ereignisse anzeigen"
               </p>
             </div>
             <button onClick={copyEmail} className="shrink-0 p-1 rounded text-blue-600 hover:bg-blue-100">
@@ -305,15 +406,15 @@ export const GoogleCalendarSettings: React.FC = () => {
           </div>
         )}
 
-        {/* Test result */}
+        {/* Test results */}
         {testResult === 'ok' && (
-          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             Verbindung erfolgreich — Termine werden im Teamkalender angezeigt.
           </div>
         )}
         {testResult === 'error' && (
-          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
             <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Verbindungsfehler</p>
@@ -325,10 +426,7 @@ export const GoogleCalendarSettings: React.FC = () => {
         {/* Actions */}
         <div className="flex items-center justify-between pt-1">
           {configured && (
-            <button
-              onClick={handleDisconnect}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-600 transition-colors"
-            >
+            <button onClick={handleDisconnect} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-600 transition-colors">
               <Trash2 className="w-3.5 h-3.5" /> Verbindung trennen
             </button>
           )}
@@ -343,7 +441,7 @@ export const GoogleCalendarSettings: React.FC = () => {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || (!calendarId.trim())}
+              disabled={saving || !calendarId.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm disabled:opacity-40"
             >
               <Save className="w-4 h-4" />
@@ -353,7 +451,7 @@ export const GoogleCalendarSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Warning about privacy — now positive framing */}
+      {/* Privacy assurance */}
       <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-800 dark:text-green-300">
         <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
