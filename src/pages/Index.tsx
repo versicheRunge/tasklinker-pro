@@ -7,6 +7,7 @@ import {
 import { AppLayout } from '../components/layout/AppLayout';
 import { FirstRunBanner } from '../components/onboarding/FirstRunBanner';
 import { OnboardingChecklist } from '../components/onboarding/OnboardingChecklist';
+import { PushPromptBanner } from '../components/onboarding/PushPromptBanner';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -397,6 +398,7 @@ const Index: React.FC = () => {
       </div>
 
       <FirstRunBanner />
+      <PushPromptBanner />
       <OnboardingChecklist />
 
       {isAdmin
