@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useUser } from '../contexts/UserContext';
 import { toast } from '../hooks/use-toast';
-import { Plus, CheckSquare, Square, Trash2, CalendarDays, ClipboardList, UserCheck, Clock } from 'lucide-react';
+import {
+  Plus, CheckSquare, Square, Trash2, CalendarDays, ClipboardList,
+  UserCheck, Clock, Undo2, UserRoundCog, ChevronDown,
+} from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { format, isPast, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface Task {
   id: string;
-  user_id: string;       // assignee
-  created_by: string;    // creator
+  user_id: string;
+  created_by: string;
   title: string;
   description: string | null;
   due_date: string | null;
@@ -20,27 +23,80 @@ interface Task {
   created_at: string;
 }
 
-function TaskRow({
-  task, myId, users, onToggle, onDelete, showAssignee = false, showCreator = false,
-}: {
-  task: Task; myId: string; users: any[]; onToggle: (t: Task) => void; onDelete: (id: string) => void;
-  showAssignee?: boolean; showCreator?: boolean;
+// ── Reassign popover ────────────────────────────────────────────────────────
+function ReassignMenu({ task, myId, users, onReassign }: {
+  task: Task; myId: string; users: any[]; onReassign: (taskId: string, newUserId: string) => void;
 }) {
-  const isOverdue = !task.completed && task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
-  const isDueToday = !task.completed && task.due_date && isToday(new Date(task.due_date));
-  const canToggle = task.user_id === myId;
-  const canDelete = task.created_by === myId || task.user_id === myId;
-  const assignee = users.find(u => u.id === task.user_id);
-  const creator = users.find(u => u.id === task.created_by);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const others = users.filter(u => u.id !== myId && u.id !== task.user_id);
 
   return (
-    <div className={`bg-card border rounded-xl px-4 py-3 flex items-start gap-3 transition-colors ${
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors"
+        title="Weiterleiten"
+      >
+        <UserRoundCog className="w-3.5 h-3.5" />
+        <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-lg z-50 overflow-hidden py-1">
+          <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Übergeben an…</div>
+          <button
+            onClick={() => { onReassign(task.id, myId); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+          >
+            <Undo2 className="w-3.5 h-3.5 text-primary" /> Mir selbst (zurückziehen)
+          </button>
+          {others.map(u => (
+            <button
+              key={u.id}
+              onClick={() => { onReassign(task.id, u.id); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-muted-foreground" /> {u.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Task row ────────────────────────────────────────────────────────────────
+function TaskRow({
+  task, myId, isAdmin, users, onToggle, onDelete, onReassign, showAssignee, showCreator,
+}: {
+  task: Task; myId: string; isAdmin: boolean; users: any[];
+  onToggle: (t: Task) => void; onDelete: (id: string) => void;
+  onReassign: (taskId: string, newUserId: string) => void;
+  showAssignee?: boolean; showCreator?: boolean;
+}) {
+  const isOverdue  = !task.completed && task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
+  const isDueToday = !task.completed && task.due_date && isToday(new Date(task.due_date));
+  const canToggle    = task.user_id === myId;
+  const canDelete    = task.created_by === myId || task.user_id === myId || isAdmin;
+  const canReassign  = (task.created_by === myId || isAdmin) && !task.completed;
+  const assignee     = users.find(u => u.id === task.user_id);
+  const creator      = users.find(u => u.id === task.created_by);
+
+  return (
+    <div className={`bg-card border rounded-xl px-4 py-3 flex items-start gap-3 group transition-colors ${
       isOverdue ? 'border-red-200 dark:border-red-900' : isDueToday ? 'border-amber-200 dark:border-amber-900' : 'border-border'
     }`}>
       <button
         onClick={() => canToggle && onToggle(task)}
-        className={`mt-0.5 shrink-0 transition-colors ${canToggle ? 'hover:text-primary cursor-pointer' : 'cursor-default opacity-50'} text-muted-foreground`}
-        title={canToggle ? '' : 'Nur der Empfänger kann diese Aufgabe abhaken'}
+        className={`mt-0.5 shrink-0 transition-colors ${canToggle ? 'hover:text-primary cursor-pointer' : 'cursor-default opacity-40'} text-muted-foreground`}
+        title={canToggle ? 'Abhaken' : 'Nur der Empfänger kann abhaken'}
       >
         {task.completed ? <CheckSquare className="w-5 h-5 text-green-500" /> : <Square className="w-5 h-5" />}
       </button>
@@ -53,8 +109,7 @@ function TaskRow({
           {task.due_date && (
             <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-500 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
               <CalendarDays className="w-3 h-3" />
-              {isOverdue && 'Überfällig · '}
-              {isDueToday && 'Heute · '}
+              {isOverdue && 'Überfällig · '}{isDueToday && 'Heute · '}
               {format(new Date(task.due_date), 'dd.MM.yyyy', { locale: de })}
             </span>
           )}
@@ -68,25 +123,31 @@ function TaskRow({
               <Clock className="w-3 h-3" /> von {creator.name}
             </span>
           )}
-          {task.completed && (
-            <span className="text-xs text-green-600 font-medium">✓ Erledigt</span>
-          )}
+          {task.completed && <span className="text-xs text-green-600 font-medium">✓ Erledigt</span>}
         </div>
       </div>
 
-      {canDelete && (
-        <button onClick={() => onDelete(task.id)}
-          className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors shrink-0 mt-0.5">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
+      {/* Actions — visible on hover */}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {canReassign && (
+          <ReassignMenu task={task} myId={myId} users={users} onReassign={onReassign} />
+        )}
+        {canDelete && (
+          <button onClick={() => onDelete(task.id)}
+            className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+            title="Löschen">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
+// ── Page ────────────────────────────────────────────────────────────────────
 export default function Tasks() {
   const { profile } = useAuth();
-  const { users } = useUser();
+  const { users, isAdmin } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -98,10 +159,8 @@ export default function Tasks() {
   const load = async () => {
     setIsLoading(true);
     const { data } = await supabase
-      .from('user_tasks')
-      .select('*')
-      .order('completed')
-      .order('due_date', { ascending: true, nullsFirst: false });
+      .from('user_tasks').select('*')
+      .order('completed').order('due_date', { ascending: true, nullsFirst: false });
     if (data) setTasks(data);
     setIsLoading(false);
   };
@@ -112,27 +171,20 @@ export default function Tasks() {
     if (!title.trim()) { toast({ title: 'Titel erforderlich', variant: 'destructive' }); return; }
     const targetId = assigneeId || profile!.id;
     const { error } = await supabase.from('user_tasks').insert({
-      user_id: targetId,
-      created_by: profile!.id,
-      title: title.trim(),
-      description: description.trim() || null,
-      due_date: dueDate || null,
+      user_id: targetId, created_by: profile!.id,
+      title: title.trim(), description: description.trim() || null, due_date: dueDate || null,
     });
     if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
-
     if (targetId !== profile!.id) {
-      const assigneeName = users.find(u => u.id === targetId)?.name ?? 'Mitarbeiter';
       await supabase.from('notifications').insert({
         user_id: targetId, type: 'assignment',
         title: 'Neue Aufgabe erhalten',
-        body: `${profile!.full_name ?? 'Jemand'}: ${title.trim()}`,
-        read: false,
+        body: `${profile!.full_name ?? 'Jemand'}: ${title.trim()}`, read: false,
       });
-      toast({ title: `Aufgabe an ${assigneeName} vergeben` });
+      toast({ title: `Aufgabe an ${users.find(u => u.id === targetId)?.name} vergeben` });
     } else {
       toast({ title: 'Aufgabe erstellt' });
     }
-
     setTitle(''); setDescription(''); setDueDate(''); setAssigneeId(''); setShowForm(false);
     load();
   };
@@ -141,16 +193,34 @@ export default function Tasks() {
     const nowDone = !task.completed;
     await supabase.from('user_tasks').update({ completed: nowDone, updated_at: new Date().toISOString() }).eq('id', task.id);
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: nowDone } : t));
-
-    // Notify creator when task is marked done (if different from assignee)
     if (nowDone && task.created_by && task.created_by !== profile!.id) {
       await supabase.from('notifications').insert({
         user_id: task.created_by, type: 'system',
-        title: 'Aufgabe erledigt',
-        body: task.title,
-        read: false,
+        title: 'Aufgabe erledigt ✓', body: task.title, read: false,
       });
     }
+  };
+
+  const reassign = async (taskId: string, newUserId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const { error } = await supabase.from('user_tasks')
+      .update({ user_id: newUserId, completed: false, updated_at: new Date().toISOString() })
+      .eq('id', taskId);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+
+    if (newUserId === profile!.id) {
+      toast({ title: 'Aufgabe zurückgezogen' });
+    } else {
+      const name = users.find(u => u.id === newUserId)?.name ?? 'Mitarbeiter';
+      await supabase.from('notifications').insert({
+        user_id: newUserId, type: 'assignment',
+        title: 'Aufgabe weitergeleitet',
+        body: `${profile!.full_name ?? 'Jemand'}: ${task.title}`, read: false,
+      });
+      toast({ title: `Aufgabe an ${name} weitergeleitet` });
+    }
+    load();
   };
 
   const remove = async (id: string) => {
@@ -159,17 +229,32 @@ export default function Tasks() {
     toast({ title: 'Aufgabe gelöscht' });
   };
 
-  // Split: mine vs. assigned-by-me-to-others
-  const myTasks = tasks.filter(t => t.user_id === profile?.id);
-  const assignedByMe = tasks.filter(t => t.created_by === profile?.id && t.user_id !== profile?.id);
+  const myId = profile?.id ?? '';
+  const myTasks       = tasks.filter(t => t.user_id === myId);
+  const assignedByMe  = tasks.filter(t => t.created_by === myId && t.user_id !== myId);
+  // Admin: all tasks not involving self (for oversight)
+  const teamTasks     = isAdmin ? tasks.filter(t => t.user_id !== myId && t.created_by !== myId) : [];
 
-  const myOpen = myTasks.filter(t => !t.completed);
-  const myDone = myTasks.filter(t => t.completed);
-  const overdueCount = myOpen.filter(t => t.due_date && isPast(new Date(t.due_date)) && !isToday(new Date(t.due_date))).length;
-  const assignedOpen = assignedByMe.filter(t => !t.completed);
-  const assignedDone = assignedByMe.filter(t => t.completed);
+  const myOpen        = myTasks.filter(t => !t.completed);
+  const myDone        = myTasks.filter(t => t.completed);
+  const assignedOpen  = assignedByMe.filter(t => !t.completed);
+  const assignedDone  = assignedByMe.filter(t => t.completed);
+  const overdueCount  = myOpen.filter(t => t.due_date && isPast(new Date(t.due_date)) && !isToday(new Date(t.due_date))).length;
+  const otherUsers    = users.filter(u => u.id !== myId);
 
-  const otherUsers = users.filter(u => u.id !== profile?.id);
+  const rowProps = { myId, isAdmin, users, onToggle: toggle, onDelete: remove, onReassign: reassign };
+
+  const DoneAccordion = ({ items, label }: { items: Task[]; label: string }) =>
+    items.length > 0 ? (
+      <details className="mt-2">
+        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none py-1">
+          {items.length} {label}
+        </summary>
+        <div className="space-y-2 mt-2">
+          {items.map(t => <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator />)}
+        </div>
+      </details>
+    ) : null;
 
   return (
     <AppLayout>
@@ -192,38 +277,22 @@ export default function Tasks() {
         {/* Create form */}
         {showForm && (
           <div className="bg-card border border-border rounded-xl p-4 mb-6 space-y-3">
-            <input
-              autoFocus
-              value={title}
-              onChange={e => setTitle(e.target.value)}
+            <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !assigneeId && create()}
               placeholder="Aufgabe eingeben…"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
             <div className="grid grid-cols-2 gap-2">
-              <input
-                value={description}
-                onChange={e => setDescription(e.target.value)}
+              <input value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="Beschreibung (optional)"
-                className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+                className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
             {otherUsers.length > 0 && (
-              <select
-                value={assigneeId}
-                onChange={e => setAssigneeId(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
+              <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
                 <option value="">Für mich selbst</option>
-                {otherUsers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
+                {otherUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             )}
             <div className="flex gap-2">
@@ -240,77 +309,64 @@ export default function Tasks() {
             {[1,2,3].map(i => <div key={i} className="h-14 bg-muted rounded-xl" />)}
           </div>
         ) : (
-          <>
+          <div className="space-y-8">
             {/* My tasks */}
-            <section className="mb-8">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Meine Aufgaben</h2>
+            <section>
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Meine Aufgaben</h2>
               {myOpen.length === 0 && myDone.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">Keine Aufgaben</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {myOpen.map(t => (
-                    <TaskRow key={t.id} task={t} myId={profile!.id} users={users}
-                      onToggle={toggle} onDelete={remove} showCreator />
-                  ))}
-                  {myDone.length > 0 && (
-                    <details className="mt-2">
-                      <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
-                        {myDone.length} erledigte Aufgaben anzeigen
-                      </summary>
-                      <div className="space-y-2 mt-2">
-                        {myDone.map(t => (
-                          <TaskRow key={t.id} task={t} myId={profile!.id} users={users}
-                            onToggle={toggle} onDelete={remove} showCreator />
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
+                <>
+                  <div className="space-y-2">
+                    {myOpen.map(t => <TaskRow key={t.id} task={t} {...rowProps} showCreator />)}
+                  </div>
+                  <DoneAccordion items={myDone} label="erledigte anzeigen" />
+                </>
               )}
             </section>
 
             {/* Assigned by me */}
-            {(assignedByMe.length > 0 || true) && (
-              <section>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                  Von mir vergeben
-                  {assignedOpen.length > 0 && (
-                    <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                      {assignedOpen.length} offen
-                    </span>
-                  )}
-                </h2>
-                {assignedByMe.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Noch keine Aufgaben vergeben · beim Erstellen "Für wen?" auswählen
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {assignedOpen.map(t => (
-                      <TaskRow key={t.id} task={t} myId={profile!.id} users={users}
-                        onToggle={toggle} onDelete={remove} showAssignee />
-                    ))}
-                    {assignedDone.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
-                          {assignedDone.length} erledigte anzeigen
-                        </summary>
-                        <div className="space-y-2 mt-2">
-                          {assignedDone.map(t => (
-                            <TaskRow key={t.id} task={t} myId={profile!.id} users={users}
-                              onToggle={toggle} onDelete={remove} showAssignee />
-                          ))}
-                        </div>
-                      </details>
-                    )}
-                  </div>
+            <section>
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                Von mir vergeben
+                {assignedOpen.length > 0 && (
+                  <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                    {assignedOpen.length} offen
+                  </span>
                 )}
+              </h2>
+              {assignedByMe.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Noch keine Aufgaben vergeben · beim Erstellen "Für wen?" auswählen
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {assignedOpen.map(t => <TaskRow key={t.id} task={t} {...rowProps} showAssignee />)}
+                  </div>
+                  <DoneAccordion items={assignedDone} label="erledigte anzeigen" />
+                </>
+              )}
+            </section>
+
+            {/* Admin: team overview */}
+            {isAdmin && teamTasks.length > 0 && (
+              <section>
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Team-Aufgaben (Admin-Übersicht)
+                </h2>
+                <div className="space-y-2">
+                  {teamTasks.filter(t => !t.completed).map(t => (
+                    <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator />
+                  ))}
+                </div>
+                <DoneAccordion items={teamTasks.filter(t => t.completed)} label="erledigte Team-Aufgaben" />
               </section>
             )}
-          </>
+          </div>
         )}
       </div>
     </AppLayout>
