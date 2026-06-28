@@ -13,11 +13,6 @@ export interface GCalEvent {
   htmlLink?: string;
 }
 
-interface AgencyCalConfig {
-  calendarId: string;
-  apiKey: string;
-}
-
 export const useAgencyCalendar = () => {
   const [events, setEvents] = useState<GCalEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,39 +20,46 @@ export const useAgencyCalendar = () => {
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadConfig = useCallback(async (): Promise<AgencyCalConfig | null> => {
-    const { data } = await supabase
-      .from('agency_settings')
-      .select('key, value')
-      .in('key', ['gcal_calendar_id', 'gcal_api_key']);
-    if (!data) return null;
-    const map = Object.fromEntries(data.map(r => [r.key, r.value]));
-    if (!map.gcal_calendar_id || !map.gcal_api_key) return null;
-    return { calendarId: map.gcal_calendar_id, apiKey: map.gcal_api_key };
-  }, []);
-
   const fetchEvents = useCallback(async () => {
-    const config = await loadConfig();
-    if (!config) { setIsConfigured(false); return; }
-    setIsConfigured(true);
     setIsLoading(true);
     setError(null);
 
-    const now = new Date();
-    const tMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
-    const tMax = new Date(now.getFullYear(), now.getMonth() + 6, 0).toISOString();
-    const encodedId = encodeURIComponent(config.calendarId);
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodedId}/events?key=${config.apiKey}&timeMin=${tMin}&timeMax=${tMax}&singleEvents=true&orderBy=startTime&maxResults=250`;
-
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        setError(errData?.error?.message ?? `HTTP ${resp.status}`);
+      // Check if service account is configured (without fetching the secret JSON)
+      const { data: check } = await supabase
+        .from('agency_settings')
+        .select('value')
+        .eq('key', 'gcal_configured')
+        .maybeSingle();
+
+      if (!check?.value) {
+        setIsConfigured(false);
         setIsLoading(false);
         return;
       }
+
+      setIsConfigured(true);
+
+      // Get current session token to authenticate the Edge Function call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setIsLoading(false); return; }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/calendar-proxy`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+        },
+      });
+
       const data = await resp.json();
+
+      if (!resp.ok || data.error) {
+        setError(data.error ?? `HTTP ${resp.status}`);
+        setIsLoading(false);
+        return;
+      }
+
       const parsed: GCalEvent[] = (data.items ?? []).map((item: any) => ({
         id: item.id,
         title: item.summary ?? '(kein Titel)',
@@ -69,17 +71,18 @@ export const useAgencyCalendar = () => {
         organizer: item.organizer?.displayName ?? item.organizer?.email,
         htmlLink: item.htmlLink,
       }));
+
       setEvents(parsed);
       setLastSynced(new Date());
     } catch (e: any) {
       setError(e.message ?? 'Unbekannter Fehler');
     }
+
     setIsLoading(false);
-  }, [loadConfig]);
+  }, []);
 
   useEffect(() => {
     fetchEvents();
-    // auto-refresh every 10 minutes
     const interval = setInterval(fetchEvents, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchEvents]);
@@ -87,16 +90,14 @@ export const useAgencyCalendar = () => {
   return { events, isLoading, isConfigured, lastSynced, error, refresh: fetchEvents };
 };
 
-/** Build a Google Calendar quick-add URL for a TaskLinker event */
+/** Build a Google Calendar quick-add URL for an event */
 export const buildGoogleCalendarAddUrl = (
   title: string,
-  startDate: string, // YYYY-MM-DD
-  endDate: string,   // YYYY-MM-DD
+  startDate: string,
+  endDate: string,
   description = '',
 ) => {
-  // Google Calendar date format: YYYYMMDD
   const fmt = (d: string) => d.replace(/-/g, '');
-  // For all-day events Google Calendar end date is exclusive, so add 1 day
   const endExclusive = new Date(endDate);
   endExclusive.setDate(endExclusive.getDate() + 1);
   const endStr = endExclusive.toISOString().slice(0, 10).replace(/-/g, '');
