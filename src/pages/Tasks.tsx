@@ -6,7 +6,7 @@ import { useUser } from '../contexts/UserContext';
 import { toast } from '../hooks/use-toast';
 import {
   Plus, CheckSquare, Square, Trash2, CalendarDays, ClipboardList,
-  UserCheck, Clock, Undo2, UserRoundCog, ChevronDown,
+  UserCheck, Clock, Undo2, UserRoundCog, ChevronDown, RotateCcw, ArrowRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { format, isPast, isToday } from 'date-fns';
@@ -14,8 +14,10 @@ import { de } from 'date-fns/locale';
 
 interface Task {
   id: string;
-  user_id: string;
-  created_by: string;
+  user_id: string;                      // current assignee
+  created_by: string;                   // original creator
+  original_assignee_id: string | null;  // first intended assignee (never changes)
+  reassigned_from_id: string | null;    // who last passed this task
   title: string;
   description: string | null;
   due_date: string | null;
@@ -25,7 +27,8 @@ interface Task {
 
 // ── Reassign popover ────────────────────────────────────────────────────────
 function ReassignMenu({ task, myId, users, onReassign }: {
-  task: Task; myId: string; users: any[]; onReassign: (taskId: string, newUserId: string) => void;
+  task: Task; myId: string; users: any[];
+  onReassign: (taskId: string, newUserId: string, prevUserId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -36,76 +39,125 @@ function ReassignMenu({ task, myId, users, onReassign }: {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const others = users.filter(u => u.id !== myId && u.id !== task.user_id);
+  const candidates = users.filter(u => u.id !== task.user_id);
+  const creator    = users.find(u => u.id === task.created_by);
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors"
-        title="Weiterleiten"
+        title="Weiterleiten / Zurückziehen"
       >
         <UserRoundCog className="w-3.5 h-3.5" />
         <ChevronDown className="w-3 h-3" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-lg z-50 overflow-hidden py-1">
+        <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-xl shadow-lg z-50 overflow-hidden py-1">
           <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Übergeben an…</div>
-          <button
-            onClick={() => { onReassign(task.id, myId); setOpen(false); }}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
-          >
-            <Undo2 className="w-3.5 h-3.5 text-primary" /> Mir selbst (zurückziehen)
-          </button>
-          {others.map(u => (
+
+          {/* Return to creator (if current assignee is not the creator) */}
+          {task.created_by !== task.user_id && (
             <button
-              key={u.id}
-              onClick={() => { onReassign(task.id, u.id); setOpen(false); }}
+              onClick={() => { onReassign(task.id, task.created_by, task.user_id); setOpen(false); }}
               className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
             >
-              <UserCheck className="w-3.5 h-3.5 text-muted-foreground" /> {u.name}
+              <Undo2 className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate">
+                {task.created_by === myId
+                  ? 'Mir selbst (zurückziehen)'
+                  : `Zurück an ${creator?.name ?? 'Ersteller'}`}
+              </span>
             </button>
-          ))}
+          )}
+
+          {/* Other MAs */}
+          {candidates.filter(u => u.id !== task.created_by).length > 0 && (
+            <div className="border-t border-border mt-1 pt-1">
+              <div className="px-3 py-1 text-xs text-muted-foreground">An anderen MA</div>
+              {candidates.filter(u => u.id !== task.created_by).map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => { onReassign(task.id, u.id, task.user_id); setOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">{u.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+// ── Chain badge ─────────────────────────────────────────────────────────────
+function ChainBadge({ task, users, myId }: { task: Task; users: any[]; myId: string }) {
+  if (!task.original_assignee_id || task.original_assignee_id === task.user_id) return null;
+  const original = users.find(u => u.id === task.original_assignee_id);
+  const current  = users.find(u => u.id === task.user_id);
+  if (!original || !current) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400"
+      title="Diese Aufgabe wurde weitergeleitet — nicht bei der ursprünglich zugewiesenen Person">
+      <ArrowRight className="w-2.5 h-2.5 shrink-0" />
+      {original.id === myId ? 'du' : original.name}
+      {' → '}
+      {current.id === myId ? 'du' : current.name}
+    </span>
+  );
+}
+
 // ── Task row ────────────────────────────────────────────────────────────────
 function TaskRow({
-  task, myId, isAdmin, users, onToggle, onDelete, onReassign, showAssignee, showCreator,
+  task, myId, isAdmin, users, onToggle, onDelete, onReassign, onReopen,
+  showAssignee, showCreator, showChain,
 }: {
   task: Task; myId: string; isAdmin: boolean; users: any[];
   onToggle: (t: Task) => void; onDelete: (id: string) => void;
-  onReassign: (taskId: string, newUserId: string) => void;
-  showAssignee?: boolean; showCreator?: boolean;
+  onReassign: (taskId: string, newUserId: string, prevUserId: string) => void;
+  onReopen: (t: Task) => void;
+  showAssignee?: boolean; showCreator?: boolean; showChain?: boolean;
 }) {
   const isOverdue  = !task.completed && task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
   const isDueToday = !task.completed && task.due_date && isToday(new Date(task.due_date));
-  const canToggle    = task.user_id === myId;
-  const canDelete    = task.created_by === myId || task.user_id === myId || isAdmin;
-  const canReassign  = (task.created_by === myId || isAdmin) && !task.completed;
-  const assignee     = users.find(u => u.id === task.user_id);
-  const creator      = users.find(u => u.id === task.created_by);
+  const canToggle  = task.user_id === myId && !task.completed;
+  const canReopen  = task.completed && (task.created_by === myId || isAdmin);
+  const canDelete  = task.created_by === myId || task.user_id === myId || isAdmin;
+  // Current holder, creator, or admin can reassign uncompleted tasks
+  const canReassign = !task.completed && (task.user_id === myId || task.created_by === myId || isAdmin);
+  const creator  = users.find(u => u.id === task.created_by);
+  const from     = task.reassigned_from_id ? users.find(u => u.id === task.reassigned_from_id) : null;
+  const assignee = users.find(u => u.id === task.user_id);
 
   return (
     <div className={`bg-card border rounded-xl px-4 py-3 flex items-start gap-3 group transition-colors ${
       isOverdue ? 'border-red-200 dark:border-red-900' : isDueToday ? 'border-amber-200 dark:border-amber-900' : 'border-border'
     }`}>
       <button
-        onClick={() => canToggle && onToggle(task)}
-        className={`mt-0.5 shrink-0 transition-colors ${canToggle ? 'hover:text-primary cursor-pointer' : 'cursor-default opacity-40'} text-muted-foreground`}
-        title={canToggle ? 'Abhaken' : 'Nur der Empfänger kann abhaken'}
+        onClick={() => canToggle ? onToggle(task) : canReopen ? onReopen(task) : undefined}
+        className={`mt-0.5 shrink-0 transition-colors ${
+          canToggle  ? 'hover:text-primary cursor-pointer text-muted-foreground'
+          : canReopen ? 'hover:text-amber-600 cursor-pointer text-muted-foreground'
+          : 'cursor-default opacity-40 text-muted-foreground'
+        }`}
+        title={canToggle ? 'Als erledigt markieren' : canReopen ? 'Wieder öffnen' : 'Nur der Empfänger kann abhaken'}
       >
-        {task.completed ? <CheckSquare className="w-5 h-5 text-green-500" /> : <Square className="w-5 h-5" />}
+        {task.completed
+          ? <CheckSquare className="w-5 h-5 text-green-500" />
+          : <Square className="w-5 h-5" />}
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>{task.title}</p>
+        <p className={`text-sm font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+          {task.title}
+        </p>
         {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
 
-        <div className="flex items-center gap-3 mt-1 flex-wrap">
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {task.due_date && (
             <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-500 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
               <CalendarDays className="w-3 h-3" />
@@ -123,11 +175,22 @@ function TaskRow({
               <Clock className="w-3 h-3" /> von {creator.name}
             </span>
           )}
-          {task.completed && <span className="text-xs text-green-600 font-medium">✓ Erledigt</span>}
+          {/* For the assignee: show who forwarded to them */}
+          {task.user_id === myId && from && from.id !== myId && (
+            <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <ArrowRight className="w-3 h-3" /> von {from.name} weitergeleitet
+            </span>
+          )}
+          {showChain && <ChainBadge task={task} users={users} myId={myId} />}
+          {task.completed && canReopen && (
+            <button onClick={() => onReopen(task)}
+              className="text-xs text-amber-600 hover:underline flex items-center gap-1 ml-1">
+              <RotateCcw className="w-3 h-3" /> Wieder öffnen
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Actions — visible on hover */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         {canReassign && (
           <ReassignMenu task={task} myId={myId} users={users} onReassign={onReassign} />
@@ -170,12 +233,17 @@ export default function Tasks() {
   const create = async () => {
     if (!title.trim()) { toast({ title: 'Titel erforderlich', variant: 'destructive' }); return; }
     const targetId = assigneeId || profile!.id;
+    const isSelf = targetId === profile!.id;
     const { error } = await supabase.from('user_tasks').insert({
-      user_id: targetId, created_by: profile!.id,
-      title: title.trim(), description: description.trim() || null, due_date: dueDate || null,
+      user_id: targetId,
+      created_by: profile!.id,
+      original_assignee_id: isSelf ? null : targetId,
+      title: title.trim(),
+      description: description.trim() || null,
+      due_date: dueDate || null,
     });
     if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
-    if (targetId !== profile!.id) {
+    if (!isSelf) {
       await supabase.from('notifications').insert({
         user_id: targetId, type: 'assignment',
         title: 'Neue Aufgabe erhalten',
@@ -190,10 +258,10 @@ export default function Tasks() {
   };
 
   const toggle = async (task: Task) => {
-    const nowDone = !task.completed;
-    await supabase.from('user_tasks').update({ completed: nowDone, updated_at: new Date().toISOString() }).eq('id', task.id);
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: nowDone } : t));
-    if (nowDone && task.created_by && task.created_by !== profile!.id) {
+    await supabase.from('user_tasks')
+      .update({ completed: true, updated_at: new Date().toISOString() }).eq('id', task.id);
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: true } : t));
+    if (task.created_by && task.created_by !== profile!.id) {
       await supabase.from('notifications').insert({
         user_id: task.created_by, type: 'system',
         title: 'Aufgabe erledigt ✓', body: task.title, read: false,
@@ -201,14 +269,29 @@ export default function Tasks() {
     }
   };
 
-  const reassign = async (taskId: string, newUserId: string) => {
+  const reopen = async (task: Task) => {
+    await supabase.from('user_tasks')
+      .update({ completed: false, updated_at: new Date().toISOString() }).eq('id', task.id);
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: false } : t));
+    toast({ title: 'Aufgabe wieder geöffnet' });
+    if (task.user_id !== profile!.id) {
+      await supabase.from('notifications').insert({
+        user_id: task.user_id, type: 'system',
+        title: 'Aufgabe wieder geöffnet', body: task.title, read: false,
+      });
+    }
+  };
+
+  const reassign = async (taskId: string, newUserId: string, prevUserId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const { error } = await supabase.from('user_tasks')
-      .update({ user_id: newUserId, completed: false, updated_at: new Date().toISOString() })
-      .eq('id', taskId);
+    const { error } = await supabase.from('user_tasks').update({
+      user_id: newUserId,
+      reassigned_from_id: prevUserId,
+      completed: false,
+      updated_at: new Date().toISOString(),
+    }).eq('id', taskId);
     if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
-
     if (newUserId === profile!.id) {
       toast({ title: 'Aufgabe zurückgezogen' });
     } else {
@@ -218,7 +301,7 @@ export default function Tasks() {
         title: 'Aufgabe weitergeleitet',
         body: `${profile!.full_name ?? 'Jemand'}: ${task.title}`, read: false,
       });
-      toast({ title: `Aufgabe an ${name} weitergeleitet` });
+      toast({ title: `An ${name} weitergeleitet` });
     }
     load();
   };
@@ -230,28 +313,29 @@ export default function Tasks() {
   };
 
   const myId = profile?.id ?? '';
-  const myTasks       = tasks.filter(t => t.user_id === myId);
-  const assignedByMe  = tasks.filter(t => t.created_by === myId && t.user_id !== myId);
-  // Admin: all tasks not involving self (for oversight)
-  const teamTasks     = isAdmin ? tasks.filter(t => t.user_id !== myId && t.created_by !== myId) : [];
+  const myTasks      = tasks.filter(t => t.user_id === myId);
+  const assignedByMe = tasks.filter(t => t.created_by === myId && t.user_id !== myId);
+  const teamTasks    = isAdmin ? tasks.filter(t => t.user_id !== myId && t.created_by !== myId) : [];
+  const myOpen       = myTasks.filter(t => !t.completed);
+  const myDone       = myTasks.filter(t => t.completed);
+  const assignedOpen = assignedByMe.filter(t => !t.completed);
+  const assignedDone = assignedByMe.filter(t => t.completed);
+  const overdueCount = myOpen.filter(t => t.due_date && isPast(new Date(t.due_date)) && !isToday(new Date(t.due_date))).length;
+  const bouncedCount = assignedByMe.filter(t =>
+    !t.completed && t.original_assignee_id && t.original_assignee_id !== t.user_id
+  ).length;
+  const otherUsers = users.filter(u => u.id !== myId);
 
-  const myOpen        = myTasks.filter(t => !t.completed);
-  const myDone        = myTasks.filter(t => t.completed);
-  const assignedOpen  = assignedByMe.filter(t => !t.completed);
-  const assignedDone  = assignedByMe.filter(t => t.completed);
-  const overdueCount  = myOpen.filter(t => t.due_date && isPast(new Date(t.due_date)) && !isToday(new Date(t.due_date))).length;
-  const otherUsers    = users.filter(u => u.id !== myId);
+  const rowProps = { myId, isAdmin, users, onToggle: toggle, onDelete: remove, onReassign: reassign, onReopen: reopen };
 
-  const rowProps = { myId, isAdmin, users, onToggle: toggle, onDelete: remove, onReassign: reassign };
-
-  const DoneAccordion = ({ items, label }: { items: Task[]; label: string }) =>
+  const DoneAccordion = ({ items, label, showChain }: { items: Task[]; label: string; showChain?: boolean }) =>
     items.length > 0 ? (
       <details className="mt-2">
         <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none py-1">
           {items.length} {label}
         </summary>
         <div className="space-y-2 mt-2">
-          {items.map(t => <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator />)}
+          {items.map(t => <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator showChain={showChain} />)}
         </div>
       </details>
     ) : null;
@@ -259,14 +343,18 @@ export default function Tasks() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Aufgaben</h1>
             <p className="text-muted-foreground text-sm mt-1">
               {myOpen.length} offen
               {overdueCount > 0 && <span className="text-red-500 ml-1">· {overdueCount} überfällig</span>}
-              {assignedOpen.length > 0 && <span className="text-amber-600 ml-1">· {assignedOpen.length} vergeben (offen)</span>}
+              {assignedOpen.length > 0 && <span className="text-amber-600 ml-1">· {assignedOpen.length} vergeben</span>}
+              {bouncedCount > 0 && (
+                <span className="text-orange-500 ml-1" title="Aufgaben die weitergeleitet wurden">
+                  · {bouncedCount} weitergeleitet ⚠
+                </span>
+              )}
             </p>
           </div>
           <Button onClick={() => setShowForm(s => !s)} className="flex items-center gap-2">
@@ -274,7 +362,6 @@ export default function Tasks() {
           </Button>
         </div>
 
-        {/* Create form */}
         {showForm && (
           <div className="bg-card border border-border rounded-xl p-4 mb-6 space-y-3">
             <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
@@ -337,6 +424,12 @@ export default function Tasks() {
                     {assignedOpen.length} offen
                   </span>
                 )}
+                {bouncedCount > 0 && (
+                  <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                    title="Weitergeleitet — prüfen ob Aufgabe noch bei der richtigen Person ist">
+                    {bouncedCount} weitergeleitet ⚠
+                  </span>
+                )}
               </h2>
               {assignedByMe.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
@@ -345,25 +438,27 @@ export default function Tasks() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    {assignedOpen.map(t => <TaskRow key={t.id} task={t} {...rowProps} showAssignee />)}
+                    {assignedOpen.map(t => (
+                      <TaskRow key={t.id} task={t} {...rowProps} showAssignee showChain />
+                    ))}
                   </div>
-                  <DoneAccordion items={assignedDone} label="erledigte anzeigen" />
+                  <DoneAccordion items={assignedDone} label="erledigte anzeigen" showChain />
                 </>
               )}
             </section>
 
-            {/* Admin: team overview */}
+            {/* Admin team overview */}
             {isAdmin && teamTasks.length > 0 && (
               <section>
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Team-Aufgaben (Admin-Übersicht)
+                  Team-Aufgaben (Admin)
                 </h2>
                 <div className="space-y-2">
                   {teamTasks.filter(t => !t.completed).map(t => (
-                    <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator />
+                    <TaskRow key={t.id} task={t} {...rowProps} showAssignee showCreator showChain />
                   ))}
                 </div>
-                <DoneAccordion items={teamTasks.filter(t => t.completed)} label="erledigte Team-Aufgaben" />
+                <DoneAccordion items={teamTasks.filter(t => t.completed)} label="erledigte Team-Aufgaben" showChain />
               </section>
             )}
           </div>
