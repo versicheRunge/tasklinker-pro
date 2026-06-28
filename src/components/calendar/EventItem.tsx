@@ -1,11 +1,13 @@
 
 import React from 'react';
-import { CalendarIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, Trash2, ExternalLink } from 'lucide-react';
 import { CustomBadge } from '../ui/CustomBadge';
 import { CalendarEvent } from '../../types/calendar';
 import { User } from '../../types/case';
 import { getEventEmoji, getEventBadgeVariant, formatDate } from '../../utils/calendarUtils';
 import { USER_COLORS } from '../../contexts/UserTypes';
+import { buildGoogleCalendarAddUrl } from '../../hooks/useAgencyCalendar';
+import { format } from 'date-fns';
 
 interface EventItemProps {
   event: CalendarEvent;
@@ -32,6 +34,16 @@ export const EventItem: React.FC<EventItemProps> = ({
     
     return USER_COLORS[userIndex % USER_COLORS.length].primary;
   };
+
+  const showGcalButton = event.type !== 'holiday' && event.type !== 'birthday';
+  const gcalUrl = showGcalButton
+    ? buildGoogleCalendarAddUrl(
+        event.title,
+        format(event.date, 'yyyy-MM-dd'),
+        format(event.endDate ?? event.date, 'yyyy-MM-dd'),
+        event.description ?? '',
+      )
+    : null;
 
   // Check if user can delete this event
   const canDelete = (
@@ -95,19 +107,28 @@ export const EventItem: React.FC<EventItemProps> = ({
         </div>
       </div>
       
-      {canDelete && (
-        <div className="flex items-center gap-1">
-          <button 
-            className="p-1 text-muted-foreground hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(event.id);
-            }}
+      <div className="flex items-center gap-1 shrink-0">
+        {gcalUrl && (
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="In Google Kalender eintragen"
+            onClick={e => e.stopPropagation()}
+            className="p-1 text-muted-foreground hover:text-blue-600 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        )}
+        {canDelete && (
+          <button
+            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+            onClick={(e) => { e.stopPropagation(); onDelete(event.id); }}
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

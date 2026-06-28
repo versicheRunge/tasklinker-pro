@@ -6,6 +6,9 @@ import { CalendarEvent, BadgeVariant } from '../../types/calendar';
 import { User } from '../../types/case';
 import { getEventEmoji, getEventBadgeVariant, formatDate } from '../../utils/calendarUtils';
 import { USER_COLORS } from '../../contexts/UserTypes';
+import { buildGoogleCalendarAddUrl } from '../../hooks/useAgencyCalendar';
+import { format } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 
 interface ViewEventDialogProps {
   event: CalendarEvent;
@@ -32,6 +35,16 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
     
     return USER_COLORS[userIndex % USER_COLORS.length].primary;
   };
+
+  const showGcalButton = event.type !== 'holiday' && event.type !== 'birthday';
+  const gcalUrl = showGcalButton
+    ? buildGoogleCalendarAddUrl(
+        event.title,
+        format(event.date, 'yyyy-MM-dd'),
+        format(event.endDate ?? event.date, 'yyyy-MM-dd'),
+        event.description ?? '',
+      )
+    : null;
 
   // Check if user can delete this event
   const canDelete = (
@@ -99,21 +112,34 @@ export const ViewEventDialog: React.FC<ViewEventDialogProps> = ({
           </div>
         )}
       </div>
-      <DialogFooter>
-        <button
-          className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors"
-          onClick={onClose}
-        >
-          Schließen
-        </button>
-        {canDelete && (
-          <button
-            className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
-            onClick={() => onDelete(event.id)}
+      <DialogFooter className="flex-col sm:flex-row gap-2">
+        {gcalUrl && (
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm font-medium"
           >
-            Termin löschen
-          </button>
+            <ExternalLink className="w-4 h-4" />
+            In Google Kalender eintragen
+          </a>
         )}
+        <div className="flex gap-2 ml-auto">
+          <button
+            className="px-4 py-2 rounded-lg border border-input hover:bg-muted transition-colors text-sm"
+            onClick={onClose}
+          >
+            Schließen
+          </button>
+          {canDelete && (
+            <button
+              className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors text-sm"
+              onClick={() => onDelete(event.id)}
+            >
+              Löschen
+            </button>
+          )}
+        </div>
       </DialogFooter>
     </DialogContent>
   );
