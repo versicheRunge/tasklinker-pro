@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { useAutoNotifications } from '../../hooks/useAutoNotifications';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  useAutoNotifications();
 
   // Close sidebar on navigation
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);

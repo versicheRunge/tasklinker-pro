@@ -5,6 +5,8 @@ import { User } from '../../types/case';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from "../use-toast";
+import { pushToGcal } from '../../lib/gcalPush';
+import { format } from 'date-fns';
 
 const rowToEvent = (row: any): CalendarEvent => ({
   id: row.id,
@@ -83,6 +85,18 @@ export const useCalendarEvents = (currentUser?: User | null, isAdmin: boolean = 
     }
 
     await loadEvents();
+
+    // Auto-push meetings and trainings to Google Calendar
+    const autoGcalTypes = ['meeting', 'training'];
+    if (autoGcalTypes.includes(newEvent.type)) {
+      pushToGcal({
+        title: newEvent.title,
+        startDate: format(newEvent.date, 'yyyy-MM-dd'),
+        endDate: format(newEvent.endDate ?? newEvent.date, 'yyyy-MM-dd'),
+        description: newEvent.description ?? '',
+      });
+    }
+
     toast({
       title: 'Termin hinzugefügt',
       description: newEvent.type === 'absence'

@@ -1,15 +1,15 @@
 // calendar-proxy — Supabase Edge Function
 //
-// Reads a Google Service Account JSON from agency_settings and fetches
-// Google Calendar events server-side. The private key never touches the browser.
+// GET  → reads events from Google Calendar (requires calendar.events scope)
+// POST → creates an event on Google Calendar
 //
-// Deploy once:
-//   supabase functions deploy calendar-proxy --no-verify-jwt
-// OR via Supabase Dashboard → Edge Functions → New Function → paste this file.
+// Deploy: supabase functions deploy calendar-proxy --no-verify-jwt
 //
-// Required agency_settings rows (set via app Settings → Integrationen):
-//   gcal_service_account  — full service account JSON (stays server-side)
+// Required agency_settings rows:
+//   gcal_service_account  — full service account JSON (server-side only)
 //   gcal_calendar_id      — e.g. xxx@group.calendar.google.com
+//
+// Calendar sharing: service account email needs "Make changes to events" permission.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -26,7 +26,6 @@ serve(async (req) => {
   }
 
   try {
-    // Use service role to read sensitive settings — never exposed to browser
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -56,11 +55,47 @@ serve(async (req) => {
     }
 
     const accessToken = await getAccessToken(sa);
+    const calId = encodeURIComponent(cfg.gcal_calendar_id);
 
+    // ── POST: create event ──────────────────────────────────────────────────
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const { action, event } = body;
+
+      if (action === "createEvent" && event) {
+        const evResp = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(event),
+          }
+        );
+        const evData = await evResp.json();
+        if (!evResp.ok) {
+          return json({ error: evData?.error?.message ?? `HTTP ${evResp.status}` }, evResp.status);
+        }
+        return json(evData);
+      }
+
+      if (action === "deleteEvent" && body.eventId) {
+        const delResp = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${body.eventId}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        return new Response(null, { status: delResp.status, headers: CORS });
+      }
+
+      return json({ error: "Unbekannte action" }, 400);
+    }
+
+    // ── GET: read events ────────────────────────────────────────────────────
     const now = new Date();
     const tMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
     const tMax = new Date(now.getFullYear(), now.getMonth() + 6, 0).toISOString();
-    const calId = encodeURIComponent(cfg.gcal_calendar_id);
 
     const evResp = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${calId}/events` +
@@ -70,10 +105,7 @@ serve(async (req) => {
 
     const evData = await evResp.json();
     if (!evResp.ok) {
-      return json(
-        { error: evData?.error?.message ?? `HTTP ${evResp.status}` },
-        evResp.status
-      );
+      return json({ error: evData?.error?.message ?? `HTTP ${evResp.status}` }, evResp.status);
     }
 
     return json(evData);
@@ -91,7 +123,8 @@ async function getAccessToken(sa: any): Promise<string> {
   const payload = b64url(
     JSON.stringify({
       iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/calendar.readonly",
+      // calendar.events scope allows both reading and creating/editing events
+      scope: "https://www.googleapis.com/auth/calendar.events",
       aud: "https://oauth2.googleapis.com/token",
       iat: now,
       exp: now + 3600,
@@ -100,7 +133,6 @@ async function getAccessToken(sa: any): Promise<string> {
 
   const sigInput = `${header}.${payload}`;
 
-  // Strip PEM headers and import private key
   const pem = (sa.private_key as string)
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")

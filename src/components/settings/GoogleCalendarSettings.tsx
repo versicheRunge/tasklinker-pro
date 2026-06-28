@@ -38,7 +38,7 @@ const STEPS_EXISTING = [
   {
     n: 6,
     title: 'Bestehenden Kalender freigeben',
-    text: 'In Google Kalender: Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 5 hinzufügen → Berechtigung: "Ereignisse anzeigen" → Senden',
+    text: 'In Google Kalender: Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 5 hinzufügen → Berechtigung: "Termine bearbeiten" → Senden (damit Genehmigungen automatisch eingetragen werden)',
   },
   {
     n: 7,
@@ -87,7 +87,7 @@ const STEPS_NEW = [
   {
     n: 7,
     title: 'Kalender freigeben',
-    text: 'In Google Kalender: neuen Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 6 hinzufügen → Berechtigung: "Ereignisse anzeigen" → Senden',
+    text: 'In Google Kalender: neuen Kalender auswählen → Einstellungen → "Freigabe & Berechtigungen" → E-Mail aus Schritt 6 hinzufügen → Berechtigung: "Termine bearbeiten" → Senden (damit Genehmigungen automatisch eingetragen werden)',
   },
   {
     n: 8,
@@ -397,7 +397,7 @@ export const GoogleCalendarSettings: React.FC = () => {
               </p>
               <p className="text-xs font-mono text-blue-700 dark:text-blue-400 mt-1 break-all">{clientEmail}</p>
               <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
-                Google Kalender → Kalendereinstellungen → Freigabe → diese E-Mail hinzufügen → "Ereignisse anzeigen"
+                Google Kalender → Kalendereinstellungen → Freigabe → diese E-Mail hinzufügen → "Termine bearbeiten" (für automatische Einträge)
               </p>
             </div>
             <button onClick={copyEmail} className="shrink-0 p-1 rounded text-blue-600 hover:bg-blue-100">

@@ -8,6 +8,7 @@ import { Check, X, Clock, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { buildGoogleCalendarAddUrl } from '../../hooks/useAgencyCalendar';
+import { pushToGcal } from '../../lib/gcalPush';
 
 const MANAGER_EMAIL = 'thomas.runge@itzehoer.de';
 
@@ -89,6 +90,14 @@ export const VacationRequestsAdmin: React.FC = () => {
         const mailto = `mailto:${MANAGER_EMAIL}?subject=${encodeURIComponent(`Urlaub genehmigt: ${employee?.name ?? ''} ${dateRange}`)}&body=${encodeURIComponent(body)}`;
         window.location.href = mailto;
       }
+
+      // Auto-push to Google Calendar (silent, non-blocking)
+      pushToGcal({
+        title: `${TYPE_LABELS[req.type]} – ${employee?.name ?? ''}`,
+        startDate: req.start_date,
+        endDate: req.end_date,
+        description: `${req.working_days} Arbeitstag${req.working_days > 1 ? 'e' : ''} · genehmigt in TaskLinker`,
+      });
 
       toast({ title: 'Genehmigt', description: 'Kalendereintrag automatisch erstellt.' });
     } else {
