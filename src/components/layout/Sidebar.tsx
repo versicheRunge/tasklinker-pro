@@ -5,11 +5,13 @@ import { Home, CheckSquare, FileText, Users, Settings, BarChart3, MessageSquare,
 import { useUser } from '../../contexts/UserContext';
 import { Badge } from '../ui/badge';
 import { useWvlCount } from '../../hooks/useWvlCount';
+import { useAgencyName } from '../../hooks/useAgencyName';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { notifications, isAdmin } = useUser();
   const wvlCount = useWvlCount();
+  const agencyName = useAgencyName();
 
   const chatNotifications = notifications.filter(n => n.type === 'chat' && !n.read).length;
   
@@ -39,10 +41,10 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 bg-sidebar border-r border-border h-screen sticky top-0 shrink-0">
       <div className="px-6 py-8">
         <div className="flex items-center space-x-2 mb-8">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white font-bold text-lg">TR</span>
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-sm">{agencyName.slice(0,2).toUpperCase()}</span>
           </div>
-          <h1 className="text-xl font-semibold">TruTeam</h1>
+          <h1 className="text-base font-semibold truncate" title={agencyName}>{agencyName}</h1>
         </div>
         
         <nav className="space-y-1">
