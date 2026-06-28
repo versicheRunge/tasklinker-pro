@@ -473,7 +473,8 @@ export default function Tasks() {
               {myOpen.length === 0 && myDone.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Keine Aufgaben</p>
+                  <p className="text-sm font-medium">Keine offenen Aufgaben</p>
+                  <p className="text-xs mt-1 opacity-70">Erstelle eine Aufgabe für dich oder lass dir eine zuweisen.</p>
                 </div>
               ) : (
                 <>

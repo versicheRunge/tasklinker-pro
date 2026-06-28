@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useUser } from '../contexts/UserContext';
 import { Link } from 'react-router-dom';
-import { RefreshCw, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
+import { RefreshCw, ChevronRight, Clock, AlertTriangle, Info } from 'lucide-react';
 import { format, isToday, isPast, isTomorrow, addDays, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Badge } from '../components/ui/badge';
@@ -126,6 +126,15 @@ export default function Wiedervorlagen() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <RefreshCw className="w-7 h-7" /> Wiedervorlagen
+              <span className="group relative">
+                <Info className="w-5 h-5 text-muted-foreground cursor-help" />
+                <div className="absolute left-0 top-7 z-10 hidden group-hover:block w-72 bg-popover border border-border rounded-xl shadow-lg p-3 text-sm font-normal">
+                  <p className="font-semibold mb-1 text-foreground">Was ist eine Wiedervorlage?</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Eine Wiedervorlage ist ein Erinnerungsdatum an einem Vorgang — z.B. "In 2 Wochen nachfragen ob der Antrag bearbeitet wurde". Vorgänge mit Wiedervorlagedatum erscheinen hier sortiert nach Dringlichkeit.
+                  </p>
+                </div>
+              </span>
             </h1>
             <p className="text-muted-foreground text-sm mt-1">{displayCases.length} Vorgänge mit Wiedervorlage</p>
           </div>

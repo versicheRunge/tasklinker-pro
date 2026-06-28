@@ -5,6 +5,8 @@ import {
   TrendingUp, UserCheck, UserX, Bell, ChevronRight, Flag,
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
+import { FirstRunBanner } from '../components/onboarding/FirstRunBanner';
+import { OnboardingChecklist } from '../components/onboarding/OnboardingChecklist';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -393,6 +395,9 @@ const Index: React.FC = () => {
           <FileText className="w-4 h-4" /> Alle Vorgänge
         </Button>
       </div>
+
+      <FirstRunBanner />
+      <OnboardingChecklist />
 
       {isAdmin
         ? <AdminDashboard allCases={allCases} users={rawUsers} absentToday={absentToday} pendingRequests={pendingRequests} />

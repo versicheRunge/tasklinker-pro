@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CaseCard } from './CaseCard';
 import { CaseItem, CaseStatus, CaseType, CASE_TYPE_LABELS } from '../../types/case';
-import { Archive, Download, CheckSquare, X } from 'lucide-react';
+import { Archive, Download, CheckSquare, X, FileText } from 'lucide-react';
 import { toast } from "../../hooks/use-toast";
 import { useUser } from '../../contexts/UserContext';
 import { supabase } from '../../lib/supabase';
@@ -307,11 +307,13 @@ export const CasesList: React.FC<CasesListProps> = ({ cases, updateCase, showCom
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">
-              {activeTab === 'mine' 
-                ? 'Keine aktiven Vorgänge gefunden, die Ihnen zugewiesen sind' 
-                : 'Keine aktiven Vorgänge gefunden'}
+          <div className="text-center py-14 bg-muted/20 rounded-xl border border-dashed border-border">
+            <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" />
+            <p className="font-medium text-muted-foreground">
+              {activeTab === 'mine' ? 'Keine Vorgänge zugewiesen' : 'Keine aktiven Vorgänge'}
+            </p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
+              {activeTab === 'mine' ? 'Dir sind aktuell keine offenen Vorgänge zugewiesen.' : 'Lege einen neuen Vorgang über "Neuer Vorgang" an.'}
             </p>
           </div>
         )}
