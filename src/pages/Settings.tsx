@@ -12,6 +12,7 @@ import { AdminBoard } from '../components/admin/AdminBoard';
 import { Lock, Eye, EyeOff, Download, CheckCircle2, FolderOpen, MonitorDown, Info, RotateCcw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { GoogleCalendarSettings } from '../components/settings/GoogleCalendarSettings';
+import { PushNotificationSettings } from '../components/settings/PushNotificationSettings';
 import { useHints } from '../hooks/useHints';
 
 const Settings: React.FC = () => {
@@ -94,6 +95,11 @@ const Settings: React.FC = () => {
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${hintsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
+                </div>
+
+                {/* Push notifications */}
+                <div className="py-2 border-t border-border/50">
+                  <PushNotificationSettings />
                 </div>
 
                 {/* Onboarding reset */}
