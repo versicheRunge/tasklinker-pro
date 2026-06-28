@@ -37,7 +37,7 @@ export default function Wiedervorlagen() {
   const { users, currentUser, isAdmin } = useUser();
   const [cases, setCases] = useState<WVCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterUser, setFilterUser] = useState<string>('me');
+  const [filterUser, setFilterUser] = useState<string>(isAdmin ? 'all' : 'me');
 
   useEffect(() => {
     if (!profile) return;
@@ -60,12 +60,13 @@ export default function Wiedervorlagen() {
     return c.assignee_id === filterUser;
   });
 
-  // Group by: overdue, today, this week, later
-  const overdue = displayCases.filter(c => isPast(new Date(c.follow_up_date)) && !isToday(new Date(c.follow_up_date)));
-  const today   = displayCases.filter(c => isToday(new Date(c.follow_up_date)));
+  // Group by: overdue, today, tomorrow, this week, later
+  const overdue  = displayCases.filter(c => isPast(new Date(c.follow_up_date)) && !isToday(new Date(c.follow_up_date)));
+  const today    = displayCases.filter(c => isToday(new Date(c.follow_up_date)));
+  const tomorrow = displayCases.filter(c => isTomorrow(new Date(c.follow_up_date)));
   const thisWeek = displayCases.filter(c => {
     const d = new Date(c.follow_up_date);
-    return !isPast(d) && !isToday(d) && isAfter(addDays(new Date(), 7), d);
+    return !isPast(d) && !isToday(d) && !isTomorrow(d) && isAfter(addDays(new Date(), 7), d);
   });
   const later = displayCases.filter(c => isAfter(new Date(c.follow_up_date), addDays(new Date(), 7)));
 
@@ -144,6 +145,7 @@ export default function Wiedervorlagen() {
           <>
             <Group title="Überfällig" icon={AlertTriangle} items={overdue} cls="text-red-500" />
             <Group title="Heute" icon={Clock} items={today} cls="text-amber-600" />
+            <Group title="Morgen" icon={Clock} items={tomorrow} cls="text-amber-500" />
             <Group title="Diese Woche" icon={RefreshCw} items={thisWeek} />
             <Group title="Später" icon={RefreshCw} items={later} />
           </>

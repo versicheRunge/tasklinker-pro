@@ -13,13 +13,13 @@ export const Sidebar: React.FC = () => {
 
   const chatNotifications = notifications.filter(n => n.type === 'chat' && !n.read).length;
   
-  // Create base navigation items
-  let navItems = [
+  type NavItem = { name: string; path: string; icon: any; badge?: number; badgeAmber?: boolean };
+  let navItems: NavItem[] = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Vorgänge', path: '/cases', icon: FileText },
-    { name: 'Wiedervorlagen', path: '/wiedervorlagen', icon: RefreshCw, badge: wvlCount },
+    { name: 'Wiedervorlagen', path: '/wiedervorlagen', icon: RefreshCw, badge: wvlCount, badgeAmber: true },
     { name: 'Kunden', path: '/customers', icon: BookUser },
-    { name: 'Meine Aufgaben', path: '/tasks', icon: ClipboardList },
+    { name: 'Aufgaben', path: '/tasks', icon: ClipboardList },
     { name: 'Team', path: '/team', icon: Users },
     { name: 'Kalender', path: '/calendar', icon: Calendar },
     { name: 'Chat', path: '/chat', icon: MessageSquare, badge: chatNotifications },
@@ -59,7 +59,10 @@ export const Sidebar: React.FC = () => {
               <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-primary' : 'text-foreground/70'}`} />
               <span>{item.name}</span>
               {item.badge > 0 && (
-                <Badge variant="destructive" className="ml-auto px-1.5 min-w-5 flex justify-center">
+                <Badge
+                  variant={item.badgeAmber ? 'outline' : 'destructive'}
+                  className={`ml-auto px-1.5 min-w-5 flex justify-center ${item.badgeAmber ? 'border-amber-400 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : ''}`}
+                >
                   {item.badge}
                 </Badge>
               )}

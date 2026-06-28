@@ -51,7 +51,7 @@ export const GlobalSearch: React.FC = () => {
         id: c.id,
         title: c.name,
         sub: [c.phone, c.email].filter(Boolean).join(' · '),
-        path: `/customers`,
+        path: `/customers?search=${encodeURIComponent(c.name)}`,
       }));
 
       setResults([...caseResults, ...customerResults]);

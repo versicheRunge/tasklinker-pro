@@ -93,7 +93,7 @@ function AdminDashboard({ allCases, users, absentToday, pendingRequests }: { all
   const active = allCases.filter(c => c.status !== 'completed');
   const newCases = allCases.filter(c => c.status === 'new');
   const overdue = active.filter(c => c.dueDate && isPast(new Date(c.dueDate)));
-  const noFollowUp = active.filter(c => !c.followUpDate && c.status !== 'new');
+  const noFollowUp = active.filter(c => !c.followUpDate && c.status !== 'new' && c.status !== 'waiting');
   const urgent = active.filter(c => c.priority === 'urgent');
   const followUpToday = active.filter(c => c.followUpDate && isToday(new Date(c.followUpDate)));
   const followUpThisWeek = active.filter(c => {
@@ -229,7 +229,7 @@ function StaffDashboard({ allCases, currentUserId, users }: { allCases: CaseItem
   const urgent = mine.filter(c => c.priority === 'urgent' || c.priority === 'high');
   const waiting = mine.filter(c => c.status === 'waiting');
   const inProgress = mine.filter(c => c.status === 'in_progress');
-  const noFollowUp = mine.filter(c => !c.followUpDate && c.status !== 'new');
+  const noFollowUp = mine.filter(c => !c.followUpDate && c.status !== 'new' && c.status !== 'waiting');
 
   return (
     <>

@@ -113,25 +113,81 @@ function ChainBadge({ task, users, myId }: { task: Task; users: any[]; myId: str
 
 // ── Task row ────────────────────────────────────────────────────────────────
 function TaskRow({
-  task, myId, isAdmin, users, onToggle, onDelete, onReassign, onReopen,
+  task, myId, isAdmin, users, onToggle, onDelete, onReassign, onReopen, onSave,
   showAssignee, showCreator, showChain,
 }: {
   task: Task; myId: string; isAdmin: boolean; users: any[];
   onToggle: (t: Task) => void; onDelete: (id: string) => void;
   onReassign: (taskId: string, newUserId: string, prevUserId: string) => void;
   onReopen: (t: Task) => void;
+  onSave: (taskId: string, fields: { title: string; description: string; due_date: string }) => void;
   showAssignee?: boolean; showCreator?: boolean; showChain?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editDesc, setEditDesc] = useState(task.description ?? '');
+  const [editDate, setEditDate] = useState(task.due_date ?? '');
+
   const isOverdue  = !task.completed && task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date));
   const isDueToday = !task.completed && task.due_date && isToday(new Date(task.due_date));
   const canToggle  = task.user_id === myId && !task.completed;
   const canReopen  = task.completed && (task.created_by === myId || isAdmin);
+  const canEdit    = task.user_id === myId || task.created_by === myId || isAdmin;
   const canDelete  = task.created_by === myId || task.user_id === myId || isAdmin;
-  // Current holder, creator, or admin can reassign uncompleted tasks
   const canReassign = !task.completed && (task.user_id === myId || task.created_by === myId || isAdmin);
   const creator  = users.find(u => u.id === task.created_by);
   const from     = task.reassigned_from_id ? users.find(u => u.id === task.reassigned_from_id) : null;
   const assignee = users.find(u => u.id === task.user_id);
+
+  const startEdit = () => {
+    if (!canEdit || task.completed) return;
+    setEditTitle(task.title);
+    setEditDesc(task.description ?? '');
+    setEditDate(task.due_date ?? '');
+    setEditing(true);
+  };
+  const cancelEdit = () => setEditing(false);
+  const commitEdit = () => {
+    if (!editTitle.trim()) return;
+    onSave(task.id, { title: editTitle.trim(), description: editDesc.trim(), due_date: editDate });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="bg-card border-2 border-primary/30 rounded-xl px-4 py-3 space-y-2">
+        <input
+          autoFocus
+          value={editTitle}
+          onChange={e => setEditTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+          className="w-full px-2 py-1 border border-border rounded-lg bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <div className="flex gap-2">
+          <input
+            value={editDesc}
+            onChange={e => setEditDesc(e.target.value)}
+            placeholder="Beschreibung (optional)"
+            className="flex-1 px-2 py-1 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <input
+            type="date"
+            value={editDate}
+            onChange={e => setEditDate(e.target.value)}
+            className="px-2 py-1 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={commitEdit} className="px-3 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90">
+            Speichern
+          </button>
+          <button onClick={cancelEdit} className="px-3 py-1 border border-border rounded-lg text-xs hover:bg-muted">
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-card border rounded-xl px-4 py-3 flex items-start gap-3 group transition-colors ${
@@ -151,7 +207,8 @@ function TaskRow({
           : <Square className="w-5 h-5" />}
       </button>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={canEdit && !task.completed ? startEdit : undefined}
+        title={canEdit && !task.completed ? 'Klicken zum Bearbeiten' : undefined}>
         <p className={`text-sm font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
           {task.title}
         </p>
@@ -175,7 +232,6 @@ function TaskRow({
               <Clock className="w-3 h-3" /> von {creator.name}
             </span>
           )}
-          {/* For the assignee: show who forwarded to them */}
           {task.user_id === myId && from && from.id !== myId && (
             <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
               <ArrowRight className="w-3 h-3" /> von {from.name} weitergeleitet
@@ -183,7 +239,7 @@ function TaskRow({
           )}
           {showChain && <ChainBadge task={task} users={users} myId={myId} />}
           {task.completed && canReopen && (
-            <button onClick={() => onReopen(task)}
+            <button onClick={e => { e.stopPropagation(); onReopen(task); }}
               className="text-xs text-amber-600 hover:underline flex items-center gap-1 ml-1">
               <RotateCcw className="w-3 h-3" /> Wieder öffnen
             </button>
@@ -326,12 +382,26 @@ export default function Tasks() {
   ).length;
   const otherUsers = users.filter(u => u.id !== myId);
 
-  const rowProps = { myId, isAdmin, users, onToggle: toggle, onDelete: remove, onReassign: reassign, onReopen: reopen };
+  const saveEdit = async (taskId: string, fields: { title: string; description: string; due_date: string }) => {
+    const { error } = await supabase.from('user_tasks').update({
+      title: fields.title,
+      description: fields.description || null,
+      due_date: fields.due_date || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', taskId);
+    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    setTasks(prev => prev.map(t => t.id === taskId ? {
+      ...t, title: fields.title, description: fields.description || null, due_date: fields.due_date || null,
+    } : t));
+    toast({ title: 'Gespeichert' });
+  };
+
+  const rowProps = { myId, isAdmin, users, onToggle: toggle, onDelete: remove, onReassign: reassign, onReopen: reopen, onSave: saveEdit };
 
   const DoneAccordion = ({ items, label, showChain }: { items: Task[]; label: string; showChain?: boolean }) =>
     items.length > 0 ? (
       <details className="mt-2">
-        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none py-1">
+        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none py-1.5">
           {items.length} {label}
         </summary>
         <div className="space-y-2 mt-2">

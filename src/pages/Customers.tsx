@@ -3,8 +3,8 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, Check, Users, Upload, ExternalLink } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Search, FolderOpen, Copy, Pencil, Trash2, Phone, Mail, Check, Users, Upload, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { openLocalPath } from '../lib/pathProtocol';
 
@@ -42,14 +42,16 @@ const EMPTY: Omit<Customer, 'id' | 'created_at'> = {
 export default function Customers() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [folderDragOver, setFolderDragOver] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -89,9 +91,9 @@ export default function Customers() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Kunden wirklich löschen?')) return;
     await supabase.from('customers').delete().eq('id', id);
     setCustomers(prev => prev.filter(c => c.id !== id));
+    setConfirmDeleteId(null);
     toast({ title: 'Kunde gelöscht' });
   };
 
@@ -205,54 +207,73 @@ export default function Customers() {
         ) : (
           <div className="space-y-2">
             {filtered.map(c => (
-              <div key={c.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="text-primary font-bold text-sm">{c.name[0]?.toUpperCase()}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{c.name}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                    {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
-                    {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>}
+              <div key={c.id} className="bg-card border border-border rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-primary font-bold text-sm">{c.name[0]?.toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{c.name}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      {c.phone && (
+                        <a href={`tel:${c.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                          <Phone className="w-3 h-3" />{c.phone}
+                        </a>
+                      )}
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                          <Mail className="w-3 h-3" />{c.email}
+                        </a>
+                      )}
+                      {c.folder_path && (
+                        <span className="flex items-center gap-1 font-mono text-xs bg-muted px-1.5 py-0.5 rounded max-w-xs truncate">
+                          <FolderOpen className="w-3 h-3 shrink-0" />{c.folder_path}
+                        </span>
+                      )}
+                      {c.notes && <span className="italic truncate max-w-xs">{c.notes}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
                     {c.folder_path && (
-                      <span className="flex items-center gap-1 font-mono text-xs bg-muted px-1.5 py-0.5 rounded max-w-xs truncate">
-                        <FolderOpen className="w-3 h-3 shrink-0" />{c.folder_path}
-                      </span>
+                      <>
+                        <button onClick={() => openLocalPath(c.folder_path!)}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition-colors"
+                          title="Im Explorer öffnen">
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => copyPath(c.folder_path!, c.id)}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="Pfad kopieren">
+                          {copiedId === c.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </>
                     )}
-                    {c.notes && <span className="italic truncate max-w-xs">{c.notes}</span>}
+                    <button onClick={() => searchCases(c.name)}
+                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Vorgänge dieses Kunden anzeigen">
+                      <Search className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => openEdit(c)}
+                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Bearbeiten">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setConfirmDeleteId(confirmDeleteId === c.id ? null : c.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                      title="Löschen">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {c.folder_path && (
-                    <>
-                      <button onClick={() => openLocalPath(c.folder_path!)}
-                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition-colors"
-                        title="Im Explorer öffnen">
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => copyPath(c.folder_path!, c.id)}
-                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        title="Pfad kopieren">
-                        {copiedId === c.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => searchCases(c.name)}
-                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                    title="Vorgänge anzeigen">
-                    <Search className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => openEdit(c)}
-                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                    title="Bearbeiten">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => remove(c.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                    title="Löschen">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {/* Inline delete confirm */}
+                {confirmDeleteId === c.id && (
+                  <div className="mt-2 flex items-center gap-2 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                    <span className="flex-1 text-red-700 dark:text-red-400">Wirklich löschen?</span>
+                    <button onClick={() => remove(c.id)} className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs hover:bg-red-700">Löschen</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="px-3 py-1 border border-border rounded-lg text-xs hover:bg-muted">Abbrechen</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

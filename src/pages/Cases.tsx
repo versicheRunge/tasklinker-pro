@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { CasesList } from '../components/cases/CasesList';
 import { KanbanBoard } from '../components/cases/KanbanBoard';
@@ -8,11 +8,19 @@ import { useUser } from '../contexts/UserContext';
 import { CreateCaseDialog } from '../components/cases/CreateCaseDialog';
 import { CaseFilters } from '../components/cases/CaseFilters';
 import { useCasesManager } from '../hooks/useCasesManager';
+import { useSearchParams } from 'react-router-dom';
 
 const Cases: React.FC = () => {
   const { users } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [searchParams] = useSearchParams();
+
+  // Pre-fill search from ?customer= param (e.g. from Customers page)
+  useEffect(() => {
+    const customer = searchParams.get('customer');
+    if (customer) setSearchQuery(customer);
+  }, []);
   const {
     cases,
     defaultTitles,
@@ -45,7 +53,11 @@ const Cases: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-1">Vorgänge</h1>
-          <p className="text-muted-foreground text-sm">{cases.length} Vorgänge gesamt</p>
+          <p className="text-muted-foreground text-sm">
+            {searchQuery.trim()
+              ? <>{filteredCases.length} von {cases.length} Vorgängen für „{searchQuery}"</>
+              : <>{cases.length} Vorgänge gesamt</>}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Kundensuche */}
